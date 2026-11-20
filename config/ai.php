@@ -7,18 +7,18 @@ return [
     | LLM Server Base URL
     |--------------------------------------------------------------------------
     |
-    | The base URL where the local llama.cpp server is running.
+    | The base URL for the OpenAI-compatible AI provider (e.g. Groq, OpenAI).
     |
     */
 
-    'base_url' => env('LLM_BASE_URL', 'http://127.0.0.1:8080'),
+    'base_url' => env('LLM_BASE_URL', 'https://api.groq.com/openai/v1'),
 
     /*
     |--------------------------------------------------------------------------
     | LLM API Key
     |--------------------------------------------------------------------------
     |
-    | Optional API key for authenticating with the llama.cpp server.
+    | API key for authenticating with the cloud AI provider.
     |
     */
 
@@ -29,11 +29,11 @@ return [
     | Default Model
     |--------------------------------------------------------------------------
     |
-    | The default local model name loaded in llama.cpp.
+    | The default AI model to invoke for chat completions.
     |
     */
 
-    'model' => env('LLM_MODEL', 'Qwen3 1.7B Q4 GGUF'),
+    'model' => env('LLM_MODEL', 'openai/gpt-oss-120b'),
 
     /*
     |--------------------------------------------------------------------------
@@ -47,17 +47,6 @@ return [
     'timeout' => (int) env('LLM_TIMEOUT', 60),
 
     'connect_timeout' => (int) env('LLM_CONNECT_TIMEOUT', 5),
-
-    /*
-    |--------------------------------------------------------------------------
-    | Thinking Mode
-    |--------------------------------------------------------------------------
-    |
-    | Thinking mode setting ('disabled' by default for Qwen3 1.7B Q4 GGUF).
-    |
-    */
-
-    'thinking_mode' => env('LLM_THINKING_MODE', 'disabled'),
 
     /*
     |--------------------------------------------------------------------------

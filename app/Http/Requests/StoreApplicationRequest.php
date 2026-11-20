@@ -41,7 +41,7 @@ class StoreApplicationRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $this->merge([
-            'model' => $this->input('model') ?: (SystemSetting::get('ai_model') ?: config('ai.model', 'Qwen3 1.7B Q4 GGUF')),
+            'model' => $this->input('model') ?: (SystemSetting::get('ai_model') ?: config('ai.model', 'openai/gpt-oss-120b')),
             'temperature' => (float) ($this->input('temperature') ?? 0.70),
             'max_tokens' => (int) ($this->input('max_tokens') ?? 2048),
             'is_active' => $this->boolean('is_active', true),

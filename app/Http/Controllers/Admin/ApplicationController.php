@@ -55,7 +55,7 @@ class ApplicationController extends Controller
      */
     public function create(): Response
     {
-        $defaultModel = SystemSetting::get('ai_model', 'Qwen3 1.7B Q4 GGUF');
+        $defaultModel = SystemSetting::get('ai_model') ?: config('ai.model', 'openai/gpt-oss-120b');
 
         return Inertia::render('admin/applications/create', [
             'defaults' => [

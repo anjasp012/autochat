@@ -1,6 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
 import {
-    BookOpen,
     LayoutGrid,
     MessageSquare,
     Settings2,
@@ -41,11 +40,6 @@ export function AppSidebar() {
             title: 'Dashboard',
             href: '/dashboard',
             icon: LayoutGrid,
-        },
-        {
-            title: 'Knowledge Base',
-            href: '/knowledge-base',
-            icon: BookOpen,
         },
         {
             title: 'Conversations',

@@ -36,7 +36,7 @@ class DatabaseSeeder extends Seeder
                 'name' => 'Customer Support AI',
                 'description' => 'Asisten cerdas untuk melayani dan menjawab pertanyaan seputar layanan kami.',
                 'system_prompt' => 'Anda adalah Customer Support AI yang ramah, sopan, dan selalu memberikan jawaban yang akurat berdasarkan knowledge base yang tersedia.',
-                'model' => 'Qwen3 1.7B Q4 GGUF',
+                'model' => 'openai/gpt-oss-120b',
                 'temperature' => 0.70,
                 'max_tokens' => 2048,
                 'is_active' => true,
@@ -45,9 +45,8 @@ class DatabaseSeeder extends Seeder
 
         // Default System Settings
         $defaults = [
-            'ai_base_url' => ['value' => 'http://127.0.0.1:8080', 'type' => 'string', 'group' => 'ai'],
-            'ai_model' => ['value' => 'Qwen3 1.7B Q4 GGUF', 'type' => 'string', 'group' => 'ai'],
-            'ai_thinking_mode' => ['value' => 'disabled', 'type' => 'string', 'group' => 'ai'],
+            'ai_base_url' => ['value' => 'https://api.groq.com/openai/v1', 'type' => 'string', 'group' => 'ai'],
+            'ai_model' => ['value' => 'openai/gpt-oss-120b', 'type' => 'string', 'group' => 'ai'],
             'global_api_key' => ['value' => 'autochat_secret_key_2026', 'type' => 'encrypted', 'group' => 'system'],
             'session_timeout_minutes' => ['value' => '10', 'type' => 'integer', 'group' => 'session'],
         ];

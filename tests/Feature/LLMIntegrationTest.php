@@ -19,17 +19,17 @@ test('llm service sends proper openai compatible payload and receives response',
     Http::preventStrayRequests();
 
     Http::fake([
-        'http://127.0.0.1:8080/v1/chat/completions' => Http::response([
+        'https://api.groq.com/openai/v1/chat/completions' => Http::response([
             'id' => 'chatcmpl-test-123',
             'object' => 'chat.completion',
             'created' => time(),
-            'model' => 'Qwen3 1.7B Q4 GGUF',
+            'model' => 'openai/gpt-oss-120b',
             'choices' => [
                 [
                     'index' => 0,
                     'message' => [
                         'role' => 'assistant',
-                        'content' => 'Halo! Ini adalah respon cerdas dari Qwen3.',
+                        'content' => 'Halo! Ini adalah respon cerdas dari AI Cloud.',
                     ],
                     'finish_reason' => 'stop',
                 ],
@@ -43,8 +43,8 @@ test('llm service sends proper openai compatible payload and receives response',
     ]);
 
     $service = new LLMService(
-        baseUrl: 'http://127.0.0.1:8080',
-        defaultModel: 'Qwen3 1.7B Q4 GGUF'
+        baseUrl: 'https://api.groq.com/openai/v1',
+        defaultModel: 'openai/gpt-oss-120b'
     );
 
     $response = $service->chat(
@@ -57,7 +57,7 @@ test('llm service sends proper openai compatible payload and receives response',
     );
 
     expect($response->successful)->toBeTrue()
-        ->and($response->content)->toBe('Halo! Ini adalah respon cerdas dari Qwen3.')
+        ->and($response->content)->toBe('Halo! Ini adalah respon cerdas dari AI Cloud.')
         ->and($response->promptTokens)->toBe(25)
         ->and($response->completionTokens)->toBe(15)
         ->and($response->totalTokens)->toBe(40);
@@ -65,8 +65,8 @@ test('llm service sends proper openai compatible payload and receives response',
     Http::assertSent(function (Request $request) {
         $data = $request->data();
 
-        return $request->url() === 'http://127.0.0.1:8080/v1/chat/completions'
-            && $data['model'] === 'Qwen3 1.7B Q4 GGUF'
+        return $request->url() === 'https://api.groq.com/openai/v1/chat/completions'
+            && $data['model'] === 'openai/gpt-oss-120b'
             && $data['stream'] === false
             && $data['temperature'] === 0.70
             && $data['max_tokens'] === 1024
@@ -78,14 +78,14 @@ test('llm service sends proper openai compatible payload and receives response',
 });
 
 test('llm service defaults to config values from environment', function () {
-    Config::set('ai.base_url', 'http://10.0.0.1:8080');
-    Config::set('ai.model', 'Qwen3 1.7B Q4 GGUF');
+    Config::set('ai.base_url', 'https://api.groq.com/openai/v1');
+    Config::set('ai.model', 'openai/gpt-oss-120b');
     Config::set('ai.session_timeout', 10);
 
     $service = new LLMService;
 
-    expect($service->getBaseUrl())->toBe('http://10.0.0.1:8080')
-        ->and($service->getDefaultModel())->toBe('Qwen3 1.7B Q4 GGUF')
+    expect($service->getBaseUrl())->toBe('https://api.groq.com/openai')
+        ->and($service->getDefaultModel())->toBe('openai/gpt-oss-120b')
         ->and(config('ai.session_timeout'))->toBe(10);
 });
 
@@ -93,10 +93,10 @@ test('llm service handles connection failure gracefully', function () {
     Http::preventStrayRequests();
 
     Http::fake([
-        'http://127.0.0.1:8080/v1/chat/completions' => Http::failedConnection(),
+        'https://api.groq.com/openai/v1/chat/completions' => Http::failedConnection(),
     ]);
 
-    $service = new LLMService(baseUrl: 'http://127.0.0.1:8080');
+    $service = new LLMService(baseUrl: 'https://api.groq.com/openai/v1');
 
     $response = $service->chat([
         ['role' => 'user', 'content' => 'Test query'],
@@ -106,41 +106,41 @@ test('llm service handles connection failure gracefully', function () {
         ->and($response->error)->toContain('Tidak dapat terhubung ke AI server');
 });
 
-test('llm service handles 500 error from llama cpp gracefully', function () {
+test('llm service handles 500 error from llm server gracefully', function () {
     Http::preventStrayRequests();
 
     Http::fake([
-        'http://127.0.0.1:8080/v1/chat/completions' => Http::response([
+        'https://api.groq.com/openai/v1/chat/completions' => Http::response([
             'error' => [
-                'message' => 'CUDA out of memory error in llama.cpp',
+                'message' => 'Rate limit exceeded on provider',
             ],
         ], 500),
     ]);
 
-    $service = new LLMService(baseUrl: 'http://127.0.0.1:8080');
+    $service = new LLMService(baseUrl: 'https://api.groq.com/openai/v1');
 
     $response = $service->chat([
         ['role' => 'user', 'content' => 'Test query'],
     ]);
 
     expect($response->successful)->toBeFalse()
-        ->and($response->error)->toContain('CUDA out of memory error');
+        ->and($response->error)->toContain('Rate limit exceeded on provider');
 });
 
 test('llm service check health returns status online when endpoint is reachable', function () {
     Http::preventStrayRequests();
 
     Http::fake([
-        'http://127.0.0.1:8080/v1/models' => Http::response([
+        'https://api.groq.com/openai/v1/models' => Http::response([
             'data' => [
-                ['id' => 'Qwen3 1.7B Q4 GGUF'],
+                ['id' => 'openai/gpt-oss-120b'],
             ],
         ], 200),
     ]);
 
-    $service = new LLMService(baseUrl: 'http://127.0.0.1:8080');
+    $service = new LLMService(baseUrl: 'https://api.groq.com/openai/v1');
     $health = $service->checkHealth();
 
     expect($health['status'])->toBe('online')
-        ->and($health['url'])->toBe('http://127.0.0.1:8080');
+        ->and($health['url'])->toBe('https://api.groq.com/openai');
 });

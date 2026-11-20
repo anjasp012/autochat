@@ -22,7 +22,7 @@ class ApplicationFactory extends Factory
             'name' => ucwords($name),
             'description' => fake()->sentence(),
             'system_prompt' => 'Anda adalah asisten AI yang ramah dan membantu.',
-            'model' => 'Qwen3 1.7B Q4 GGUF',
+            'model' => 'openai/gpt-oss-120b',
             'temperature' => 0.70,
             'max_tokens' => 2048,
             'is_active' => true,

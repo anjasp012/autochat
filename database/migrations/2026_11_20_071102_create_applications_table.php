@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('name');
             $table->text('description')->nullable();
             $table->longText('system_prompt');
-            $table->string('model')->default('Qwen3 1.7B Q4 GGUF');
+            $table->string('model')->default('openai/gpt-oss-120b');
             $table->decimal('temperature', 3, 2)->default(0.70);
             $table->unsignedInteger('max_tokens')->default(2048);
             $table->boolean('is_active')->default(true)->index();

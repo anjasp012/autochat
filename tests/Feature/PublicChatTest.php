@@ -54,7 +54,7 @@ test('user can send message and receive ai response', function () {
     Http::preventStrayRequests();
 
     Http::fake([
-        'http://127.0.0.1:8080/v1/chat/completions' => Http::response([
+        '*chat/completions' => Http::response([
             'choices' => [
                 [
                     'message' => [
@@ -149,7 +149,7 @@ test('user can start a new chat with new uuid after previous session expires', f
     Http::preventStrayRequests();
 
     Http::fake([
-        'http://127.0.0.1:8080/v1/chat/completions' => Http::response([
+        '*chat/completions' => Http::response([
             'choices' => [
                 ['message' => ['role' => 'assistant', 'content' => 'Sesi baru berhasil.']],
             ],

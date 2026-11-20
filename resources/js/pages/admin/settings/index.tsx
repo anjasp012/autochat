@@ -20,7 +20,7 @@ export default function AdminSettings({ application }: Props) {
         app_id: application.app_id,
         description: application.description || '',
         system_prompt: application.system_prompt,
-        model: application.model || 'Qwen3 1.7B Q4 GGUF',
+        model: application.model || 'openai/gpt-oss-120b',
         temperature: application.temperature ?? 0.70,
         max_tokens: application.max_tokens ?? 2048,
         is_active: application.is_active,

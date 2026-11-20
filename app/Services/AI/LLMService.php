@@ -29,7 +29,7 @@ class LLMService
         ?int $connectTimeout = null
     ) {
         $url = rtrim(
-            $baseUrl ?? config('ai.base_url', 'http://127.0.0.1:8080'),
+            $baseUrl ?? config('ai.base_url', 'https://api.groq.com/openai/v1'),
             '/'
         );
 
@@ -42,7 +42,7 @@ class LLMService
 
         $this->apiKey = $apiKey ?? config('ai.api_key');
 
-        $this->defaultModel = $defaultModel ?? config('ai.model', 'Qwen3 1.7B Q4 GGUF');
+        $this->defaultModel = $defaultModel ?? config('ai.model', 'openai/gpt-oss-120b');
 
         $this->timeout = $timeout ?? (int) config('ai.timeout', 60);
 
@@ -97,6 +97,16 @@ class LLMService
         try {
             $response = $this->client()
                 ->post('/v1/chat/completions', $payload);
+
+            // If model is not available or rejected by provider, automatically retry with openai/gpt-oss-120b
+            if (! $response->successful()
+                && ($response->json('error.code') === 'model_not_found' || str_contains($response->body(), 'does not exist'))
+                && $payload['model'] !== 'openai/gpt-oss-120b'
+            ) {
+                Log::info("Model '{$payload['model']}' not found on provider. Auto-retrying with fallback model 'openai/gpt-oss-120b'.");
+                $payload['model'] = 'openai/gpt-oss-120b';
+                $response = $this->client()->post('/v1/chat/completions', $payload);
+            }
 
             if (! $response->successful()) {
                 $errorMessage = $response->json('error.message')

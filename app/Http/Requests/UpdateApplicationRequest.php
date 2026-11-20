@@ -55,7 +55,7 @@ class UpdateApplicationRequest extends FormRequest
         $application = $this->route('application');
 
         $this->merge([
-            'model' => $this->input('model') ?: ($application?->model ?? (SystemSetting::get('ai_model') ?: config('ai.model', 'Qwen3 1.7B Q4 GGUF'))),
+            'model' => $this->input('model') ?: ($application?->model ?? (SystemSetting::get('ai_model') ?: config('ai.model', 'openai/gpt-oss-120b'))),
             'temperature' => (float) ($this->input('temperature') ?? ($application?->temperature ?? 0.70)),
             'max_tokens' => (int) ($this->input('max_tokens') ?? ($application?->max_tokens ?? 2048)),
             'is_active' => $this->boolean('is_active', true),

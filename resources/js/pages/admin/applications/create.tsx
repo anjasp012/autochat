@@ -27,7 +27,7 @@ export default function ApplicationsCreate({ defaults }: Props) {
         app_id: '',
         description: '',
         system_prompt: defaults.system_prompt,
-        model: defaults.model || 'Qwen3 1.7B Q4 GGUF',
+        model: defaults.model || 'openai/gpt-oss-120b',
         temperature: defaults.temperature ?? 0.70,
         max_tokens: defaults.max_tokens ?? 2048,
         is_active: true,
