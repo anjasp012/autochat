@@ -27,7 +27,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Knowledge Base
     Route::inertia('knowledge-base', 'admin/knowledge-base/index')->name('knowledge-base.index');
-    Route::redirect('admin/knowledge-base', '/knowledge-base');
+    Route::get('admin/knowledge-base', fn () => redirect('/knowledge-base'));
 
     // Conversations & Human Takeover Management (WhatsApp-Style Live Console)
     Route::get('conversations', [ConversationController::class, 'index'])->name('conversations.index');
@@ -37,28 +37,42 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('conversations/{conversation:uuid}/reply', [ConversationController::class, 'reply'])->name('conversations.reply');
     Route::delete('conversations/{conversation:uuid}', [ConversationController::class, 'destroy'])->name('conversations.destroy');
 
-    // Backwards compatibility redirects for conversations
-    Route::redirect('admin/conversations', '/conversations');
+    // Backwards compatibility for conversations
+    Route::get('admin/conversations', fn () => redirect('/conversations'));
     Route::get('admin/conversations/{conversation:uuid}', fn ($conversation) => redirect("/conversations/{$conversation}"));
+    Route::post('admin/conversations/{conversation:uuid}/takeover', [ConversationController::class, 'takeover']);
+    Route::post('admin/conversations/{conversation:uuid}/release-takeover', [ConversationController::class, 'releaseTakeover']);
+    Route::post('admin/conversations/{conversation:uuid}/reply', [ConversationController::class, 'reply']);
+    Route::delete('admin/conversations/{conversation:uuid}', [ConversationController::class, 'destroy']);
 
     // Bot Settings (Direct Menu: /setting)
     Route::get('setting', [ApplicationController::class, 'settings'])->name('setting');
-    Route::redirect('admin/settings', '/setting');
-    Route::redirect('admin/setting', '/setting');
+    Route::get('admin/settings', fn () => redirect('/setting'));
+    Route::get('admin/setting', fn () => redirect('/setting'));
 
-    // Applications Management
+    // Applications Management (Direct routes & backwards compatibility)
     Route::post('applications/switch-current', [ApplicationController::class, 'switchCurrent'])->name('applications.switch-current');
-    Route::post('applications/{application}/toggle-status', [ApplicationController::class, 'toggleStatus'])->name('applications.toggle-status');
-    Route::get('applications/create', [ApplicationController::class, 'create'])->name('applications.create');
-    Route::post('applications', [ApplicationController::class, 'store'])->name('applications.store');
-    Route::get('applications/{application}/edit', [ApplicationController::class, 'edit'])->name('applications.edit');
-    Route::put('applications/{application}', [ApplicationController::class, 'update'])->name('applications.update');
-    Route::delete('applications/{application}', [ApplicationController::class, 'destroy'])->name('applications.destroy');
-
-    // Backwards compatibility redirects for admin/applications
-    Route::redirect('admin/applications', '/dashboard');
-    Route::redirect('admin/applications/create', '/applications/create');
     Route::post('admin/applications/switch-current', [ApplicationController::class, 'switchCurrent']);
+
+    Route::post('applications/{application}/toggle-status', [ApplicationController::class, 'toggleStatus'])->name('applications.toggle-status');
+    Route::post('admin/applications/{application}/toggle-status', [ApplicationController::class, 'toggleStatus']);
+
+    Route::get('applications/create', [ApplicationController::class, 'create'])->name('applications.create');
+    Route::get('admin/applications/create', [ApplicationController::class, 'create']);
+
+    Route::post('applications', [ApplicationController::class, 'store'])->name('applications.store');
+    Route::post('admin/applications', [ApplicationController::class, 'store']);
+
+    Route::get('applications/{application}/edit', [ApplicationController::class, 'edit'])->name('applications.edit');
+    Route::get('admin/applications/{application}/edit', [ApplicationController::class, 'edit']);
+
+    Route::put('applications/{application}', [ApplicationController::class, 'update'])->name('applications.update');
+    Route::put('admin/applications/{application}', [ApplicationController::class, 'update']);
+
+    Route::delete('applications/{application}', [ApplicationController::class, 'destroy'])->name('applications.destroy');
+    Route::delete('admin/applications/{application}', [ApplicationController::class, 'destroy']);
+
+    Route::get('admin/applications', fn () => redirect('/dashboard'));
 });
 
 require __DIR__.'/settings.php';
