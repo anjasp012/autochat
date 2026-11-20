@@ -124,7 +124,7 @@ class ConversationController extends Controller
             'content' => 'Percakapan telah diambil alih oleh administrator. AI dihentikan sementara.',
         ]);
 
-        MessageSent::dispatch($systemMessage);
+        MessageSent::safeDispatch($systemMessage);
 
         return back()->with('success', 'Percakapan berhasil diambil alih. AI tidak akan menjawab otomatis.');
     }
@@ -147,7 +147,7 @@ class ConversationController extends Controller
             'content' => 'Percakapan telah dikembalikan ke asisten AI.',
         ]);
 
-        MessageSent::dispatch($systemMessage);
+        MessageSent::safeDispatch($systemMessage);
 
         return back()->with('success', 'Percakapan telah dikembalikan ke asisten AI.');
     }
@@ -170,7 +170,7 @@ class ConversationController extends Controller
 
         $conversation->update(['last_activity_at' => now()]);
 
-        MessageSent::dispatch($adminMessage);
+        MessageSent::safeDispatch($adminMessage);
 
         return back()->with('success', 'Pesan balasan admin berhasil dikirim.');
     }

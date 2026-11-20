@@ -135,7 +135,7 @@ class ChatController extends Controller
             'tokens_used' => 0,
         ]);
 
-        MessageSent::dispatch($userMessage);
+        MessageSent::safeDispatch($userMessage);
 
         // If conversation is taken over by admin, do not invoke AI
         if ($conversation->is_taken_over) {

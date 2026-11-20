@@ -22,6 +22,18 @@ class MessageSent implements ShouldBroadcastNow
     }
 
     /**
+     * Safely dispatch the event without breaking the request if Reverb server is offline.
+     */
+    public static function safeDispatch(Message $message): void
+    {
+        try {
+            static::dispatch($message);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Broadcasting MessageSent skipped: '.$e->getMessage());
+        }
+    }
+
+    /**
      * Get the channels the event should broadcast on.
      *
      * @return array<int, Channel>
