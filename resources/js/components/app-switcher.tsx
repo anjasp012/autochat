@@ -127,14 +127,6 @@ export function AppSwitcher() {
                                         </div>
 
                                         <div className="flex items-center gap-1.5 ml-2 shrink-0">
-                                            <span
-                                                className={`size-1.5 rounded-full ${
-                                                    app.is_active
-                                                        ? 'bg-emerald-500'
-                                                        : 'bg-muted-foreground/30'
-                                                }`}
-                                                title={app.is_active ? 'Aktif' : 'Nonaktif'}
-                                            />
                                             {app.app_id === currentApp?.app_id && (
                                                 <Check className="size-3.5 text-primary" />
                                             )}

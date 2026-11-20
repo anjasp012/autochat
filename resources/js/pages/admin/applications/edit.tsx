@@ -69,26 +69,12 @@ export default function ApplicationsEdit({ application }: Props) {
                             </Link>
                         </Button>
                         <div>
-                            <div className="flex items-center gap-2">
-                                <h1 className="text-2xl font-bold tracking-tight">Edit Aplikasi</h1>
-                                <span className={`size-2 rounded-full ${application.is_active ? 'bg-emerald-500' : 'bg-muted-foreground/40'}`} />
-                            </div>
-                            <p className="text-sm text-muted-foreground">
+                            <h1 className="text-2xl font-bold tracking-tight">Edit Aplikasi</h1>
+                            <p className="text-sm text-muted-foreground mt-0.5">
                                 Perbarui konfigurasi dan prompt untuk {application.name}.
                             </p>
                         </div>
                     </div>
-
-                    <Button variant="outline" size="sm" asChild className="gap-2 cursor-pointer self-start sm:self-auto">
-                        <a
-                            href={`/chat/${application.app_id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                        >
-                            <ExternalLink className="size-4" />
-                            Tes Chat Publik
-                        </a>
-                    </Button>
                 </div>
 
                 <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-6xl">
