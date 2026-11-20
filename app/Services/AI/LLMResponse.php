@@ -5,7 +5,7 @@ namespace App\Services\AI;
 class LLMResponse
 {
     /**
-     * @param array<string, mixed> $raw
+     * @param  array<string, mixed>  $raw
      */
     public function __construct(
         public bool $successful,
@@ -20,7 +20,7 @@ class LLMResponse
     /**
      * Create a successful response instance.
      *
-     * @param array<string, mixed> $raw
+     * @param  array<string, mixed>  $raw
      */
     public static function success(
         string $content,
@@ -43,7 +43,7 @@ class LLMResponse
     /**
      * Create a failed response instance.
      *
-     * @param array<string, mixed> $raw
+     * @param  array<string, mixed>  $raw
      */
     public static function failure(string $errorMessage, array $raw = []): self
     {
