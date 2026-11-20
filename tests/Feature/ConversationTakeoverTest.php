@@ -63,15 +63,15 @@ test('conversations are strictly scoped to the active application in session', f
         );
 });
 
-test('admin can take over and release a conversation', function () {
+test('admin can take over and release a conversation using uuid', function () {
     $conversation = Conversation::factory()->create([
         'application_id' => $this->appOne->id,
         'is_taken_over' => false,
     ]);
 
-    // Takeover
+    // Takeover using uuid
     $response = $this->actingAs($this->admin)
-        ->post("/admin/conversations/{$conversation->id}/takeover");
+        ->post("/admin/conversations/{$conversation->uuid}/takeover");
 
     $response->assertRedirect();
     $this->assertDatabaseHas('conversations', [
@@ -80,9 +80,9 @@ test('admin can take over and release a conversation', function () {
         'taken_over_by' => $this->admin->id,
     ]);
 
-    // Release takeover
+    // Release takeover using uuid
     $releaseResponse = $this->actingAs($this->admin)
-        ->post("/admin/conversations/{$conversation->id}/release-takeover");
+        ->post("/admin/conversations/{$conversation->uuid}/release-takeover");
 
     $releaseResponse->assertRedirect();
     $this->assertDatabaseHas('conversations', [
@@ -92,15 +92,49 @@ test('admin can take over and release a conversation', function () {
     ]);
 });
 
-test('admin can delete a conversation', function () {
+test('admin can view conversation detail page with uuid', function () {
     $conversation = Conversation::factory()->create([
         'application_id' => $this->appOne->id,
     ]);
 
     $response = $this->actingAs($this->admin)
-        ->delete("/admin/conversations/{$conversation->id}");
+        ->get("/admin/conversations/{$conversation->uuid}");
+
+    $response->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('admin/conversations/show')
+            ->where('conversation.uuid', $conversation->uuid)
+        );
+});
+
+test('admin can reply to visitor in conversation', function () {
+    $conversation = Conversation::factory()->create([
+        'application_id' => $this->appOne->id,
+        'is_taken_over' => true,
+    ]);
+
+    $response = $this->actingAs($this->admin)
+        ->post("/admin/conversations/{$conversation->uuid}/reply", [
+            'message' => 'Halo dari admin manusia!',
+        ]);
 
     $response->assertRedirect();
+    $this->assertDatabaseHas('messages', [
+        'conversation_id' => $conversation->id,
+        'role' => 'assistant',
+        'content' => 'Halo dari admin manusia!',
+    ]);
+});
+
+test('admin can delete a conversation using uuid', function () {
+    $conversation = Conversation::factory()->create([
+        'application_id' => $this->appOne->id,
+    ]);
+
+    $response = $this->actingAs($this->admin)
+        ->delete("/admin/conversations/{$conversation->uuid}");
+
+    $response->assertRedirect('/admin/conversations');
     $this->assertDatabaseMissing('conversations', [
         'id' => $conversation->id,
     ]);

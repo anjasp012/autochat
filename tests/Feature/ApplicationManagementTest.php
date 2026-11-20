@@ -17,16 +17,9 @@ test('unauthenticated users are redirected from applications list', function () 
     $response->assertRedirect('/login');
 });
 
-test('admin can view applications list', function () {
-    Application::factory()->count(3)->create();
-
+test('admin accessing applications index is redirected to dashboard', function () {
     $response = $this->actingAs($this->admin)->get('/admin/applications');
-
-    $response->assertOk()
-        ->assertInertia(fn ($page) => $page
-            ->component('admin/applications/index')
-            ->has('applications.data', 3)
-        );
+    $response->assertRedirect('/dashboard');
 });
 
 test('admin can create a new application', function () {
@@ -41,7 +34,7 @@ test('admin can create a new application', function () {
         'is_active' => true,
     ]);
 
-    $response->assertRedirect('/admin/applications');
+    $response->assertRedirect('/dashboard');
     $response->assertSessionHas('current_app_id', 'marketing-bot');
 
     $this->assertDatabaseHas('applications', [
@@ -73,17 +66,19 @@ test('admin can update an application', function () {
         'app_id' => 'old-slug',
     ]);
 
-    $response = $this->actingAs($this->admin)->put("/admin/applications/{$app->id}", [
-        'name' => 'New Name',
-        'app_id' => 'old-slug',
-        'system_prompt' => 'Updated prompt',
-        'model' => 'Qwen3 1.7B Q4 GGUF',
-        'temperature' => 0.5,
-        'max_tokens' => 1024,
-        'is_active' => false,
-    ]);
+    $response = $this->actingAs($this->admin)
+        ->from("/admin/applications/{$app->id}/edit")
+        ->put("/admin/applications/{$app->id}", [
+            'name' => 'New Name',
+            'app_id' => 'old-slug',
+            'system_prompt' => 'Updated prompt',
+            'model' => 'Qwen3 1.7B Q4 GGUF',
+            'temperature' => 0.5,
+            'max_tokens' => 1024,
+            'is_active' => false,
+        ]);
 
-    $response->assertRedirect('/admin/applications');
+    $response->assertRedirect("/admin/applications/{$app->id}/edit");
 
     $this->assertDatabaseHas('applications', [
         'id' => $app->id,
@@ -96,12 +91,12 @@ test('admin can update an application', function () {
 test('admin can toggle application active status', function () {
     $app = Application::factory()->create(['is_active' => true]);
 
-    $response = $this->actingAs($this->admin)->from('/admin/applications')->post("/admin/applications/{$app->id}/toggle-status");
+    $response = $this->actingAs($this->admin)->from('/dashboard')->post("/admin/applications/{$app->id}/toggle-status");
 
-    $response->assertRedirect('/admin/applications');
+    $response->assertRedirect('/dashboard');
     expect($app->fresh()->is_active)->toBeFalse();
 
-    $this->actingAs($this->admin)->from('/admin/applications')->post("/admin/applications/{$app->id}/toggle-status");
+    $this->actingAs($this->admin)->from('/dashboard')->post("/admin/applications/{$app->id}/toggle-status");
     expect($app->fresh()->is_active)->toBeTrue();
 });
 
@@ -122,6 +117,6 @@ test('admin can delete an application', function () {
 
     $response = $this->actingAs($this->admin)->delete("/admin/applications/{$app->id}");
 
-    $response->assertRedirect('/admin/applications');
+    $response->assertRedirect('/dashboard');
     $this->assertDatabaseMissing('applications', ['id' => $app->id]);
 });

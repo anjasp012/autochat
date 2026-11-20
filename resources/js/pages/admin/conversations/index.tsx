@@ -237,7 +237,6 @@ export default function ConversationsIndex({
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead>Sesi Percakapan</TableHead>
-                                        <TableHead>Aplikasi</TableHead>
                                         <TableHead>Penanganan</TableHead>
                                         <TableHead>Total Pesan</TableHead>
                                         <TableHead>Aktivitas Terakhir</TableHead>
@@ -246,11 +245,11 @@ export default function ConversationsIndex({
                                 </TableHeader>
                                 <TableBody>
                                     {conversations.data.map((conv) => (
-                                        <TableRow key={conv.id}>
+                                        <TableRow key={conv.uuid}>
                                             <TableCell>
                                                 <div className="flex flex-col">
                                                     <Link
-                                                        href={`/admin/conversations/${conv.id}`}
+                                                        href={`/admin/conversations/${conv.uuid}`}
                                                         className="font-mono text-xs font-semibold hover:underline text-foreground"
                                                     >
                                                         {conv.uuid.substring(0, 18)}...
@@ -261,13 +260,6 @@ export default function ConversationsIndex({
                                                         </span>
                                                     )}
                                                 </div>
-                                            </TableCell>
-
-                                            <TableCell>
-                                                <Badge variant="outline" className="text-xs gap-1">
-                                                    <Bot className="size-3 text-primary" />
-                                                    {conv.application?.name || 'Aplikasi'}
-                                                </Badge>
                                             </TableCell>
 
                                             <TableCell>
@@ -329,7 +321,7 @@ export default function ConversationsIndex({
                                                         asChild
                                                         className="h-8 gap-1 text-xs cursor-pointer"
                                                     >
-                                                        <Link href={`/admin/conversations/${conv.id}`}>
+                                                        <Link href={`/admin/conversations/${conv.uuid}`}>
                                                             Buka
                                                             <ArrowRight className="size-3" />
                                                         </Link>
