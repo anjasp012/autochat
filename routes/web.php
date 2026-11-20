@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\ApplicationController;
+use App\Http\Controllers\Admin\ConversationController;
 use App\Http\Controllers\ChatController;
 use App\Models\Application;
 use Illuminate\Support\Facades\Route;
@@ -29,9 +30,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('admin/applications/{application}/toggle-status', [ApplicationController::class, 'toggleStatus'])->name('admin.applications.toggle-status');
     Route::resource('admin/applications', ApplicationController::class)->names('admin.applications');
 
-    // Knowledge Base & Conversations
+    // Conversations & Human Takeover Management
+    Route::post('admin/conversations/{conversation}/takeover', [ConversationController::class, 'takeover'])->name('admin.conversations.takeover');
+    Route::post('admin/conversations/{conversation}/release-takeover', [ConversationController::class, 'releaseTakeover'])->name('admin.conversations.release-takeover');
+    Route::post('admin/conversations/{conversation}/reply', [ConversationController::class, 'reply'])->name('admin.conversations.reply');
+    Route::resource('admin/conversations', ConversationController::class)->only(['index', 'show', 'destroy'])->names('admin.conversations');
+
+    // Knowledge Base placeholder
     Route::inertia('admin/knowledge-base', 'admin/knowledge-base/index')->name('admin.knowledge-base.index');
-    Route::inertia('admin/conversations', 'admin/conversations/index')->name('admin.conversations.index');
 });
 
 require __DIR__.'/settings.php';

@@ -134,6 +134,21 @@ class ChatController extends Controller
             'tokens_used' => 0,
         ]);
 
+        // If conversation is taken over by admin, do not invoke AI
+        if ($conversation->is_taken_over) {
+            return response()->json([
+                'conversation_uuid' => $conversation->uuid,
+                'is_taken_over' => true,
+                'user_message' => [
+                    'id' => (string) $userMessage->id,
+                    'role' => 'user',
+                    'content' => $userMessage->content,
+                    'created_at' => $userMessage->created_at?->format('H:i') ?? '',
+                ],
+                'assistant_message' => null,
+            ]);
+        }
+
         // Load recent conversation history (last 10 messages for context)
         $history = $conversation->messages()
             ->orderBy('created_at', 'asc')
