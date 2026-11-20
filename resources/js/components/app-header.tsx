@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { BookOpen, LayoutGrid, Menu, MessageSquare, Search } from 'lucide-react';
+import { BookOpen, Bot, ExternalLink, LayoutGrid, Menu, MessageSquare, Search } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import AppLogoIcon from '@/components/app-logo-icon';
 import { Breadcrumbs } from '@/components/breadcrumbs';
@@ -159,6 +159,23 @@ export function AppHeader({ breadcrumbs = [] }: Props) {
                     </div>
 
                     <div className="ml-auto flex items-center space-x-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            asChild
+                            className="h-8 gap-1.5 text-xs font-medium cursor-pointer rounded-xl border-primary/25 bg-primary/5 text-primary hover:bg-primary/10 mr-1"
+                        >
+                            <a
+                                href={page.props.currentAppId ? `/${page.props.currentAppId}` : '/chat'}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                <Bot className="size-3.5" />
+                                <span className="hidden sm:inline">Tes Chatbot</span>
+                                <ExternalLink className="size-3 opacity-60" />
+                            </a>
+                        </Button>
+
                         <div className="relative flex items-center space-x-1">
                             <Button
                                 variant="ghost"

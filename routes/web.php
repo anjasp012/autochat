@@ -1,13 +1,24 @@
 <?php
 
 use App\Http\Controllers\Admin\ApplicationController;
+use App\Http\Controllers\ChatController;
+use App\Models\Application;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'welcome')->name('home');
 
 // Public Chat routes
-Route::inertia('/chat', 'chat/show')->name('chat.default');
-Route::inertia('/chat/{app_id}', 'chat/show')->name('chat.show');
+Route::get('chat', function () {
+    $appId = Application::where('is_active', true)->value('app_id')
+        ?? Application::value('app_id')
+        ?? 'customer-support';
+
+    return redirect()->route('chat.show', ['application' => $appId]);
+})->name('chat.default');
+
+Route::get('chat/{application:app_id}', [ChatController::class, 'show'])->name('chat.show');
+Route::post('chat/{application:app_id}/send', [ChatController::class, 'sendMessage'])->name('chat.send');
+Route::get('chat/{application:app_id}/session/{uuid}', [ChatController::class, 'getSessionMessages'])->name('chat.session');
 
 // Admin panel routes
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -24,3 +35,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 require __DIR__.'/settings.php';
+
+// Direct slug route (e.g. domain/slug opens chatbot directly)
+Route::get('{application:app_id}', [ChatController::class, 'show'])
+    ->where('application', '^(?!dashboard|admin|login|logout|register|forgot-password|reset-password|settings|storage|up|_boost|_inertia).*$')
+    ->name('chat.direct');
