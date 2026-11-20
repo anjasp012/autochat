@@ -68,15 +68,6 @@ export function AppSwitcher() {
                                     <span className="truncate font-semibold text-foreground text-sm tracking-tight">
                                         {currentApp?.name || 'Pilih Aplikasi'}
                                     </span>
-                                    {currentApp && (
-                                        <span
-                                            className={`size-1.5 shrink-0 rounded-full ${
-                                                currentApp.is_active
-                                                    ? 'bg-emerald-500'
-                                                    : 'bg-muted-foreground/40'
-                                            }`}
-                                        />
-                                    )}
                                 </div>
                                 <span className="truncate text-xs text-muted-foreground">
                                     {currentApp ? currentApp.app_id : 'Belum ada aplikasi'}
