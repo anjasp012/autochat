@@ -81,8 +81,13 @@ class LLMService
             }
         }
 
+        // If passed model is empty or obsolete local GGUF string, fallback to defaultModel
+        $effectiveModel = (! empty($model) && ! str_contains($model, 'GGUF'))
+            ? $model
+            : $this->defaultModel;
+
         $payload = [
-            'model' => $model ?: $this->defaultModel,
+            'model' => $effectiveModel,
             'messages' => $formattedMessages,
             'temperature' => $temperature ?? 0.70,
             'max_tokens' => $maxTokens ?? 2048,
