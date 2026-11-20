@@ -115,15 +115,15 @@ export default function ConversationsIndex({
 
     const handleToggleTakeover = (conv: ConversationItem) => {
         if (conv.is_taken_over) {
-            router.post(`/admin/conversations/${conv.id}/release-takeover`, {}, { preserveScroll: true });
+            router.post(`/admin/conversations/${conv.uuid}/release-takeover`, {}, { preserveScroll: true });
         } else {
-            router.post(`/admin/conversations/${conv.id}/takeover`, {}, { preserveScroll: true });
+            router.post(`/admin/conversations/${conv.uuid}/takeover`, {}, { preserveScroll: true });
         }
     };
 
     const handleDeleteConfirm = () => {
         if (!convToDelete) return;
-        router.delete(`/admin/conversations/${convToDelete.id}`, {
+        router.delete(`/admin/conversations/${convToDelete.uuid}`, {
             onSuccess: () => setConvToDelete(null),
         });
     };

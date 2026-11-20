@@ -54,7 +54,7 @@ export function AppSidebar() {
         },
         {
             title: 'Pengaturan Bot',
-            href: currentApp ? `/admin/applications/${currentApp.id}/edit` : '/admin/applications',
+            href: currentApp ? `/admin/applications/${currentApp.id}/edit` : '/dashboard',
             icon: Settings2,
         },
     ];
@@ -62,17 +62,7 @@ export function AppSidebar() {
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>
-                <SidebarMenu>
-                    <SidebarMenuItem>
-                        <SidebarMenuButton size="lg" asChild>
-                            <Link href="/dashboard" prefetch>
-                                <AppLogo />
-                            </Link>
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
-                </SidebarMenu>
-
-                {/* Dropdown Ganti-Ganti Aplikasi diletakkan di atas sebelum menu utama */}
+                {/* Switcher aplikasi di paling atas sebagai Navbrand */}
                 <AppSwitcher />
             </SidebarHeader>
 

@@ -52,20 +52,20 @@ export function AppSwitcher() {
     };
 
     return (
-        <SidebarMenu className="mt-1">
+        <SidebarMenu>
             <SidebarMenuItem>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <SidebarMenuButton
                             size="lg"
-                            className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground cursor-pointer rounded-xl border border-sidebar-border/60 bg-sidebar/50 p-2 shadow-2xs hover:bg-sidebar-accent/60"
+                            className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground cursor-pointer rounded-lg hover:bg-sidebar-accent/50 p-2 transition-colors border-0 shadow-none bg-transparent"
                         >
                             <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-xs">
                                 <Bot className="size-4" />
                             </div>
                             <div className="grid flex-1 text-left text-sm leading-tight min-w-0">
                                 <div className="flex items-center gap-1.5 min-w-0">
-                                    <span className="truncate font-semibold text-foreground text-xs">
+                                    <span className="truncate font-semibold text-foreground text-sm tracking-tight">
                                         {currentApp?.name || 'Pilih Aplikasi'}
                                     </span>
                                     {currentApp && (
@@ -78,7 +78,7 @@ export function AppSwitcher() {
                                         />
                                     )}
                                 </div>
-                                <span className="truncate text-[11px] text-muted-foreground">
+                                <span className="truncate text-xs text-muted-foreground">
                                     {currentApp ? currentApp.app_id : 'Belum ada aplikasi'}
                                 </span>
                             </div>
