@@ -32,6 +32,7 @@ use Illuminate\Support\Carbon;
     'app_id',
     'name',
     'description',
+    'welcome_message',
     'system_prompt',
     'model',
     'temperature',

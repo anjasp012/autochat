@@ -30,11 +30,12 @@ class DatabaseSeeder extends Seeder
         );
 
         // Default Chatbot Application
-        Application::firstOrCreate(
+        Application::updateOrCreate(
             ['app_id' => 'customer-support'],   
             [
                 'name' => 'Customer Support AI',
                 'description' => 'Asisten cerdas untuk melayani dan menjawab pertanyaan seputar layanan kami.',
+                'welcome_message' => "Selamat Datang di CVTOGEL Link ANTI NAWALA CVTOGEL\n️ [https://kiamkiam.site/cvtogel1](https://kiamkiam.site/cvtogel1?utm_medium=chat&utm_campaign=link-shared-in-chat&utm_source=livechat.com&utm_content=cvtogel.com) ️ [https://kiamkiam.site/cvtogel2](https://kiamkiam.site/cvtogel2?utm_medium=chat&utm_campaign=link-shared-in-chat&utm_source=livechat.com&utm_content=cvtogel.com) WHATSAPP ️ [https://kiamkiam.site/wacvtogel](https://kiamkiam.site/wacvtogel?utm_medium=chat&utm_campaign=link-shared-in-chat&utm_source=livechat.com&utm_content=cvtogel.com) TELEGRAM ️ [https://kiamkiam.site/telecvtogel](https://kiamkiam.site/telecvtogel?utm_medium=chat&utm_campaign=link-shared-in-chat&utm_source=livechat.com&utm_content=cvtogel.com) ( WAJIB DI SIMPAN )",
                 'system_prompt' => 'Anda adalah Customer Support AI yang ramah, sopan, dan selalu memberikan jawaban yang akurat berdasarkan knowledge base yang tersedia.',
                 'model' => 'openai/gpt-oss-120b',
                 'temperature' => 0.70,
