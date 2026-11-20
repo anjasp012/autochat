@@ -30,6 +30,7 @@ class ChatController extends Controller
                 'app_id' => $application->app_id,
                 'name' => $application->name,
                 'description' => $application->description,
+                'welcome_message' => $application->welcome_message,
                 'is_active' => (bool) $application->is_active,
             ],
             'sessionTimeoutMinutes' => (int) config('ai.session_timeout', 10),

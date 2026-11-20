@@ -32,6 +32,7 @@ interface ApplicationData {
     app_id: string;
     name: string;
     description?: string | null;
+    welcome_message?: string | null;
     is_active: boolean;
 }
 

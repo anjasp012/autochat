@@ -175,19 +175,6 @@ export default function ConversationsIndex({
         };
     }, [activeConversation?.uuid]);
 
-    // Live sync polling backup setiap 3 detik
-    useEffect(() => {
-        const interval = setInterval(() => {
-            router.reload({
-                only: ['conversations', 'counts', 'activeConversation'],
-                preserveScroll: true,
-                preserveState: true,
-            });
-        }, 3000);
-
-        return () => clearInterval(interval);
-    }, []);
-
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
         router.get(

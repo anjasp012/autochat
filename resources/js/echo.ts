@@ -10,12 +10,29 @@ declare global {
 
 window.Pusher = Pusher;
 
+// Deteksi otomatis apakah berjalan di localhost atau di domain VPS publik
+const isBrowser = typeof window !== 'undefined';
+const isHttps = isBrowser && window.location.protocol === 'https:';
+const currentHost = isBrowser ? window.location.hostname : 'localhost';
+
+// Di VPS / domain publik, gunakan hostname saat ini agar tidak salah mengarah ke localhost user
+const reverbHost =
+    import.meta.env.VITE_REVERB_HOST &&
+    import.meta.env.VITE_REVERB_HOST !== 'localhost' &&
+    import.meta.env.VITE_REVERB_HOST !== '127.0.0.1'
+        ? import.meta.env.VITE_REVERB_HOST
+        : currentHost;
+
+const reverbPort = isHttps
+    ? Number(import.meta.env.VITE_REVERB_PORT ?? 443)
+    : Number(import.meta.env.VITE_REVERB_PORT ?? 8085);
+
 export const echo = new Echo({
     broadcaster: 'reverb',
     key: import.meta.env.VITE_REVERB_APP_KEY,
-    wsHost: import.meta.env.VITE_REVERB_HOST || window.location.hostname,
-    wsPort: import.meta.env.VITE_REVERB_PORT ?? 8085,
-    wssPort: import.meta.env.VITE_REVERB_PORT ?? 8085,
-    forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'http') === 'https',
+    wsHost: reverbHost,
+    wsPort: reverbPort,
+    wssPort: reverbPort,
+    forceTLS: isHttps || (import.meta.env.VITE_REVERB_SCHEME ?? 'http') === 'https',
     enabledTransports: ['ws', 'wss'],
 });
