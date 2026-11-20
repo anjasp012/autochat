@@ -18,9 +18,13 @@ use Illuminate\Support\Carbon;
  * @property string|null $ip_address
  * @property string|null $user_agent
  * @property Carbon $last_activity_at
+ * @property bool $is_taken_over
+ * @property Carbon|null $taken_over_at
+ * @property int|null $taken_over_by
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read Application $application
+ * @property-read User|null $takenOverBy
  * @property-read Collection<int, Message> $messages
  */
 #[Fillable([
@@ -29,6 +33,9 @@ use Illuminate\Support\Carbon;
     'ip_address',
     'user_agent',
     'last_activity_at',
+    'is_taken_over',
+    'taken_over_at',
+    'taken_over_by',
 ])]
 class Conversation extends Model
 {
@@ -44,6 +51,8 @@ class Conversation extends Model
     {
         return [
             'last_activity_at' => 'datetime',
+            'is_taken_over' => 'boolean',
+            'taken_over_at' => 'datetime',
         ];
     }
 
@@ -55,6 +64,16 @@ class Conversation extends Model
     public function application(): BelongsTo
     {
         return $this->belongsTo(Application::class);
+    }
+
+    /**
+     * Get the admin user who took over the conversation.
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function takenOverBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'taken_over_by');
     }
 
     /**

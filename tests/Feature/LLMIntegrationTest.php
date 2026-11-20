@@ -82,7 +82,7 @@ test('llm service defaults to config values from environment', function () {
     Config::set('ai.model', 'Qwen3 1.7B Q4 GGUF');
     Config::set('ai.session_timeout', 10);
 
-    $service = new LLMService();
+    $service = new LLMService;
 
     expect($service->getBaseUrl())->toBe('http://10.0.0.1:8080')
         ->and($service->getDefaultModel())->toBe('Qwen3 1.7B Q4 GGUF')

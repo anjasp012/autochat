@@ -10,7 +10,7 @@ use Illuminate\Support\Str;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    $this->app = Application::factory()->create([
+    $this->chatbot = Application::factory()->create([
         'name' => 'Support Assistant',
         'app_id' => 'support-assistant',
         'system_prompt' => 'Anda adalah asisten support.',
@@ -73,7 +73,7 @@ test('user can send message and receive ai response', function () {
 
     $uuid = (string) Str::uuid();
 
-    $response = $this->postJson("/chat/{$this->app->app_id}/send", [
+    $response = $this->postJson("/chat/{$this->chatbot->app_id}/send", [
         'uuid' => $uuid,
         'message' => 'Halo bot!',
     ]);
@@ -93,7 +93,7 @@ test('user can send message and receive ai response', function () {
 
     $this->assertDatabaseHas('conversations', [
         'uuid' => $uuid,
-        'application_id' => $this->app->id,
+        'application_id' => $this->chatbot->id,
     ]);
 
     $this->assertDatabaseHas('messages', [
@@ -113,7 +113,7 @@ test('session expires after 10 minutes of inactivity', function () {
 
     // Create a conversation that was last active 15 minutes ago
     $conversation = Conversation::factory()->create([
-        'application_id' => $this->app->id,
+        'application_id' => $this->chatbot->id,
         'uuid' => $uuid,
         'last_activity_at' => now()->subMinutes(15),
     ]);
@@ -125,7 +125,7 @@ test('session expires after 10 minutes of inactivity', function () {
     ]);
 
     // Attempting to send message to expired session fails with 422
-    $response = $this->postJson("/chat/{$this->app->app_id}/send", [
+    $response = $this->postJson("/chat/{$this->chatbot->app_id}/send", [
         'uuid' => $uuid,
         'message' => 'Pesan baru pada sesi kedaluwarsa',
     ]);
@@ -136,7 +136,7 @@ test('session expires after 10 minutes of inactivity', function () {
         ]);
 
     // Ensure session messages endpoint reports expired
-    $sessionResponse = $this->getJson("/chat/{$this->app->app_id}/session/{$uuid}");
+    $sessionResponse = $this->getJson("/chat/{$this->chatbot->app_id}/session/{$uuid}");
     $sessionResponse->assertOk()
         ->assertJson([
             'exists' => true,
@@ -158,7 +158,7 @@ test('user can start a new chat with new uuid after previous session expires', f
 
     $newUuid = (string) Str::uuid();
 
-    $response = $this->postJson("/chat/{$this->app->app_id}/send", [
+    $response = $this->postJson("/chat/{$this->chatbot->app_id}/send", [
         'uuid' => $newUuid,
         'message' => 'Pesan sesi baru',
     ]);
@@ -173,7 +173,7 @@ test('user can start a new chat with new uuid after previous session expires', f
 
     $this->assertDatabaseHas('conversations', [
         'uuid' => $newUuid,
-        'application_id' => $this->app->id,
+        'application_id' => $this->chatbot->id,
     ]);
 });
 

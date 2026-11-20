@@ -12,9 +12,13 @@ use Throwable;
 class LLMService
 {
     protected string $baseUrl;
+
     protected ?string $apiKey;
+
     protected string $defaultModel;
+
     protected int $timeout;
+
     protected int $connectTimeout;
 
     public function __construct(
@@ -41,7 +45,7 @@ class LLMService
     /**
      * Send chat completion request to the local llama.cpp server.
      *
-     * @param array<int, array{role: string, content: string}> $messages
+     * @param  array<int, array{role: string, content: string}>  $messages
      */
     public function chat(
         array $messages,
@@ -128,11 +132,11 @@ class LLMService
         } catch (RequestException $e) {
             Log::error('LLMService request exception', ['error' => $e->getMessage()]);
 
-            return LLMResponse::failure('Terjadi kesalahan saat memproses permintaan ke model AI: ' . $e->getMessage());
+            return LLMResponse::failure('Terjadi kesalahan saat memproses permintaan ke model AI: '.$e->getMessage());
         } catch (Throwable $e) {
             Log::error('LLMService unexpected error', ['exception' => $e]);
 
-            return LLMResponse::failure('Terjadi kegagalan sistem AI: ' . $e->getMessage());
+            return LLMResponse::failure('Terjadi kegagalan sistem AI: '.$e->getMessage());
         }
     }
 
