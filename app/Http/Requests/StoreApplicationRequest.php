@@ -27,6 +27,7 @@ class StoreApplicationRequest extends FormRequest
             'app_id' => ['required', 'string', 'max:50', 'alpha_dash:ascii', 'unique:applications,app_id'],
             'name' => ['required', 'string', 'max:100'],
             'description' => ['nullable', 'string', 'max:1000'],
+            'welcome_message' => ['nullable', 'string', 'max:5000'],
             'system_prompt' => ['required', 'string', 'max:20000'],
             'model' => ['nullable', 'string', 'max:100'],
             'temperature' => ['nullable', 'numeric', 'between:0,2'],

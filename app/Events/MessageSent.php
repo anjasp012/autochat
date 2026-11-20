@@ -50,6 +50,7 @@ class MessageSent implements ShouldBroadcastNow
     {
         $channels = [
             new Channel('conversation.'.$this->message->conversation->uuid),
+            new Channel('conversations'),
         ];
 
         if ($this->message->conversation->application) {

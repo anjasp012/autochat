@@ -19,6 +19,7 @@ export default function AdminSettings({ application }: Props) {
         name: application.name,
         app_id: application.app_id,
         description: application.description || '',
+        welcome_message: application.welcome_message || '',
         system_prompt: application.system_prompt,
         model: application.model || 'openai/gpt-oss-120b',
         temperature: application.temperature ?? 0.70,
@@ -108,6 +109,23 @@ export default function AdminSettings({ application }: Props) {
                                         rows={3}
                                     />
                                     <InputError message={errors.description} />
+                                </div>
+
+                                <div className="grid gap-2">
+                                    <Label htmlFor="welcome_message">
+                                        Pesan Pembuka Otomatis (Link / Promo Awal)
+                                    </Label>
+                                    <Textarea
+                                        id="welcome_message"
+                                        value={data.welcome_message}
+                                        onChange={(e) => setData('welcome_message', e.target.value)}
+                                        rows={5}
+                                        placeholder="Pesan yang langsung muncul saat visitor membuka chat..."
+                                    />
+                                    <span className="text-[11px] text-muted-foreground">
+                                        Mendukung Markdown (contoh: link <code>[Nama](https://...)</code> atau daftar text).
+                                    </span>
+                                    <InputError message={errors.welcome_message} />
                                 </div>
                             </CardContent>
                         </Card>

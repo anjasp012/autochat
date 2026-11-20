@@ -8,6 +8,7 @@ export interface ApplicationSummary {
 
 export interface ApplicationDetail extends ApplicationSummary {
     description: string | null;
+    welcome_message?: string | null;
     system_prompt: string;
     model: string;
     temperature: number;

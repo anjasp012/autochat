@@ -113,9 +113,13 @@ export default function ConversationsIndex({
     const [currentStatus, setCurrentStatus] = useState(filters?.status || 'all');
     const [convToDelete, setConvToDelete] = useState<ConversationItem | null>(null);
 
-    const activeMessages: Message[] = Array.isArray(activeConversation?.messages)
-        ? activeConversation.messages
-        : [];
+    const [localMessages, setLocalMessages] = useState<Message[]>(
+        Array.isArray(activeConversation?.messages) ? activeConversation.messages : []
+    );
+
+    useEffect(() => {
+        setLocalMessages(Array.isArray(activeConversation?.messages) ? activeConversation.messages : []);
+    }, [activeConversation?.id, activeConversation?.uuid, activeConversation?.messages]);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -129,38 +133,66 @@ export default function ConversationsIndex({
 
     useEffect(() => {
         scrollToBottom();
-    }, [activeMessages.length, activeConversation?.uuid]);
+    }, [localMessages.length, activeConversation?.uuid]);
 
-    // WebSocket realtime listener via Laravel Reverb Echo (Application Level)
+    // WebSocket realtime listener via Laravel Reverb Echo (Application Level & Global)
     useEffect(() => {
-        if (!selectedApp?.app_id) return;
-
-        const appChannel = echo.channel(`conversations.${selectedApp.app_id}`);
         const handleUpdate = () => {
             router.reload({
-                only: ['conversations', 'counts', 'activeConversation'],
+                only: ['conversations', 'counts'],
                 preserveScroll: true,
                 preserveState: true,
             });
         };
 
-        appChannel.listen('.MessageSent', handleUpdate);
-        appChannel.listen('MessageSent', handleUpdate);
+        const channels: any[] = [];
+
+        if (selectedApp?.app_id) {
+            const appChannel = echo.channel(`conversations.${selectedApp.app_id}`);
+            appChannel.listen('.MessageSent', handleUpdate);
+            appChannel.listen('MessageSent', handleUpdate);
+            channels.push(appChannel);
+        }
+
+        const globalChannel = echo.channel('conversations');
+        globalChannel.listen('.MessageSent', handleUpdate);
+        globalChannel.listen('MessageSent', handleUpdate);
+        channels.push(globalChannel);
 
         return () => {
-            appChannel.stopListening('.MessageSent');
-            appChannel.stopListening('MessageSent');
+            channels.forEach((ch) => {
+                ch.stopListening('.MessageSent');
+                ch.stopListening('MessageSent');
+            });
         };
     }, [selectedApp?.app_id]);
 
-    // WebSocket realtime listener for Active Conversation
+    // WebSocket realtime listener for Active Conversation (Instant Live Append)
     useEffect(() => {
         if (!activeConversation?.uuid) return;
 
         const roomChannel = echo.channel(`conversation.${activeConversation.uuid}`);
-        const handleRoomUpdate = () => {
+        const handleRoomUpdate = (event: any) => {
+            // Instant local state append
+            setLocalMessages((prev) => {
+                const idStr = String(event.id);
+                if (prev.some((m) => String(m.id) === idStr)) return prev;
+                return [
+                    ...prev,
+                    {
+                        id: Number(event.id) || Date.now(),
+                        conversation_id: activeConversation.id,
+                        role: event.role,
+                        content: event.content,
+                        tokens_used: 0,
+                        created_at: event.created_at || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    },
+                ];
+            });
+
+            // Reload sidebar list to update last message preview and counts
             router.reload({
-                only: ['conversations', 'counts', 'activeConversation'],
+                only: ['conversations', 'counts'],
                 preserveScroll: true,
                 preserveState: true,
             });
@@ -173,7 +205,7 @@ export default function ConversationsIndex({
             roomChannel.stopListening('.MessageSent');
             roomChannel.stopListening('MessageSent');
         };
-    }, [activeConversation?.uuid]);
+    }, [activeConversation?.uuid, activeConversation?.id]);
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
@@ -581,13 +613,13 @@ export default function ConversationsIndex({
 
                             {/* Chat Messages Stream */}
                             <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3.5 bg-sidebar/5">
-                                {activeMessages.length === 0 ? (
+                                {localMessages.length === 0 ? (
                                     <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground py-16">
                                         <Bot className="size-8 opacity-40 mb-2" />
                                         <p className="text-xs">Belum ada pesan pada percakapan ini.</p>
                                     </div>
                                 ) : (
-                                    activeMessages.map((msg) => {
+                                    localMessages.map((msg) => {
                                         if (msg.role === 'system') {
                                             return (
                                                 <div key={msg.id} className="flex justify-center my-3">

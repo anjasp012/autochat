@@ -186,6 +186,8 @@ class ChatController extends Controller
                 'tokens_used' => 0,
             ]);
 
+            MessageSent::safeDispatch($assistantMessage);
+
             return response()->json([
                 'conversation_uuid' => $conversation->uuid,
                 'user_message' => [
@@ -211,6 +213,8 @@ class ChatController extends Controller
             'content' => $llmResult->content,
             'tokens_used' => $llmResult->totalTokens,
         ]);
+
+        MessageSent::safeDispatch($assistantMessage);
 
         return response()->json([
             'conversation_uuid' => $conversation->uuid,

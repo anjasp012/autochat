@@ -38,6 +38,7 @@ class UpdateApplicationRequest extends FormRequest
             ],
             'name' => ['required', 'string', 'max:100'],
             'description' => ['nullable', 'string', 'max:1000'],
+            'welcome_message' => ['nullable', 'string', 'max:5000'],
             'system_prompt' => ['required', 'string', 'max:20000'],
             'model' => ['nullable', 'string', 'max:100'],
             'temperature' => ['nullable', 'numeric', 'between:0,2'],
