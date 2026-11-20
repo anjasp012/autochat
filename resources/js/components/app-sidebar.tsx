@@ -48,12 +48,20 @@ const mainNavItems: NavItem[] = [
 ];
 
 export function AppSidebar() {
-    const { currentAppId, applications = [] } = usePage().props;
+    const { currentAppId, allApplications, applications } = usePage().props as Record<string, any>;
     const { state } = useSidebar();
 
-    const currentApp = applications.find(
+    const appList: ApplicationSummary[] = Array.isArray(allApplications)
+        ? allApplications
+        : Array.isArray(applications)
+          ? applications
+          : Array.isArray(applications?.data)
+            ? applications.data
+            : [];
+
+    const currentApp = appList.find(
         (app: ApplicationSummary) => app.app_id === currentAppId
-    ) || applications[0];
+    ) || appList[0];
 
     const chatUrl = currentApp ? `/${currentApp.app_id}` : '/chat';
 

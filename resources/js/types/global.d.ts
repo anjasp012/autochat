@@ -13,7 +13,8 @@ declare module '@inertiajs/core' {
             name: string;
             auth: Auth;
             sidebarOpen: boolean;
-            applications: ApplicationSummary[];
+            allApplications?: ApplicationSummary[];
+            applications?: ApplicationSummary[] | unknown;
             currentAppId: string | null;
             [key: string]: unknown;
         };

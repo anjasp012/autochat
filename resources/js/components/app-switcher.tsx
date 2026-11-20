@@ -25,13 +25,21 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import type { ApplicationSummary } from '@/types/application';
 
 export function AppSwitcher() {
-    const { applications = [], currentAppId } = usePage().props;
+    const { allApplications, applications, currentAppId } = usePage().props as Record<string, any>;
     const { state } = useSidebar();
     const isMobile = useIsMobile();
 
-    const currentApp = applications.find(
+    const appList: ApplicationSummary[] = Array.isArray(allApplications)
+        ? allApplications
+        : Array.isArray(applications)
+          ? applications
+          : Array.isArray(applications?.data)
+            ? applications.data
+            : [];
+
+    const currentApp = appList.find(
         (app: ApplicationSummary) => app.app_id === currentAppId
-    ) || applications[0];
+    ) || appList[0];
 
     const handleSwitchApp = (appId: string) => {
         if (appId === currentAppId) return;
@@ -91,17 +99,17 @@ export function AppSwitcher() {
                         <DropdownMenuLabel className="flex items-center justify-between text-[11px] font-medium text-muted-foreground px-2 py-1.5">
                             <span>Pilih Aplikasi Chatbot</span>
                             <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4">
-                                {applications.length}
+                                {appList.length}
                             </Badge>
                         </DropdownMenuLabel>
 
                         <DropdownMenuGroup className="max-h-56 overflow-y-auto space-y-0.5">
-                            {applications.length === 0 ? (
+                            {appList.length === 0 ? (
                                 <div className="p-3 text-center text-xs text-muted-foreground">
                                     Belum ada aplikasi terdaftar.
                                 </div>
                             ) : (
-                                applications.map((app: ApplicationSummary) => (
+                                appList.map((app: ApplicationSummary) => (
                                     <DropdownMenuItem
                                         key={app.id}
                                         onClick={() => handleSwitchApp(app.app_id)}

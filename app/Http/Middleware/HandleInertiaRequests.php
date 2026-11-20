@@ -43,6 +43,12 @@ class HandleInertiaRequests extends Middleware
                 'user' => $request->user(),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+            'allApplications' => fn () => $request->user()
+                ? Application::query()
+                    ->select(['id', 'app_id', 'name', 'is_active', 'model'])
+                    ->latest()
+                    ->get()
+                : [],
             'applications' => fn () => $request->user()
                 ? Application::query()
                     ->select(['id', 'app_id', 'name', 'is_active', 'model'])

@@ -11,10 +11,18 @@ export function AppSidebarHeader({
 }: {
     breadcrumbs?: BreadcrumbItemType[];
 }) {
-    const { currentAppId, applications = [] } = usePage().props;
-    const currentApp = applications.find(
+    const { currentAppId, allApplications, applications } = usePage().props as Record<string, any>;
+    const appList: ApplicationSummary[] = Array.isArray(allApplications)
+        ? allApplications
+        : Array.isArray(applications)
+          ? applications
+          : Array.isArray(applications?.data)
+            ? applications.data
+            : [];
+
+    const currentApp = appList.find(
         (app: ApplicationSummary) => app.app_id === currentAppId
-    ) || applications[0];
+    ) || appList[0];
 
     const chatUrl = currentApp ? `/${currentApp.app_id}` : '/chat';
 
