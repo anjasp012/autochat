@@ -23,6 +23,34 @@ class ApplicationController extends Controller
     }
 
     /**
+     * Display settings for currently selected application.
+     */
+    public function settings(Request $request): Response
+    {
+        $sessionAppId = $request->session()->get('current_app_id');
+        $application = null;
+
+        if ($sessionAppId) {
+            $application = Application::where('app_id', $sessionAppId)->first();
+        }
+
+        if (! $application) {
+            $application = Application::where('is_active', true)->first() ?? Application::first();
+            if ($application) {
+                $request->session()->put('current_app_id', $application->app_id);
+            }
+        }
+
+        abort_if(! $application, 404, 'Belum ada aplikasi yang dibuat.');
+
+        $application->loadCount(['conversations', 'knowledgeSources', 'knowledgeChunks']);
+
+        return Inertia::render('admin/settings/index', [
+            'application' => $application,
+        ]);
+    }
+
+    /**
      * Show the form for creating a new application.
      */
     public function create(): Response

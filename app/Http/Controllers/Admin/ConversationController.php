@@ -183,7 +183,7 @@ class ConversationController extends Controller
         $conversation->delete();
 
         return redirect()
-            ->route('admin.conversations.index')
+            ->route('conversations.index')
             ->with('success', 'Riwayat percakapan berhasil dihapus.');
     }
 }
