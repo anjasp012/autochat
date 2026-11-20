@@ -109,7 +109,7 @@ export default function ConversationsShow({ conversation }: Props) {
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             handleSendReply(e);
         }
@@ -273,7 +273,7 @@ export default function ConversationsShow({ conversation }: Props) {
                                         Mode Live Support Admin Aktif (AI dinonaktifkan)
                                     </span>
                                     <span className="hidden sm:inline text-[11px]">
-                                        Tekan <kbd className="font-mono rounded border bg-muted px-1">Ctrl+Enter</kbd> untuk mengirim
+                                        Tekan <kbd className="font-mono rounded border bg-muted px-1">Enter</kbd> untuk mengirim, <kbd className="font-mono rounded border bg-muted px-1">Shift+Enter</kbd> untuk baris baru
                                     </span>
                                 </div>
 
@@ -282,7 +282,7 @@ export default function ConversationsShow({ conversation }: Props) {
                                         value={data.message}
                                         onChange={(e) => setData('message', e.target.value)}
                                         onKeyDown={handleKeyDown}
-                                        placeholder="Ketik balasan Anda langsung ke pengunjung..."
+                                        placeholder="Ketik balasan Anda langsung ke pengunjung... (Tekan Enter untuk mengirim)"
                                         rows={2}
                                         className="resize-none rounded-xl"
                                         autoFocus

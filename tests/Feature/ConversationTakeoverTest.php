@@ -2,7 +2,6 @@
 
 use App\Models\Application;
 use App\Models\Conversation;
-use App\Models\Message;
 use App\Models\User;
 
 beforeEach(function () {

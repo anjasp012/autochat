@@ -91,122 +91,126 @@ export default function ApplicationsEdit({ application }: Props) {
                     </Button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="max-w-3xl space-y-6">
-                    {/* General Information */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-base">Informasi Utama</CardTitle>
-                            <CardDescription>
-                                Identitas aplikasi dan slug unik.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="grid gap-2">
-                                <Label htmlFor="name">Nama Chatbot</Label>
-                                <Input
-                                    id="name"
-                                    value={data.name}
-                                    onChange={(e) => setData('name', e.target.value)}
-                                    required
-                                />
-                                <InputError message={errors.name} />
-                            </div>
+                <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-6xl">
+                    {/* Kolom Kiri: Informasi Utama & Status */}
+                    <div className="space-y-6 flex flex-col justify-between">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-base">Informasi Utama</CardTitle>
+                                <CardDescription>
+                                    Identitas aplikasi dan slug unik.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="grid gap-2">
+                                    <Label htmlFor="name">Nama Chatbot</Label>
+                                    <Input
+                                        id="name"
+                                        value={data.name}
+                                        onChange={(e) => setData('name', e.target.value)}
+                                        required
+                                    />
+                                    <InputError message={errors.name} />
+                                </div>
 
-                            <div className="grid gap-2">
-                                <Label htmlFor="app_id">
-                                    App ID (Slug Unik untuk URL /chat)
-                                </Label>
-                                <Input
-                                    id="app_id"
-                                    value={data.app_id}
-                                    onChange={(e) => setData('app_id', slugify(e.target.value))}
-                                    required
-                                    className="font-mono text-sm"
-                                />
-                                <span className="text-[11px] text-muted-foreground">
-                                    URL Chatbot: <code className="font-mono">/chat/{data.app_id}</code>
-                                </span>
-                                <InputError message={errors.app_id} />
-                            </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="app_id">
+                                        App ID (Slug Unik untuk URL /chat)
+                                    </Label>
+                                    <Input
+                                        id="app_id"
+                                        value={data.app_id}
+                                        onChange={(e) => setData('app_id', slugify(e.target.value))}
+                                        required
+                                        className="font-mono text-sm"
+                                    />
+                                    <span className="text-[11px] text-muted-foreground">
+                                        URL Chatbot: <code className="font-mono">/chat/{data.app_id}</code>
+                                    </span>
+                                    <InputError message={errors.app_id} />
+                                </div>
 
-                            <div className="grid gap-2">
-                                <Label htmlFor="description">Deskripsi (Opsional)</Label>
-                                <Textarea
-                                    id="description"
-                                    value={data.description}
-                                    onChange={(e) => setData('description', e.target.value)}
-                                    rows={2}
-                                />
-                                <InputError message={errors.description} />
-                            </div>
-                        </CardContent>
-                    </Card>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="description">Deskripsi (Opsional)</Label>
+                                    <Textarea
+                                        id="description"
+                                        value={data.description}
+                                        onChange={(e) => setData('description', e.target.value)}
+                                        rows={3}
+                                    />
+                                    <InputError message={errors.description} />
+                                </div>
+                            </CardContent>
+                        </Card>
 
-                    {/* System Prompt */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-base">System Prompt</CardTitle>
-                            <CardDescription>
-                                Instruksi inti yang memandu kepribadian dan respons AI.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="flex flex-wrap items-center gap-1.5">
-                                <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                    <Sparkles className="size-3 text-primary" /> Template cepat:
-                                </span>
-                                {promptPresets.map((preset) => (
-                                    <button
-                                        key={preset.title}
-                                        type="button"
-                                        onClick={() => setData('system_prompt', preset.prompt)}
-                                        className="rounded-lg border border-border bg-muted/40 px-2.5 py-1 text-[11px] font-medium text-foreground hover:bg-muted transition-colors cursor-pointer"
+                        {/* Active Status & Submit */}
+                        <Card>
+                            <CardContent className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-5">
+                                <div className="space-y-0.5">
+                                    <Label htmlFor="is_active" className="text-sm font-medium">Status Chatbot</Label>
+                                    <p className="text-xs text-muted-foreground">
+                                        {data.is_active ? 'Aplikasi aktif dan dapat diakses pengunjung.' : 'Aplikasi nonaktif (offline).'}
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    <Switch
+                                        id="is_active"
+                                        checked={data.is_active}
+                                        onCheckedChange={(checked) => setData('is_active', checked)}
+                                    />
+                                    <Button
+                                        type="submit"
+                                        disabled={processing}
+                                        className="gap-2 cursor-pointer shadow-xs min-w-36"
                                     >
-                                        {preset.title}
-                                    </button>
-                                ))}
-                            </div>
+                                        {processing && <Spinner />}
+                                        Simpan Perubahan
+                                    </Button>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
 
-                            <div className="grid gap-2">
-                                <Textarea
-                                    id="system_prompt"
-                                    value={data.system_prompt}
-                                    onChange={(e) => setData('system_prompt', e.target.value)}
-                                    rows={7}
-                                    required
-                                    className="font-mono text-xs leading-relaxed"
-                                />
-                                <InputError message={errors.system_prompt} />
-                            </div>
-                        </CardContent>
-                    </Card>
+                    {/* Kolom Kanan: System Prompt */}
+                    <div className="space-y-6">
+                        <Card className="h-full flex flex-col">
+                            <CardHeader>
+                                <CardTitle className="text-base">System Prompt</CardTitle>
+                                <CardDescription>
+                                    Instruksi inti yang memandu kepribadian dan respons AI.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4 flex-1 flex flex-col">
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                        <Sparkles className="size-3 text-primary" /> Template cepat:
+                                    </span>
+                                    {promptPresets.map((preset) => (
+                                        <button
+                                            key={preset.title}
+                                            type="button"
+                                            onClick={() => setData('system_prompt', preset.prompt)}
+                                            className="rounded-lg border border-border bg-muted/40 px-2.5 py-1 text-[11px] font-medium text-foreground hover:bg-muted transition-colors cursor-pointer"
+                                        >
+                                            {preset.title}
+                                        </button>
+                                    ))}
+                                </div>
 
-                    {/* Active Status & Submit */}
-                    <Card>
-                        <CardContent className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-5">
-                            <div className="space-y-0.5">
-                                <Label htmlFor="is_active" className="text-sm font-medium">Status Chatbot</Label>
-                                <p className="text-xs text-muted-foreground">
-                                    {data.is_active ? 'Aplikasi aktif dan dapat diakses pengunjung.' : 'Aplikasi nonaktif (offline).'}
-                                </p>
-                            </div>
-                            <div className="flex items-center gap-4">
-                                <Switch
-                                    id="is_active"
-                                    checked={data.is_active}
-                                    onCheckedChange={(checked) => setData('is_active', checked)}
-                                />
-                                <Button
-                                    type="submit"
-                                    disabled={processing}
-                                    className="gap-2 cursor-pointer shadow-xs min-w-36"
-                                >
-                                    {processing && <Spinner />}
-                                    Simpan Perubahan
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
+                                <div className="grid gap-2 flex-1">
+                                    <Textarea
+                                        id="system_prompt"
+                                        value={data.system_prompt}
+                                        onChange={(e) => setData('system_prompt', e.target.value)}
+                                        rows={12}
+                                        required
+                                        className="font-mono text-xs leading-relaxed flex-1 min-h-64"
+                                    />
+                                    <InputError message={errors.system_prompt} />
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
                 </form>
             </div>
         </>
