@@ -152,11 +152,14 @@ class ChatController extends Controller
             ]);
         }
 
-        // Load recent conversation history (last 10 messages for context)
+        // Load recent conversation history (last 10 messages in chronological order, user & assistant only)
         $history = $conversation->messages()
-            ->orderBy('created_at', 'asc')
+            ->whereIn('role', ['user', 'assistant'])
+            ->latest('id')
             ->take(10)
             ->get(['role', 'content'])
+            ->reverse()
+            ->values()
             ->map(fn (Message $m) => [
                 'role' => $m->role,
                 'content' => $m->content,

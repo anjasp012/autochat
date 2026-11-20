@@ -28,10 +28,17 @@ class LLMService
         ?int $timeout = null,
         ?int $connectTimeout = null
     ) {
-        $this->baseUrl = rtrim(
+        $url = rtrim(
             $baseUrl ?? config('ai.base_url', 'http://127.0.0.1:8080'),
             '/'
         );
+
+        // Strip trailing /v1 if present so /v1/chat/completions does not become /v1/v1/...
+        if (str_ends_with($url, '/v1')) {
+            $url = substr($url, 0, -3);
+        }
+
+        $this->baseUrl = $url;
 
         $this->apiKey = $apiKey ?? config('ai.api_key');
 

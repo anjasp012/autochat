@@ -122,7 +122,7 @@ export default function ChatShow({
         if (!sessionUuid) return;
 
         const channel = echo.channel(`conversation.${sessionUuid}`);
-        channel.listen('MessageSent', (event: any) => {
+        const handleIncoming = (event: any) => {
             if (event.role !== 'user') {
                 setMessages((prev) => {
                     const alreadyExists = prev.some((m) => m.id === String(event.id));
@@ -138,12 +138,24 @@ export default function ChatShow({
                     ];
                 });
             }
-        });
+        };
+
+        channel.listen('.MessageSent', handleIncoming);
+        channel.listen('MessageSent', handleIncoming);
+
+        // Fallback polling every 3 seconds so messages arrive even if WebSocket disconnects
+        const pollInterval = setInterval(() => {
+            if (!isSessionExpired) {
+                fetchSessionMessages(sessionUuid);
+            }
+        }, 3000);
 
         return () => {
+            channel.stopListening('.MessageSent');
             channel.stopListening('MessageSent');
+            clearInterval(pollInterval);
         };
-    }, [sessionUuid]);
+    }, [sessionUuid, isSessionExpired]);
 
     // Fetch existing messages from backend for current active session
     const fetchSessionMessages = async (uuid: string) => {

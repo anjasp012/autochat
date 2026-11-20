@@ -120,15 +120,19 @@ export default function ConversationsIndex({
         if (!activeConversation?.uuid) return;
 
         const channel = echo.channel(`conversation.${activeConversation.uuid}`);
-        channel.listen('MessageSent', () => {
+        const handleIncoming = () => {
             router.reload({
                 only: ['conversations', 'activeConversation'],
                 preserveScroll: true,
                 preserveState: true,
             });
-        });
+        };
+
+        channel.listen('.MessageSent', handleIncoming);
+        channel.listen('MessageSent', handleIncoming);
 
         return () => {
+            channel.stopListening('.MessageSent');
             channel.stopListening('MessageSent');
         };
     }, [activeConversation?.uuid]);

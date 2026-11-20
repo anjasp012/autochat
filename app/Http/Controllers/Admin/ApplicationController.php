@@ -101,6 +101,9 @@ class ApplicationController extends Controller
     {
         $application->update($request->validated());
 
+        // Keep current session in sync with updated app_id
+        $request->session()->put('current_app_id', $application->app_id);
+
         return back()
             ->with('success', "Pengaturan aplikasi '{$application->name}' berhasil diperbarui.");
     }
