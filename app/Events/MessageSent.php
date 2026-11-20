@@ -18,7 +18,7 @@ class MessageSent implements ShouldBroadcastNow
      */
     public function __construct(public Message $message)
     {
-        $this->message->loadMissing('conversation');
+        $this->message->loadMissing(['conversation.application']);
     }
 
     /**
@@ -34,23 +34,29 @@ class MessageSent implements ShouldBroadcastNow
     }
 
     /**
+     * The event's broadcast name.
+     */
+    public function broadcastAs(): string
+    {
+        return 'MessageSent';
+    }
+
+    /**
      * Get the channels the event should broadcast on.
      *
      * @return array<int, Channel>
      */
     public function broadcastOn(): array
     {
-        return [
+        $channels = [
             new Channel('conversation.'.$this->message->conversation->uuid),
         ];
-    }
 
-    /**
-     * The event's broadcast name.
-     */
-    public function broadcastAs(): string
-    {
-        return 'MessageSent';
+        if ($this->message->conversation->application) {
+            $channels[] = new Channel('conversations.'.$this->message->conversation->application->app_id);
+        }
+
+        return $channels;
     }
 
     /**
@@ -66,6 +72,10 @@ class MessageSent implements ShouldBroadcastNow
             'content' => $this->message->content,
             'created_at' => $this->message->created_at?->format('H:i') ?? now()->format('H:i'),
             'conversation_uuid' => $this->message->conversation->uuid,
+            'application_app_id' => $this->message->conversation->application?->app_id,
+            'is_taken_over' => (bool) $this->message->conversation->is_taken_over,
+            'taken_over_by' => $this->message->conversation->taken_over_by,
+            'is_archived' => (bool) $this->message->conversation->is_archived,
         ];
     }
 }

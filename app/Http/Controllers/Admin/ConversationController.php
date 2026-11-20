@@ -53,18 +53,24 @@ class ConversationController extends Controller
             }
         }
 
-        $conversations = Conversation::query()
+        $baseQuery = Conversation::query()
+            ->when($currentApp, fn ($query, $app) => $query->where('application_id', $app->id), fn ($query) => $query->whereRaw('1 = 0'));
+
+        $counts = [
+            'all' => (clone $baseQuery)->where('is_archived', false)->count(),
+            'mine' => (clone $baseQuery)->where('is_archived', false)->where('is_taken_over', true)->where('taken_over_by', $request->user()?->id)->count(),
+            'unassigned' => (clone $baseQuery)->where('is_archived', false)->where('is_taken_over', false)->whereNull('taken_over_by')->count(),
+            'bot' => (clone $baseQuery)->where('is_archived', false)->where('is_taken_over', false)->count(),
+            'archived' => (clone $baseQuery)->where('is_archived', true)->count(),
+        ];
+
+        $conversations = (clone $baseQuery)
             ->with([
                 'application:id,app_id,name',
                 'takenOverBy:id,name',
                 'messages' => fn ($q) => $q->orderBy('created_at', 'desc')->limit(1),
             ])
             ->withCount('messages')
-            ->when($currentApp, function ($query, $app) {
-                $query->where('application_id', $app->id);
-            }, function ($query) {
-                $query->whereRaw('1 = 0');
-            })
             ->when($search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('uuid', 'like', "%{$search}%")
@@ -72,8 +78,12 @@ class ConversationController extends Controller
                         ->orWhereHas('messages', fn ($mq) => $mq->where('content', 'like', "%{$search}%"));
                 });
             })
-            ->when($status === 'taken_over', fn ($q) => $q->where('is_taken_over', true))
-            ->when($status === 'ai', fn ($q) => $q->where('is_taken_over', false))
+            ->when($status === 'mine', fn ($q) => $q->where('is_archived', false)->where('is_taken_over', true)->where('taken_over_by', $request->user()?->id))
+            ->when($status === 'unassigned', fn ($q) => $q->where('is_archived', false)->where('is_taken_over', false)->whereNull('taken_over_by'))
+            ->when($status === 'bot' || $status === 'ai', fn ($q) => $q->where('is_archived', false)->where('is_taken_over', false))
+            ->when($status === 'archived', fn ($q) => $q->where('is_archived', true))
+            ->when($status === 'taken_over', fn ($q) => $q->where('is_archived', false)->where('is_taken_over', true))
+            ->when(! in_array($status, ['archived', 'mine', 'unassigned', 'bot', 'ai', 'taken_over']), fn ($q) => $q->where('is_archived', false))
             ->orderBy('last_activity_at', 'desc')
             ->get();
 
@@ -93,9 +103,10 @@ class ConversationController extends Controller
         return Inertia::render('admin/conversations/index', [
             'conversations' => $conversations,
             'activeConversation' => $activeConversation,
+            'counts' => $counts,
             'filters' => [
                 'search' => $search,
-                'status' => $status,
+                'status' => $status ?: 'all',
             ],
             'selectedApp' => $currentApp ? [
                 'id' => $currentApp->id,
@@ -173,6 +184,26 @@ class ConversationController extends Controller
         MessageSent::safeDispatch($adminMessage);
 
         return back()->with('success', 'Pesan balasan admin berhasil dikirim.');
+    }
+
+    /**
+     * Archive conversation.
+     */
+    public function archive(Conversation $conversation): RedirectResponse
+    {
+        $conversation->update(['is_archived' => true]);
+
+        return back()->with('success', 'Percakapan berhasil diarsipkan.');
+    }
+
+    /**
+     * Unarchive conversation.
+     */
+    public function unarchive(Conversation $conversation): RedirectResponse
+    {
+        $conversation->update(['is_archived' => false]);
+
+        return back()->with('success', 'Percakapan dikembalikan dari arsip.');
     }
 
     /**

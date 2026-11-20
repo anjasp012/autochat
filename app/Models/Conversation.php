@@ -34,6 +34,7 @@ use Illuminate\Support\Carbon;
     'user_agent',
     'last_activity_at',
     'is_taken_over',
+    'is_archived',
     'taken_over_at',
     'taken_over_by',
 ])]
@@ -52,6 +53,7 @@ class Conversation extends Model
         return [
             'last_activity_at' => 'datetime',
             'is_taken_over' => 'boolean',
+            'is_archived' => 'boolean',
             'taken_over_at' => 'datetime',
         ];
     }

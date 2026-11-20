@@ -1,5 +1,5 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, Sparkles } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -35,21 +35,6 @@ export default function AdminSettings({ application }: Props) {
             .replace(/[^\w-]+/g, '')
             .replace(/--+/g, '-');
     };
-
-    const promptPresets = [
-        {
-            title: 'Customer Support',
-            prompt: 'Anda adalah asisten Customer Support yang ramah, sopan, dan solutif. Jawab pertanyaan pengguna secara akurat berdasarkan informasi knowledge base yang diberikan.',
-        },
-        {
-            title: 'Sales & Product AI',
-            prompt: 'Anda adalah Sales Representative yang persuasif dan informatif. Bantu pengguna memahami keunggulan produk dan rekomendasikan opsi terbaik untuk kebutuhan mereka.',
-        },
-        {
-            title: 'Tutor / Edukasi',
-            prompt: 'Anda adalah seorang edukator yang sabar dan jelas. Jelaskan konsep rumit dengan bahasa yang mudah dipahami disertai contoh yang relevan.',
-        },
-    ];
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -165,30 +150,14 @@ export default function AdminSettings({ application }: Props) {
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4 flex-1 flex flex-col">
-                                <div className="flex flex-wrap items-center gap-1.5">
-                                    <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                        <Sparkles className="size-3 text-primary" /> Template cepat:
-                                    </span>
-                                    {promptPresets.map((preset) => (
-                                        <button
-                                            key={preset.title}
-                                            type="button"
-                                            onClick={() => setData('system_prompt', preset.prompt)}
-                                            className="rounded-lg border border-border bg-muted/40 px-2.5 py-1 text-[11px] font-medium text-foreground hover:bg-muted transition-colors cursor-pointer"
-                                        >
-                                            {preset.title}
-                                        </button>
-                                    ))}
-                                </div>
-
                                 <div className="grid gap-2 flex-1">
                                     <Textarea
                                         id="system_prompt"
                                         value={data.system_prompt}
                                         onChange={(e) => setData('system_prompt', e.target.value)}
-                                        rows={12}
+                                        rows={14}
                                         required
-                                        className="font-mono text-xs leading-relaxed flex-1 min-h-64"
+                                        className="font-mono text-xs leading-relaxed flex-1 min-h-72"
                                     />
                                     <InputError message={errors.system_prompt} />
                                 </div>

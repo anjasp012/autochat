@@ -4,14 +4,17 @@ import {
     AlertCircle,
     Bot,
     Clock,
-    Plus,
+    CreditCard,
+    Gift,
+    Headphones,
+    KeyRound,
     RotateCcw,
     Send,
     Sparkles,
     User as UserIcon,
+    UserPlus,
 } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
+import ChatMarkdown from '@/components/chat-markdown';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { echo } from '@/echo';
@@ -60,6 +63,35 @@ export default function ChatShow({
     useEffect(() => {
         scrollToBottom();
     }, [messages, isLoading]);
+
+    // Quick Action Suggestions (Tombol Quick)
+    const quickActions = [
+        {
+            icon: CreditCard,
+            label: 'Info Deposit & Withdraw',
+            query: 'Bagaimana cara melakukan deposit dan withdraw? Apa saja pilihan bank dan e-wallet yang tersedia?',
+        },
+        {
+            icon: Gift,
+            label: 'Promo & Bonus Terbaru',
+            query: 'Apa saja promo, bonus deposit, atau reward terbaru yang sedang aktif saat ini?',
+        },
+        {
+            icon: UserPlus,
+            label: 'Cara Daftar Akun',
+            query: 'Bagaimana langkah-langkah mudah untuk mendaftar akun baru?',
+        },
+        {
+            icon: KeyRound,
+            label: 'Kendala Akun & Password',
+            query: 'Saya mengalami kendala saat login atau lupa password akun saya. Bagaimana cara reset atau solusinya?',
+        },
+        {
+            icon: Headphones,
+            label: 'Hubungi Customer Care',
+            query: 'Bisa sambungkan saya dengan layanan Customer Service manusia untuk bantuan lebih lanjut?',
+        },
+    ];
 
     // Generate UUID v4
     const generateUuid = (): string => {
@@ -186,14 +218,13 @@ export default function ChatShow({
         textareaRef.current?.focus();
     };
 
-    const handleSendMessage = async (e?: React.FormEvent) => {
-        if (e) e.preventDefault();
-        const trimmed = input.trim();
+    const handleSendMessage = async (textToSend?: string) => {
+        const text = (textToSend ?? input).trim();
 
-        if (!trimmed || isLoading) return;
+        if (!text || isLoading) return;
 
         if (isSessionExpired) {
-            setErrorMessage('Sesi telah kedaluwarsa. Silakan tekan tombol Chat Baru untuk memulai percakapan baru.');
+            setErrorMessage('Sesi telah kedaluwarsa. Silakan tekan tombol Mulai Percakapan Baru.');
             return;
         }
 
@@ -210,7 +241,7 @@ export default function ChatShow({
         const tempUserMsg: ChatMessage = {
             id: `temp-${Date.now()}`,
             role: 'user',
-            content: trimmed,
+            content: text,
             created_at: nowFormatted,
         };
 
@@ -232,7 +263,7 @@ export default function ChatShow({
                 },
                 body: JSON.stringify({
                     uuid: sessionUuid,
-                    message: trimmed,
+                    message: text,
                 }),
             });
 
@@ -270,7 +301,7 @@ export default function ChatShow({
                 {
                     id: `err-${Date.now()}`,
                     role: 'assistant',
-                    content: 'Maaf, terjadi kendala saat menghubungi chatbot. Silakan coba kembali atau mulai Chat Baru.',
+                    content: 'Maaf, terjadi kendala saat menghubungi asisten. Silakan coba kembali sesaat lagi.',
                     created_at: nowFormatted,
                 },
             ]);
@@ -287,13 +318,13 @@ export default function ChatShow({
             onNewChat={startNewChat}
             isNewChatLoading={isLoading}
         >
-            <Head title={`Chat - ${application.name}`} />
+            <Head title={`Live Chat - ${application.name}`} />
 
-            <div className="flex h-full flex-col">
+            <div className="flex h-full flex-col bg-slate-50/50 dark:bg-background">
                 {/* Expired Session Notice */}
                 {isSessionExpired && (
                     <div className="border-b border-amber-500/20 bg-amber-500/10 px-4 py-2.5 sm:px-6">
-                        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 text-xs text-amber-900 dark:text-amber-200">
+                        <div className="mx-auto flex max-w-2xl items-center justify-between gap-3 text-xs text-amber-900 dark:text-amber-200">
                             <div className="flex items-center gap-2">
                                 <Clock className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
                                 <span>
@@ -307,7 +338,7 @@ export default function ChatShow({
                                 className="h-7 cursor-pointer gap-1.5 border-amber-600/30 text-xs font-semibold hover:bg-amber-600/10"
                             >
                                 <RotateCcw className="size-3" />
-                                Chat Baru
+                                Mulai Chat Baru
                             </Button>
                         </div>
                     </div>
@@ -316,7 +347,7 @@ export default function ChatShow({
                 {/* Error Banner */}
                 {errorMessage && !isSessionExpired && (
                     <div className="border-b border-destructive/20 bg-destructive/10 px-4 py-2 sm:px-6">
-                        <div className="mx-auto flex max-w-3xl items-center gap-2 text-xs text-destructive">
+                        <div className="mx-auto flex max-w-2xl items-center gap-2 text-xs text-destructive">
                             <AlertCircle className="size-4 shrink-0" />
                             <span>{errorMessage}</span>
                         </div>
@@ -325,82 +356,119 @@ export default function ChatShow({
 
                 {/* Scrollable Messages Area */}
                 <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6">
-                    <div className="mx-auto max-w-3xl space-y-6">
-                        {messages.length === 0 ? (
-                            <div className="flex min-h-[55vh] flex-col items-center justify-center text-center">
-                                <div className="flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary shadow-xs">
-                                    <Bot className="size-7" />
+                    <div className="mx-auto max-w-2xl space-y-6">
+                        {/* BANNER HEADER & OPENING CARD (Tampilan Awal Persis Wig.chat) */}
+                        <div className="rounded-3xl border border-border/80 bg-linear-to-b from-card via-card to-card/90 p-5 sm:p-6 shadow-sm space-y-4">
+                            <div className="flex items-start justify-between gap-4">
+                                <div className="flex items-center gap-3.5">
+                                    <div className="relative flex size-12 shrink-0 items-center justify-center rounded-2xl bg-linear-to-tr from-emerald-600 to-teal-500 text-white shadow-md">
+                                        <Bot className="size-6" />
+                                        <span className="absolute -bottom-0.5 -right-0.5 size-3.5 rounded-full bg-emerald-500 border-2 border-background animate-pulse" />
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <h2 className="text-base sm:text-lg font-bold tracking-tight text-foreground">
+                                                {application.name}
+                                            </h2>
+                                            <span className="inline-flex items-center rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
+                                                Online
+                                            </span>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground mt-0.5">
+                                            {application.description || 'Layanan bantuan cerdas dan interaktif 24/7'}
+                                        </p>
+                                    </div>
                                 </div>
-                                <h2 className="mt-4 text-xl font-semibold tracking-tight">
-                                    {application.name}
-                                </h2>
-                                <p className="mt-1.5 max-w-md text-sm text-muted-foreground">
-                                    {application.description ||
-                                        'Selamat datang! Tanyakan apa saja dan chatbot AI siap membantu Anda.'}
+
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={startNewChat}
+                                    className="h-8 gap-1.5 text-xs font-semibold rounded-xl cursor-pointer shrink-0 shadow-2xs hover:bg-muted"
+                                    title="Mulai Sesi Chat Baru"
+                                >
+                                    <RotateCcw className="size-3.5" />
+                                    <span className="hidden sm:inline">Chat Baru</span>
+                                </Button>
+                            </div>
+
+                            {/* Opening Message Intro */}
+                            <div className="rounded-2xl bg-muted/40 p-4 border border-border/60 text-xs sm:text-sm text-foreground leading-relaxed">
+                                <p className="font-medium text-foreground">
+                                    Halo! Selamat datang di layanan kami 👋
+                                </p>
+                                <p className="text-muted-foreground mt-1">
+                                    Ada yang bisa kami bantu hari ini? Anda dapat mengetik pertanyaan apa saja di bawah, atau klik salah satu topik cepat berikut:
                                 </p>
 
-                                <div className="mt-6 flex flex-wrap justify-center gap-2 max-w-lg">
-                                    {[
-                                        'Halo! Apa saja yang bisa Anda bantu?',
-                                        'Bisa jelaskan informasi tentang layanan ini?',
-                                        'Bagaimana cara menghubungi tim support?',
-                                    ].map((prompt, idx) => (
-                                        <button
-                                            key={idx}
-                                            type="button"
-                                            disabled={isSessionExpired || !application.is_active}
-                                            onClick={() => {
-                                                setInput(prompt);
-                                                textareaRef.current?.focus();
-                                            }}
-                                            className="rounded-xl border border-border/70 bg-card px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:bg-muted hover:text-foreground cursor-pointer shadow-2xs text-left"
-                                        >
-                                            {prompt}
-                                        </button>
-                                    ))}
+                                {/* TOMBOL QUICK (Quick Reply Chips) */}
+                                <div className="mt-3.5 flex flex-wrap gap-2">
+                                    {quickActions.map((qa, idx) => {
+                                        const Icon = qa.icon;
+                                        return (
+                                            <button
+                                                key={idx}
+                                                type="button"
+                                                disabled={isLoading || isSessionExpired || !application.is_active}
+                                                onClick={() => handleSendMessage(qa.query)}
+                                                className="group inline-flex items-center gap-1.5 rounded-xl border border-border/80 bg-background hover:bg-emerald-50 hover:border-emerald-500/40 hover:text-emerald-900 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-300 px-3 py-2 text-xs font-medium text-foreground shadow-2xs transition-all cursor-pointer"
+                                            >
+                                                <Icon className="size-3.5 text-primary group-hover:text-emerald-600 transition-colors shrink-0" />
+                                                <span>{qa.label}</span>
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             </div>
-                        ) : (
-                            messages.map((message) => (
+                        </div>
+
+                        {/* List of Messages */}
+                        {messages.map((message) => {
+                            const isUser = message.role === 'user';
+
+                            return (
                                 <div
                                     key={message.id}
                                     className={`flex items-start gap-3 ${
-                                        message.role === 'user'
-                                            ? 'flex-row-reverse'
-                                            : 'flex-row'
+                                        isUser ? 'flex-row-reverse' : 'flex-row'
                                     }`}
                                 >
                                     {/* Avatar */}
                                     <div
                                         className={`flex size-8 shrink-0 items-center justify-center rounded-xl text-xs font-medium shadow-2xs ${
-                                            message.role === 'user'
-                                                ? 'bg-primary text-primary-foreground'
+                                            isUser
+                                                ? 'bg-emerald-600 text-white'
                                                 : 'border border-border bg-card text-primary'
                                         }`}
                                     >
-                                        {message.role === 'user' ? (
+                                        {isUser ? (
                                             <UserIcon className="size-4" />
                                         ) : (
                                             <Bot className="size-4.5" />
                                         )}
                                     </div>
 
-                                    {/* Message Bubble */}
+                                    {/* Message Bubble with ChatMarkdown for rich formatting & tables */}
                                     <div
-                                        className={`group relative max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed sm:max-w-[75%] ${
-                                            message.role === 'user'
-                                                ? 'rounded-br-xs bg-primary text-primary-foreground'
-                                                : 'rounded-bl-xs border border-border/70 bg-card text-card-foreground shadow-xs'
+                                        className={`group relative max-w-[85%] rounded-2xl px-4 py-3 text-xs sm:text-sm leading-relaxed sm:max-w-[78%] ${
+                                            isUser
+                                                ? 'rounded-br-xs bg-emerald-600 text-white shadow-xs'
+                                                : 'rounded-bl-xs border border-border/80 bg-card text-card-foreground shadow-xs'
                                         }`}
                                     >
-                                        <div className="whitespace-pre-wrap select-text">
-                                            {message.content}
-                                        </div>
+                                        {isUser ? (
+                                            <div className="whitespace-pre-wrap select-text leading-relaxed">
+                                                {message.content}
+                                            </div>
+                                        ) : (
+                                            <ChatMarkdown content={message.content} />
+                                        )}
+
                                         {message.created_at && (
                                             <div
-                                                className={`mt-1.5 text-[10px] text-right ${
-                                                    message.role === 'user'
-                                                        ? 'text-primary-foreground/70'
+                                                className={`mt-1.5 text-[10px] text-right font-mono ${
+                                                    isUser
+                                                        ? 'text-white/75'
                                                         : 'text-muted-foreground'
                                                 }`}
                                             >
@@ -409,8 +477,8 @@ export default function ChatShow({
                                         )}
                                     </div>
                                 </div>
-                            ))
-                        )}
+                            );
+                        })}
 
                         {/* Thinking / Processing Indicator */}
                         {isLoading && (
@@ -418,11 +486,14 @@ export default function ChatShow({
                                 <div className="flex size-8 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-primary shadow-2xs">
                                     <Bot className="size-4.5" />
                                 </div>
-                                <div className="rounded-2xl rounded-bl-xs border border-border/70 bg-card px-4 py-3 shadow-xs">
+                                <div className="rounded-2xl rounded-bl-xs border border-border/80 bg-card px-4 py-3 shadow-xs">
                                     <div className="flex items-center gap-1.5">
-                                        <span className="size-2 rounded-full bg-primary/70 animate-bounce [animation-delay:-0.3s]" />
-                                        <span className="size-2 rounded-full bg-primary/70 animate-bounce [animation-delay:-0.15s]" />
-                                        <span className="size-2 rounded-full bg-primary/70 animate-bounce" />
+                                        <span className="size-2 rounded-full bg-emerald-500 animate-bounce [animation-delay:-0.3s]" />
+                                        <span className="size-2 rounded-full bg-emerald-500 animate-bounce [animation-delay:-0.15s]" />
+                                        <span className="size-2 rounded-full bg-emerald-500 animate-bounce" />
+                                        <span className="text-xs text-muted-foreground ml-1.5">
+                                            Sedang mengetik...
+                                        </span>
                                     </div>
                                 </div>
                             </div>
@@ -435,8 +506,11 @@ export default function ChatShow({
                 {/* Input Area */}
                 <div className="border-t border-border/80 bg-background/95 p-4 backdrop-blur-md sm:px-6">
                     <form
-                        onSubmit={handleSendMessage}
-                        className="mx-auto flex max-w-3xl items-end gap-2"
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            handleSendMessage();
+                        }}
+                        className="mx-auto flex max-w-2xl items-end gap-2"
                     >
                         <div className="relative flex-1">
                             <Textarea
@@ -452,13 +526,13 @@ export default function ChatShow({
                                 }}
                                 placeholder={
                                     isSessionExpired
-                                        ? 'Sesi telah kedaluwarsa. Klik Chat Baru di atas untuk mulai lagi...'
+                                        ? 'Sesi telah kedaluwarsa. Mulai chat baru...'
                                         : !application.is_active
-                                          ? 'Chatbot sedang dinonaktifkan...'
-                                          : 'Ketik pesan Anda... (Shift + Enter untuk baris baru)'
+                                          ? 'Chatbot sedang offline...'
+                                          : 'Ketik pesan Anda di sini... (Tekan Enter untuk kirim)'
                                 }
                                 rows={1}
-                                className="min-h-[46px] max-h-32 resize-none rounded-xl py-3 pr-4 text-sm focus-visible:ring-1"
+                                className="min-h-[46px] max-h-32 resize-none rounded-2xl py-3 pr-4 text-xs sm:text-sm focus-visible:ring-1 bg-card shadow-2xs"
                             />
                         </div>
 
@@ -466,7 +540,7 @@ export default function ChatShow({
                             <Button
                                 type="button"
                                 onClick={startNewChat}
-                                className="size-11.5 shrink-0 rounded-xl cursor-pointer shadow-xs gap-1"
+                                className="size-11.5 shrink-0 rounded-2xl cursor-pointer shadow-xs gap-1"
                             >
                                 <RotateCcw className="size-4" />
                             </Button>
@@ -475,7 +549,7 @@ export default function ChatShow({
                                 type="submit"
                                 size="icon"
                                 disabled={!input.trim() || isLoading || !application.is_active}
-                                className="size-11.5 shrink-0 rounded-xl cursor-pointer shadow-xs"
+                                className="size-11.5 shrink-0 rounded-2xl cursor-pointer shadow-xs bg-emerald-600 hover:bg-emerald-700 text-white"
                             >
                                 <Send className="size-4" />
                             </Button>
@@ -483,8 +557,8 @@ export default function ChatShow({
                     </form>
 
                     <div className="mt-2.5 flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
-                        <Sparkles className="size-3 text-primary/70" />
-                        <span>AI dapat melakukan kesalahan. Pastikan memeriksa informasi penting.</span>
+                        <Sparkles className="size-3 text-emerald-500" />
+                        <span>Didukung oleh AutoChat AI • Respon Seketika 24/7</span>
                     </div>
                 </div>
             </div>

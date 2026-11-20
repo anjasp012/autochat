@@ -34,6 +34,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('conversations/{conversation:uuid}', [ConversationController::class, 'show'])->name('conversations.show');
     Route::post('conversations/{conversation:uuid}/takeover', [ConversationController::class, 'takeover'])->name('conversations.takeover');
     Route::post('conversations/{conversation:uuid}/release-takeover', [ConversationController::class, 'releaseTakeover'])->name('conversations.release-takeover');
+    Route::post('conversations/{conversation:uuid}/archive', [ConversationController::class, 'archive'])->name('conversations.archive');
+    Route::post('conversations/{conversation:uuid}/unarchive', [ConversationController::class, 'unarchive'])->name('conversations.unarchive');
     Route::post('conversations/{conversation:uuid}/reply', [ConversationController::class, 'reply'])->name('conversations.reply');
     Route::delete('conversations/{conversation:uuid}', [ConversationController::class, 'destroy'])->name('conversations.destroy');
 
