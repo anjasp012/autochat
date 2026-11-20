@@ -17,34 +17,9 @@ class ApplicationController extends Controller
     /**
      * Display a listing of applications.
      */
-    public function index(Request $request): Response
+    public function index(): RedirectResponse
     {
-        $search = $request->query('search');
-        $status = $request->query('status');
-
-        $applications = Application::query()
-            ->withCount(['conversations', 'knowledgeSources', 'knowledgeChunks'])
-            ->when($search, function ($query, $search) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('name', 'like', "%{$search}%")
-                        ->orWhere('app_id', 'like', "%{$search}%")
-                        ->orWhere('description', 'like', "%{$search}%");
-                });
-            })
-            ->when($status !== null && $status !== '', function ($query) use ($status) {
-                $query->where('is_active', $status === 'active' || $status === '1');
-            })
-            ->latest()
-            ->paginate(10)
-            ->withQueryString();
-
-        return Inertia::render('admin/applications/index', [
-            'applications' => $applications,
-            'filters' => [
-                'search' => $search,
-                'status' => $status,
-            ],
-        ]);
+        return redirect()->route('dashboard');
     }
 
     /**
@@ -75,7 +50,7 @@ class ApplicationController extends Controller
         $request->session()->put('current_app_id', $application->app_id);
 
         return redirect()
-            ->route('admin.applications.index')
+            ->route('dashboard')
             ->with('success', "Aplikasi '{$application->name}' berhasil dibuat.");
     }
 
@@ -98,9 +73,8 @@ class ApplicationController extends Controller
     {
         $application->update($request->validated());
 
-        return redirect()
-            ->route('admin.applications.index')
-            ->with('success', "Aplikasi '{$application->name}' berhasil diperbarui.");
+        return back()
+            ->with('success', "Pengaturan aplikasi '{$application->name}' berhasil diperbarui.");
     }
 
     /**
@@ -119,7 +93,7 @@ class ApplicationController extends Controller
         }
 
         return redirect()
-            ->route('admin.applications.index')
+            ->route('dashboard')
             ->with('success', "Aplikasi '{$name}' telah dihapus.");
     }
 

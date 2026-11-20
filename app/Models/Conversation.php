@@ -57,6 +57,14 @@ class Conversation extends Model
     }
 
     /**
+     * Get the route key for the model.
+     */
+    public function getRouteKeyName(): string
+    {
+        return 'uuid';
+    }
+
+    /**
      * Get the application that owns the conversation.
      *
      * @return BelongsTo<Application, $this>
