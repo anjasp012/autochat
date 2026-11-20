@@ -2,27 +2,31 @@ import { useEffect, useRef, useState } from 'react';
 import { Head } from '@inertiajs/react';
 import {
     AlertCircle,
+    ArrowRight,
+    ArrowUpRight,
     Bot,
     Clock,
-    CreditCard,
-    Gift,
-    Headphones,
-    KeyRound,
+    FileText,
+    HelpCircle,
+    Home as HomeIcon,
+    MessageSquare,
+    Plus,
     RotateCcw,
     Send,
     Sparkles,
     User as UserIcon,
-    UserPlus,
+    UserCheck,
+    X,
 } from 'lucide-react';
 import ChatMarkdown from '@/components/chat-markdown';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { echo } from '@/echo';
-import PublicChatLayout from '@/layouts/public-chat-layout';
 
 interface ChatMessage {
     id: string;
-    role: 'user' | 'assistant';
+    role: 'user' | 'assistant' | 'system';
     content: string;
     created_at?: string;
 }
@@ -46,6 +50,15 @@ export default function ChatShow({
     sessionTimeoutMinutes = 10,
 }: Props) {
     const storageKey = `autochat_session_${application.app_id}`;
+    const formStorageKey = `autochat_form_${application.app_id}`;
+
+    // Navigation tab: 'beranda' (Home) | 'pesan' (Messages) | 'bantuan' (Help)
+    const [activeTab, setActiveTab] = useState<'beranda' | 'pesan' | 'bantuan'>('beranda');
+
+    // Pre-chat form data
+    const [userId, setUserId] = useState('');
+    const [questionTopic, setQuestionTopic] = useState('');
+    const [hasSubmittedForm, setHasSubmittedForm] = useState(false);
 
     const [sessionUuid, setSessionUuid] = useState<string>('');
     const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -63,35 +76,34 @@ export default function ChatShow({
 
     useEffect(() => {
         scrollToBottom();
-    }, [messages, isLoading]);
+    }, [messages, isLoading, activeTab]);
 
-    // Quick Action Suggestions (Tombol Quick)
-    const quickActions = [
+    // Quick links on the Home view (Grid 2x2 seperti Screenshot 1)
+    const homeQuickLinks = [
         {
-            icon: CreditCard,
-            label: 'Info Deposit & Withdraw',
-            query: 'Bagaimana cara melakukan deposit dan withdraw? Apa saja pilihan bank dan e-wallet yang tersedia?',
+            title: 'Prediksi Togel',
+            query: 'Halo CS, bisa berikan bocoran prediksi togel dan pasaran hari ini?',
         },
         {
-            icon: Gift,
-            label: 'Promo & Bonus Terbaru',
-            query: 'Apa saja promo, bonus deposit, atau reward terbaru yang sedang aktif saat ini?',
+            title: 'Rtp Slot Gacor',
+            query: 'Halo CS, apa saja daftar RTP slot yang lagi gacor hari ini?',
         },
         {
-            icon: UserPlus,
-            label: 'Cara Daftar Akun',
-            query: 'Bagaimana langkah-langkah mudah untuk mendaftar akun baru?',
+            title: 'Download APK',
+            query: 'Bagaimana cara download dan instal aplikasi APK versi terbaru?',
         },
         {
-            icon: KeyRound,
-            label: 'Kendala Akun & Password',
-            query: 'Saya mengalami kendala saat login atau lupa password akun saya. Bagaimana cara reset atau solusinya?',
+            title: 'Promosi',
+            query: 'Bisa jelaskan promo dan bonus deposit / new member terbaru yang sedang aktif?',
         },
-        {
-            icon: Headphones,
-            label: 'Hubungi Customer Care',
-            query: 'Bisa sambungkan saya dengan layanan Customer Service manusia untuk bantuan lebih lanjut?',
-        },
+    ];
+
+    // Quick chips on the Active Chat view (Chips seperti Screenshot 3)
+    const chatChips = [
+        { label: 'Download APK', query: 'Saya mau link download APK resmi' },
+        { label: 'Promo Kami', query: 'Info promo dan bonus yang tersedia' },
+        { label: 'Whatsapp', query: 'Minta link WhatsApp CS resmi' },
+        { label: 'Telegram Official', query: 'Minta channel Telegram official' },
     ];
 
     // Generate UUID v4
@@ -121,9 +133,25 @@ export default function ChatShow({
         }
     };
 
+    // Default welcome promo message if none set in CMS
+    const defaultWelcomeMessage =
+        application.welcome_message ||
+        `Selamat Datang di ${application.name} Link ANTI NAWALA ${application.name}
+️ [https://kiamkiam.site/cvtogel1](https://kiamkiam.site/cvtogel1) ️ [https://kiamkiam.site/cvtogel2](https://kiamkiam.site/cvtogel2) WHATSAPP ️ [https://kiamkiam.site/wacvtogel](https://kiamkiam.site/wacvtogel) TELEGRAM ️ [https://kiamkiam.site/telecvtogel](https://kiamkiam.site/telecvtogel) ( WAJIB DI SIMPAN )`;
+
     // Initialize or restore session
     useEffect(() => {
         try {
+            const savedForm = localStorage.getItem(formStorageKey);
+            if (savedForm) {
+                const parsedForm = JSON.parse(savedForm);
+                if (parsedForm.userId) {
+                    setUserId(parsedForm.userId);
+                    setQuestionTopic(parsedForm.questionTopic || '');
+                    setHasSubmittedForm(true);
+                }
+            }
+
             const raw = localStorage.getItem(storageKey);
             if (raw) {
                 const parsed = JSON.parse(raw);
@@ -137,7 +165,7 @@ export default function ChatShow({
                     return;
                 }
 
-                // Session is still active, restore UUID and load conversation
+                // Active session restored
                 setSessionUuid(parsed.uuid);
                 fetchSessionMessages(parsed.uuid);
                 return;
@@ -147,7 +175,9 @@ export default function ChatShow({
         }
 
         // New visitor: create initial UUID
-        startNewChat();
+        const newUuid = generateUuid();
+        setSessionUuid(newUuid);
+        persistSession(newUuid);
     }, [application.app_id]);
 
     // Realtime WebSocket listener via Laravel Reverb
@@ -158,7 +188,7 @@ export default function ChatShow({
         const handleIncoming = (event: any) => {
             if (event.role !== 'user') {
                 setMessages((prev) => {
-                    const alreadyExists = prev.some((m) => m.id === String(event.id));
+                    const alreadyExists = prev.some((m) => String(m.id) === String(event.id));
                     if (alreadyExists) return prev;
                     return [
                         ...prev,
@@ -176,19 +206,11 @@ export default function ChatShow({
         channel.listen('.MessageSent', handleIncoming);
         channel.listen('MessageSent', handleIncoming);
 
-        // Fallback polling every 3 seconds so messages arrive even if WebSocket disconnects
-        const pollInterval = setInterval(() => {
-            if (!isSessionExpired) {
-                fetchSessionMessages(sessionUuid);
-            }
-        }, 3000);
-
         return () => {
             channel.stopListening('.MessageSent');
             channel.stopListening('MessageSent');
-            clearInterval(pollInterval);
         };
-    }, [sessionUuid, isSessionExpired]);
+    }, [sessionUuid]);
 
     // Fetch existing messages from backend for current active session
     const fetchSessionMessages = async (uuid: string) => {
@@ -200,6 +222,7 @@ export default function ChatShow({
                     setIsSessionExpired(true);
                 } else if (data.messages && data.messages.length > 0) {
                     setMessages(data.messages);
+                    setHasSubmittedForm(true);
                 }
             }
         } catch (e) {
@@ -215,8 +238,38 @@ export default function ChatShow({
         setInput('');
         setIsSessionExpired(false);
         setErrorMessage(null);
+        setHasSubmittedForm(false);
         persistSession(newUuid);
-        textareaRef.current?.focus();
+        setActiveTab('pesan');
+    };
+
+    const handleStartChatFromForm = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!userId.trim()) {
+            setErrorMessage('Harap isi User ID Anda.');
+            return;
+        }
+
+        const formData = {
+            userId: userId.trim(),
+            questionTopic: questionTopic || 'Lainnya',
+        };
+
+        try {
+            localStorage.setItem(formStorageKey, JSON.stringify(formData));
+        } catch (err) {
+            console.error('Failed to save form data', err);
+        }
+
+        setHasSubmittedForm(true);
+        setActiveTab('pesan');
+        setErrorMessage(null);
+
+        // Send initial inquiry if topic was chosen
+        if (questionTopic && questionTopic !== 'Pilih...') {
+            const initialText = `Halo CS, User ID saya: ${formData.userId}. Saya ingin bantuan terkait: ${formData.questionTopic}.`;
+            handleSendMessage(initialText);
+        }
     };
 
     const handleSendMessage = async (textToSend?: string) => {
@@ -225,7 +278,7 @@ export default function ChatShow({
         if (!text || isLoading) return;
 
         if (isSessionExpired) {
-            setErrorMessage('Sesi telah kedaluwarsa. Silakan tekan tombol Mulai Percakapan Baru.');
+            setErrorMessage('Sesi telah kedaluwarsa. Silakan tekan tombol Mulai Chat Baru.');
             return;
         }
 
@@ -259,7 +312,7 @@ export default function ChatShow({
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Accept': 'application/json',
+                    Accept: 'application/json',
                     'X-CSRF-TOKEN': token || '',
                 },
                 body: JSON.stringify({
@@ -281,7 +334,6 @@ export default function ChatShow({
                 throw new Error(data.error || 'Gagal mengirim pesan.');
             }
 
-            // Update user message with confirmed server id and append assistant response
             if (data.assistant_message) {
                 setMessages((prev) => [
                     ...prev.filter((m) => m.id !== tempUserMsg.id),
@@ -290,13 +342,11 @@ export default function ChatShow({
                 ]);
             }
 
-            // Refresh activity timestamp
             persistSession(sessionUuid);
         } catch (err: unknown) {
             const errorText = err instanceof Error ? err.message : 'Terjadi kendala jaringan.';
             setErrorMessage(errorText);
 
-            // Add friendly fallback bubble
             setMessages((prev) => [
                 ...prev,
                 {
@@ -312,34 +362,112 @@ export default function ChatShow({
     };
 
     return (
-        <PublicChatLayout
-            appName={application.name}
-            appDescription={application.description ?? undefined}
-            isActive={application.is_active}
-            onNewChat={startNewChat}
-            isNewChatLoading={isLoading}
-        >
-            <Head title={`Live Chat - ${application.name}`} />
+        <div className="flex h-screen w-full overflow-hidden bg-[#FFF9E6]">
+            <Head title={`Livechat - ${application.name}`} />
 
-            <div className="flex h-full flex-col bg-slate-50/50 dark:bg-background">
-                {/* Expired Session Notice */}
+            {/* ============================================================== */}
+            {/* LEFT SPLIT COLUMN: BRAND WELCOME SPLASH (Persis Screenshot 1, 2, 3) */}
+            {/* ============================================================== */}
+            <div className="hidden lg:flex flex-1 flex-col justify-center px-12 xl:px-20 relative select-none">
+                <div className="max-w-xl space-y-6">
+                    {/* Brand Icon Circle */}
+                    <div className="flex size-14 items-center justify-center rounded-full bg-[#FFD200] text-neutral-900 shadow-sm border border-amber-300">
+                        <Sparkles className="size-7 fill-neutral-900 text-neutral-900" />
+                    </div>
+
+                    <div className="space-y-2">
+                        <span className="text-xs font-bold uppercase tracking-widest text-neutral-600">
+                            CHAT DENGAN TIM {application.name.toUpperCase()}
+                        </span>
+                        <h1 className="text-4xl xl:text-5xl font-extrabold tracking-tight text-neutral-900 leading-tight">
+                            Selamat Datang di Livechat {application.name} <span className="inline-block">😊</span>
+                        </h1>
+                        <p className="text-base text-neutral-700 font-medium pt-1">
+                            Ada yang Bisa Kami Bantu, Bosku?
+                        </p>
+                    </div>
+
+                    <p className="text-xs text-neutral-500 leading-relaxed max-w-md pt-2">
+                        {application.description ||
+                            'Layanan customer support resmi dan interaktif 24 jam nonstop untuk membantu semua kebutuhan dan kendala Anda.'}
+                    </p>
+                </div>
+            </div>
+
+            {/* ============================================================== */}
+            {/* RIGHT COLUMN: INTERACTIVE LIVE CHAT WIDGET */}
+            {/* ============================================================== */}
+            <div className="flex flex-col w-full lg:w-[460px] xl:w-[480px] h-full bg-white border-l border-amber-200/80 shadow-2xl overflow-hidden shrink-0">
+                {/* TOP HEADER BAR (Kuning Emas Khas Screenshot) */}
+                <div className="bg-[#FFD200] text-neutral-900 px-5 py-4 shrink-0 shadow-sm border-b border-amber-300">
+                    <div className="flex items-center justify-between">
+                        {/* App Title & Brand */}
+                        <div className="flex items-center gap-2.5">
+                            <div className="flex size-7 items-center justify-center rounded-full bg-neutral-900 text-[#FFD200]">
+                                <Bot className="size-4" />
+                            </div>
+                            <span className="font-extrabold text-sm tracking-wide text-neutral-950 uppercase">
+                                {application.name}
+                            </span>
+                        </div>
+
+                        {/* Customer Service Agent Avatars (Overlapping circle photos) */}
+                        <div className="flex items-center gap-2">
+                            <div className="flex -space-x-2 overflow-hidden">
+                                <img
+                                    className="inline-block size-7 rounded-full ring-2 ring-white object-cover"
+                                    src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"
+                                    alt="CS Agent 1"
+                                />
+                                <img
+                                    className="inline-block size-7 rounded-full ring-2 ring-white object-cover"
+                                    src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&auto=format&fit=crop&q=80"
+                                    alt="CS Agent 2"
+                                />
+                                <img
+                                    className="inline-block size-7 rounded-full ring-2 ring-white object-cover"
+                                    src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80"
+                                    alt="CS Agent 3"
+                                />
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={startNewChat}
+                                title="Reset & Chat Baru"
+                                className="size-7 rounded-full flex items-center justify-center hover:bg-black/10 transition-colors cursor-pointer text-neutral-800 ml-1"
+                            >
+                                <RotateCcw className="size-3.5" />
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Subtitle in Header */}
+                    <div className="mt-3">
+                        <p className="text-[11px] font-medium text-neutral-800">
+                            Selamat Datang di Livechat {application.name} 😊
+                        </p>
+                        <h2 className="text-sm font-bold text-neutral-950">
+                            Ada yang Bisa Kami Bantu, Bosku?
+                        </h2>
+                    </div>
+                </div>
+
+                {/* Expired Session Alert */}
                 {isSessionExpired && (
-                    <div className="border-b border-amber-500/20 bg-amber-500/10 px-4 py-2.5 sm:px-6">
-                        <div className="mx-auto flex max-w-2xl items-center justify-between gap-3 text-xs text-amber-900 dark:text-amber-200">
-                            <div className="flex items-center gap-2">
-                                <Clock className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
-                                <span>
-                                    Sesi percakapan Anda telah kedaluwarsa setelah {sessionTimeoutMinutes} menit tanpa aktivitas.
-                                </span>
+                    <div className="border-b border-amber-500/20 bg-amber-500/10 px-4 py-2">
+                        <div className="flex items-center justify-between gap-2 text-xs text-amber-900">
+                            <div className="flex items-center gap-1.5">
+                                <Clock className="size-3.5 text-amber-600 shrink-0" />
+                                <span>Sesi kedaluwarsa setelah {sessionTimeoutMinutes} menit.</span>
                             </div>
                             <Button
                                 size="sm"
                                 variant="outline"
                                 onClick={startNewChat}
-                                className="h-7 cursor-pointer gap-1.5 border-amber-600/30 text-xs font-semibold hover:bg-amber-600/10"
+                                className="h-6 px-2 text-[11px] font-bold border-amber-600/40 hover:bg-amber-100 cursor-pointer"
                             >
-                                <RotateCcw className="size-3" />
-                                Mulai Chat Baru
+                                Mulai Baru
                             </Button>
                         </div>
                     </div>
@@ -347,222 +475,453 @@ export default function ChatShow({
 
                 {/* Error Banner */}
                 {errorMessage && !isSessionExpired && (
-                    <div className="border-b border-destructive/20 bg-destructive/10 px-4 py-2 sm:px-6">
-                        <div className="mx-auto flex max-w-2xl items-center gap-2 text-xs text-destructive">
-                            <AlertCircle className="size-4 shrink-0" />
+                    <div className="border-b border-destructive/20 bg-destructive/10 px-4 py-1.5">
+                        <div className="flex items-center gap-1.5 text-xs text-destructive">
+                            <AlertCircle className="size-3.5 shrink-0" />
                             <span>{errorMessage}</span>
                         </div>
                     </div>
                 )}
 
-                {/* Scrollable Messages Area */}
-                <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6">
-                    <div className="mx-auto max-w-2xl space-y-6">
-                        {/* BANNER HEADER & OPENING CARD (Tampilan Awal Persis Wig.chat) */}
-                        <div className="rounded-3xl border border-border/80 bg-linear-to-b from-card via-card to-card/90 p-5 sm:p-6 shadow-sm space-y-4">
-                            <div className="flex items-start justify-between gap-4">
-                                <div className="flex items-center gap-3.5">
-                                    <div className="relative flex size-12 shrink-0 items-center justify-center rounded-2xl bg-linear-to-tr from-emerald-600 to-teal-500 text-white shadow-md">
-                                        <Bot className="size-6" />
-                                        <span className="absolute -bottom-0.5 -right-0.5 size-3.5 rounded-full bg-emerald-500 border-2 border-background animate-pulse" />
-                                    </div>
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <h2 className="text-base sm:text-lg font-bold tracking-tight text-foreground">
-                                                {application.name}
-                                            </h2>
-                                            <span className="inline-flex items-center rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
-                                                Online
-                                            </span>
-                                        </div>
-                                        <p className="text-xs text-muted-foreground mt-0.5">
-                                            {application.description || 'Layanan bantuan cerdas dan interaktif 24/7'}
-                                        </p>
-                                    </div>
+                {/* ============================================================== */}
+                {/* BODY VIEW SWITCHER: BERANDA / PRE-CHAT FORM / ACTIVE CHAT */}
+                {/* ============================================================== */}
+                <div className="flex-1 overflow-y-auto bg-slate-50/70 p-4 space-y-4">
+                    {/* TAB 1: BERANDA (HOME VIEW - Screenshot 1) */}
+                    {activeTab === 'beranda' && (
+                        <div className="space-y-4">
+                            {/* Big Promo Banner Card (Golden / Gaming Dark Banner) */}
+                            <div className="relative overflow-hidden rounded-2xl bg-linear-to-br from-neutral-950 via-neutral-900 to-amber-950 p-6 text-white shadow-md border border-amber-500/40 text-center">
+                                <div className="absolute -right-8 -top-8 size-28 rounded-full bg-amber-500/10 blur-xl pointer-events-none" />
+                                <div className="absolute -left-8 -bottom-8 size-28 rounded-full bg-yellow-500/10 blur-xl pointer-events-none" />
+
+                                <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/20 px-3 py-1 text-[10px] font-bold text-amber-300 border border-amber-500/30 mb-2">
+                                    <Sparkles className="size-3" /> OFFICIAL 24/7 SUPPORT
                                 </div>
 
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={startNewChat}
-                                    className="h-8 gap-1.5 text-xs font-semibold rounded-xl cursor-pointer shrink-0 shadow-2xs hover:bg-muted"
-                                    title="Mulai Sesi Chat Baru"
-                                >
-                                    <RotateCcw className="size-3.5" />
-                                    <span className="hidden sm:inline">Chat Baru</span>
-                                </Button>
+                                <h3 className="text-2xl font-black tracking-wider text-transparent bg-clip-text bg-linear-to-r from-amber-200 via-yellow-400 to-amber-200 drop-shadow-sm uppercase">
+                                    {application.name}
+                                </h3>
+
+                                <p className="text-xs text-neutral-300 mt-2 line-clamp-3 leading-relaxed">
+                                    {application.description ||
+                                        'Pusat Bantuan Resmi & Layanan Member 24 Jam Nonstop. Proses Deposit & WD Tercepat, Promo & Event Menarik!'}
+                                </p>
                             </div>
 
-                            {/* Opening Message Intro */}
-                            <div className="rounded-2xl bg-muted/40 p-4 border border-border/60 text-xs sm:text-sm text-foreground leading-relaxed">
-                                <p className="font-medium text-foreground">
-                                    Halo! Selamat datang di layanan kami 👋
-                                </p>
-                                <p className="text-muted-foreground mt-1">
-                                    Ada yang bisa kami bantu hari ini? Anda dapat mengetik pertanyaan apa saja di bawah, atau klik salah satu topik cepat berikut:
-                                </p>
+                            {/* Quick Links Grid (2 Columns, seperti Screenshot 1) */}
+                            <div className="grid grid-cols-2 gap-2.5">
+                                {homeQuickLinks.map((item, idx) => (
+                                    <button
+                                        key={idx}
+                                        type="button"
+                                        onClick={() => {
+                                            setActiveTab('pesan');
+                                            if (hasSubmittedForm) {
+                                                handleSendMessage(item.query);
+                                            }
+                                        }}
+                                        className="flex items-center justify-between rounded-xl border border-neutral-200 bg-white p-3.5 text-left shadow-2xs hover:border-amber-400 hover:bg-amber-50/50 transition-all cursor-pointer group"
+                                    >
+                                        <span className="text-xs font-semibold text-neutral-800 group-hover:text-amber-950">
+                                            {item.title}
+                                        </span>
+                                        <ArrowUpRight className="size-3.5 text-neutral-400 group-hover:text-amber-600 transition-colors" />
+                                    </button>
+                                ))}
+                            </div>
 
-                                {/* TOMBOL QUICK (Quick Reply Chips) */}
-                                <div className="mt-3.5 flex flex-wrap gap-2">
-                                    {quickActions.map((qa, idx) => {
-                                        const Icon = qa.icon;
-                                        return (
-                                            <button
-                                                key={idx}
-                                                type="button"
-                                                disabled={isLoading || isSessionExpired || !application.is_active}
-                                                onClick={() => handleSendMessage(qa.query)}
-                                                className="group inline-flex items-center gap-1.5 rounded-xl border border-border/80 bg-background hover:bg-emerald-50 hover:border-emerald-500/40 hover:text-emerald-900 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-300 px-3 py-2 text-xs font-medium text-foreground shadow-2xs transition-all cursor-pointer"
+                            {/* Tombol Kuning: Kirim Pesan -> */}
+                            <div className="pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveTab('pesan')}
+                                    className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#FFD200] hover:bg-[#F5C700] text-neutral-950 font-bold py-3 text-xs sm:text-sm shadow-sm transition-transform active:scale-[0.99] cursor-pointer"
+                                >
+                                    <span>Kirim Pesan</span>
+                                    <ArrowRight className="size-4" />
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* TAB 2: PESAN (MESSAGES) */}
+                    {activeTab === 'pesan' && (
+                        <>
+                            {/* IF HAS NOT SUBMITTED PRE-CHAT FORM: SHOW FORM VIEW (Screenshot 2) */}
+                            {!hasSubmittedForm && messages.length === 0 ? (
+                                <div className="space-y-4">
+                                    {/* Welcome & Promotional Card */}
+                                    <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-2xs space-y-3 text-xs leading-relaxed text-neutral-800">
+                                        <div className="flex items-center gap-2 font-bold text-neutral-900 border-b border-neutral-100 pb-2">
+                                            <Sparkles className="size-4 text-amber-500" />
+                                            <span>Selamat Datang di {application.name}</span>
+                                        </div>
+                                        <ChatMarkdown content={defaultWelcomeMessage} />
+                                    </div>
+
+                                    {/* Pre-Chat Formulir Card (Persis Screenshot 2) */}
+                                    <form
+                                        onSubmit={handleStartChatFromForm}
+                                        className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-2xs space-y-3.5"
+                                    >
+                                        <p className="text-xs font-semibold text-neutral-700">
+                                            Harap di isi dengan username yang benar !!!
+                                        </p>
+
+                                        <div className="space-y-1.5">
+                                            <label className="text-[11px] font-bold text-neutral-700">
+                                                USER ID : <span className="text-destructive">*</span>
+                                            </label>
+                                            <Input
+                                                value={userId}
+                                                onChange={(e) => setUserId(e.target.value)}
+                                                placeholder="Masukkan User ID / Username..."
+                                                required
+                                                className="h-10 text-xs rounded-xl bg-slate-50 border-neutral-200"
+                                            />
+                                        </div>
+
+                                        <div className="space-y-1.5">
+                                            <label className="text-[11px] font-bold text-neutral-700">
+                                                Pilih Pertanyaan yang bisa kami bantu bosku ?{' '}
+                                                <span className="text-destructive">*</span>
+                                            </label>
+                                            <select
+                                                value={questionTopic}
+                                                onChange={(e) => setQuestionTopic(e.target.value)}
+                                                className="w-full h-10 px-3 text-xs rounded-xl bg-slate-50 border border-neutral-200 text-neutral-800 focus:outline-none focus:ring-1 focus:ring-amber-400"
                                             >
-                                                <Icon className="size-3.5 text-primary group-hover:text-emerald-600 transition-colors shrink-0" />
-                                                <span>{qa.label}</span>
-                                            </button>
+                                                <option value="">Pilih...</option>
+                                                <option value="Deposit & Withdraw">Deposit & Withdraw</option>
+                                                <option value="Klaim Bonus & Promo">Klaim Bonus & Promo</option>
+                                                <option value="Kendala Login & Password">Kendala Login & Password</option>
+                                                <option value="Prediksi & Pasaran Togel">Prediksi & Pasaran Togel</option>
+                                                <option value="Bocoran Slot Gacor">Bocoran Slot Gacor</option>
+                                                <option value="Lainnya">Lainnya</option>
+                                            </select>
+                                        </div>
+
+                                        <button
+                                            type="submit"
+                                            className="w-full mt-2 flex items-center justify-center rounded-xl bg-[#FFD200] hover:bg-[#F5C700] text-neutral-950 font-bold py-2.5 text-xs shadow-xs transition-transform active:scale-[0.99] cursor-pointer"
+                                        >
+                                            Mulai chat
+                                        </button>
+                                    </form>
+                                </div>
+                            ) : (
+                                /* IF ACTIVE CHAT: SHOW CHAT STREAM (Screenshot 3) */
+                                <div className="space-y-4">
+                                    {/* Welcome Announcement Card */}
+                                    <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-2xs space-y-2 text-xs leading-relaxed text-neutral-800">
+                                        <div className="flex items-center gap-2 font-bold text-neutral-900 border-b border-neutral-100 pb-2">
+                                            <Sparkles className="size-4 text-amber-500" />
+                                            <span>Informasi Resmi & Link Alternatif</span>
+                                        </div>
+                                        <ChatMarkdown content={defaultWelcomeMessage} />
+                                    </div>
+
+                                    {/* Formulir Card (Persis Screenshot 3) */}
+                                    {userId && (
+                                        <div className="rounded-2xl border border-amber-300 bg-white shadow-2xs overflow-hidden">
+                                            <div className="bg-[#FFD200] px-3.5 py-1.5 flex items-center gap-1.5 text-neutral-950 text-xs font-bold">
+                                                <FileText className="size-3.5" />
+                                                <span>Formulir</span>
+                                            </div>
+                                            <div className="p-3 text-[11px] space-y-1 text-neutral-700 bg-amber-50/20">
+                                                <p>
+                                                    <span className="font-semibold text-neutral-900">USER ID : </span>
+                                                    {userId}
+                                                </p>
+                                                <p>
+                                                    <span className="font-semibold text-neutral-900">
+                                                        Pilih Pertanyaan yang bisa kami bantu bosku ? :{' '}
+                                                    </span>
+                                                    {questionTopic || 'Lainnya'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Initial Greeting Bot Message */}
+                                    <div className="flex items-start gap-2.5">
+                                        <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#FFD200] text-neutral-950 font-bold text-xs shadow-2xs">
+                                            <Bot className="size-4" />
+                                        </div>
+                                        <div className="space-y-2 max-w-[85%]">
+                                            <span className="text-[10px] font-bold text-neutral-600 block">
+                                                {application.name}
+                                            </span>
+                                            <div className="rounded-2xl rounded-tl-xs bg-white border border-neutral-200/90 p-3 text-xs text-neutral-900 shadow-2xs leading-relaxed">
+                                                Hallo bosku 👋 Selamat datang di layanan kami, ada yang bisa dibantu,
+                                                Bosku?
+                                            </div>
+
+                                            {/* Quick Action Chips (Screenshot 3) */}
+                                            <div className="flex flex-wrap gap-1.5 pt-1">
+                                                {chatChips.map((chip, idx) => (
+                                                    <button
+                                                        key={idx}
+                                                        type="button"
+                                                        disabled={isLoading || isSessionExpired || !application.is_active}
+                                                        onClick={() => handleSendMessage(chip.query)}
+                                                        className="rounded-full border border-neutral-200 bg-white px-2.5 py-1 text-[10px] font-medium text-neutral-700 hover:border-amber-400 hover:bg-amber-50 transition-colors shadow-2xs cursor-pointer"
+                                                    >
+                                                        {chip.label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Message History Stream */}
+                                    {messages.map((message) => {
+                                        // Takeover / System message as clean center badge
+                                        if (message.role === 'system') {
+                                            return (
+                                                <div key={message.id} className="flex justify-center my-3">
+                                                    <span className="inline-flex items-center gap-1.5 rounded-full bg-muted/80 border border-neutral-200 px-3.5 py-1 text-[11px] font-medium text-muted-foreground shadow-2xs">
+                                                        <UserCheck className="size-3 text-amber-500" />
+                                                        {message.content}
+                                                    </span>
+                                                </div>
+                                            );
+                                        }
+
+                                        const isUser = message.role === 'user';
+
+                                        return (
+                                            <div
+                                                key={message.id}
+                                                className={`flex items-start gap-2.5 ${
+                                                    isUser ? 'flex-row-reverse' : 'flex-row'
+                                                }`}
+                                            >
+                                                <div
+                                                    className={`flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold shadow-2xs ${
+                                                        isUser
+                                                            ? 'bg-neutral-800 text-white'
+                                                            : 'bg-[#FFD200] text-neutral-950'
+                                                    }`}
+                                                >
+                                                    {isUser ? (
+                                                        <UserIcon className="size-3.5" />
+                                                    ) : (
+                                                        <Bot className="size-3.5" />
+                                                    )}
+                                                </div>
+
+                                                <div
+                                                    className={`max-w-[85%] rounded-2xl p-3 text-xs leading-relaxed shadow-2xs ${
+                                                        isUser
+                                                            ? 'rounded-tr-xs bg-neutral-900 text-white'
+                                                            : 'rounded-tl-xs border border-neutral-200/90 bg-white text-neutral-900'
+                                                    }`}
+                                                >
+                                                    {isUser ? (
+                                                        <div className="whitespace-pre-wrap select-text">
+                                                            {message.content}
+                                                        </div>
+                                                    ) : (
+                                                        <ChatMarkdown content={message.content} />
+                                                    )}
+
+                                                    {message.created_at && (
+                                                        <div
+                                                            className={`mt-1 text-[9px] text-right font-mono ${
+                                                                isUser ? 'text-white/60' : 'text-neutral-400'
+                                                            }`}
+                                                        >
+                                                            {message.created_at}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
                                         );
                                     })}
+
+                                    {/* Typing Indicator */}
+                                    {isLoading && (
+                                        <div className="flex items-start gap-2.5">
+                                            <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#FFD200] text-neutral-950 font-bold shadow-2xs">
+                                                <Bot className="size-3.5" />
+                                            </div>
+                                            <div className="rounded-2xl rounded-tl-xs border border-neutral-200 bg-white px-3 py-2 shadow-2xs">
+                                                <div className="flex items-center gap-1">
+                                                    <span className="size-1.5 rounded-full bg-amber-500 animate-bounce [animation-delay:-0.3s]" />
+                                                    <span className="size-1.5 rounded-full bg-amber-500 animate-bounce [animation-delay:-0.15s]" />
+                                                    <span className="size-1.5 rounded-full bg-amber-500 animate-bounce" />
+                                                    <span className="text-[11px] text-neutral-500 ml-1.5">
+                                                        Sedang mengetik...
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div ref={messagesEndRef} />
+                                </div>
+                            )}
+                        </>
+                    )}
+
+                    {/* TAB 3: BANTUAN (HELP / FAQ VIEW) */}
+                    {activeTab === 'bantuan' && (
+                        <div className="space-y-4">
+                            <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-2xs space-y-3">
+                                <div className="flex items-center gap-2 font-bold text-neutral-900 border-b border-neutral-100 pb-2">
+                                    <HelpCircle className="size-4 text-amber-500" />
+                                    <span>Pusat Bantuan & FAQ</span>
+                                </div>
+                                <p className="text-xs text-neutral-600">
+                                    Temukan jawaban cepat untuk pertanyaan umum seputar akun, deposit, dan promosi:
+                                </p>
+
+                                <div className="space-y-2 pt-1">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setActiveTab('pesan');
+                                            handleSendMessage('Bagaimana cara deposit dengan Virtual Account dan QRIS?');
+                                        }}
+                                        className="w-full text-left p-3 rounded-xl border border-neutral-100 bg-slate-50 hover:bg-amber-50 text-xs font-semibold text-neutral-800 transition-colors"
+                                    >
+                                        💳 Cara Deposit via VA & QRIS
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setActiveTab('pesan');
+                                            handleSendMessage('Berapa minimal withdraw dan berapa lama prosesnya?');
+                                        }}
+                                        className="w-full text-left p-3 rounded-xl border border-neutral-100 bg-slate-50 hover:bg-amber-50 text-xs font-semibold text-neutral-800 transition-colors"
+                                    >
+                                        ⏱️ Waktu & Limit Withdraw
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setActiveTab('pesan');
+                                            handleSendMessage('Bagaimana cara reset password jika lupa sandi?');
+                                        }}
+                                        className="w-full text-left p-3 rounded-xl border border-neutral-100 bg-slate-50 hover:bg-amber-50 text-xs font-semibold text-neutral-800 transition-colors"
+                                    >
+                                        🔑 Lupa Password / Akun Terkunci
+                                    </button>
                                 </div>
                             </div>
                         </div>
-
-                        {/* List of Messages */}
-                        {messages.map((message) => {
-                            const isUser = message.role === 'user';
-
-                            return (
-                                <div
-                                    key={message.id}
-                                    className={`flex items-start gap-3 ${
-                                        isUser ? 'flex-row-reverse' : 'flex-row'
-                                    }`}
-                                >
-                                    {/* Avatar */}
-                                    <div
-                                        className={`flex size-8 shrink-0 items-center justify-center rounded-xl text-xs font-medium shadow-2xs ${
-                                            isUser
-                                                ? 'bg-emerald-600 text-white'
-                                                : 'border border-border bg-card text-primary'
-                                        }`}
-                                    >
-                                        {isUser ? (
-                                            <UserIcon className="size-4" />
-                                        ) : (
-                                            <Bot className="size-4.5" />
-                                        )}
-                                    </div>
-
-                                    {/* Message Bubble with ChatMarkdown for rich formatting & tables */}
-                                    <div
-                                        className={`group relative max-w-[85%] rounded-2xl px-4 py-3 text-xs sm:text-sm leading-relaxed sm:max-w-[78%] ${
-                                            isUser
-                                                ? 'rounded-br-xs bg-emerald-600 text-white shadow-xs'
-                                                : 'rounded-bl-xs border border-border/80 bg-card text-card-foreground shadow-xs'
-                                        }`}
-                                    >
-                                        {isUser ? (
-                                            <div className="whitespace-pre-wrap select-text leading-relaxed">
-                                                {message.content}
-                                            </div>
-                                        ) : (
-                                            <ChatMarkdown content={message.content} />
-                                        )}
-
-                                        {message.created_at && (
-                                            <div
-                                                className={`mt-1.5 text-[10px] text-right font-mono ${
-                                                    isUser
-                                                        ? 'text-white/75'
-                                                        : 'text-muted-foreground'
-                                                }`}
-                                            >
-                                                {message.created_at}
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            );
-                        })}
-
-                        {/* Thinking / Processing Indicator */}
-                        {isLoading && (
-                            <div className="flex items-start gap-3">
-                                <div className="flex size-8 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-primary shadow-2xs">
-                                    <Bot className="size-4.5" />
-                                </div>
-                                <div className="rounded-2xl rounded-bl-xs border border-border/80 bg-card px-4 py-3 shadow-xs">
-                                    <div className="flex items-center gap-1.5">
-                                        <span className="size-2 rounded-full bg-emerald-500 animate-bounce [animation-delay:-0.3s]" />
-                                        <span className="size-2 rounded-full bg-emerald-500 animate-bounce [animation-delay:-0.15s]" />
-                                        <span className="size-2 rounded-full bg-emerald-500 animate-bounce" />
-                                        <span className="text-xs text-muted-foreground ml-1.5">
-                                            Sedang mengetik...
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        <div ref={messagesEndRef} />
-                    </div>
+                    )}
                 </div>
 
-                {/* Input Area */}
-                <div className="border-t border-border/80 bg-background/95 p-4 backdrop-blur-md sm:px-6">
-                    <form
-                        onSubmit={(e) => {
-                            e.preventDefault();
-                            handleSendMessage();
-                        }}
-                        className="mx-auto flex max-w-2xl items-end gap-2"
-                    >
-                        <div className="relative flex-1">
-                            <Textarea
-                                ref={textareaRef}
+                {/* ============================================================== */}
+                {/* BOTTOM CHAT INPUT BAR (Persis Screenshot 3) */}
+                {/* Hanya muncul jika sedang di Tab Pesan dan sudah mulai chat */}
+                {/* ============================================================== */}
+                {activeTab === 'pesan' && (hasSubmittedForm || messages.length > 0) && (
+                    <div className="border-t border-neutral-200 bg-white p-3 shrink-0">
+                        <form
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                handleSendMessage();
+                            }}
+                            className="flex items-center gap-2"
+                        >
+                            <button
+                                type="button"
+                                onClick={() => textareaRef.current?.focus()}
+                                className="flex size-9 items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-neutral-600 transition-colors cursor-pointer shrink-0"
+                                title="Lampiran / Pilihan Cepat"
+                            >
+                                <Plus className="size-4" />
+                            </button>
+
+                            <input
+                                ref={textareaRef as any}
                                 value={input}
                                 disabled={isSessionExpired || isLoading || !application.is_active}
                                 onChange={(e) => setInput(e.target.value)}
                                 onKeyDown={(e) => {
-                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                    if (e.key === 'Enter') {
                                         e.preventDefault();
                                         handleSendMessage();
                                     }
                                 }}
                                 placeholder={
                                     isSessionExpired
-                                        ? 'Sesi telah kedaluwarsa. Mulai chat baru...'
+                                        ? 'Sesi berakhir. Mulai chat baru...'
                                         : !application.is_active
                                           ? 'Chatbot sedang offline...'
-                                          : 'Ketik pesan Anda di sini... (Tekan Enter untuk kirim)'
+                                          : 'Tulis pesan...'
                                 }
-                                rows={1}
-                                className="min-h-[46px] max-h-32 resize-none rounded-2xl py-3 pr-4 text-xs sm:text-sm focus-visible:ring-1 bg-card shadow-2xs"
+                                className="flex-1 h-9 px-3.5 text-xs rounded-full bg-slate-100 border-none text-neutral-900 focus:outline-none focus:ring-1 focus:ring-amber-400 placeholder:text-neutral-400"
                             />
-                        </div>
 
-                        {isSessionExpired ? (
-                            <Button
-                                type="button"
-                                onClick={startNewChat}
-                                className="size-11.5 shrink-0 rounded-2xl cursor-pointer shadow-xs gap-1"
-                            >
-                                <RotateCcw className="size-4" />
-                            </Button>
-                        ) : (
-                            <Button
+                            <button
                                 type="submit"
-                                size="icon"
                                 disabled={!input.trim() || isLoading || !application.is_active}
-                                className="size-11.5 shrink-0 rounded-2xl cursor-pointer shadow-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                                className="flex size-9 items-center justify-center rounded-full bg-[#FFD200] hover:bg-[#F5C700] text-neutral-950 font-bold disabled:opacity-40 transition-colors cursor-pointer shrink-0 shadow-2xs"
                             >
-                                <Send className="size-4" />
-                            </Button>
-                        )}
-                    </form>
+                                <Send className="size-3.5" />
+                            </button>
+                        </form>
+                    </div>
+                )}
 
-                    <div className="mt-2.5 flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
-                        <Sparkles className="size-3 text-emerald-500" />
-                        <span>Didukung oleh AutoChat AI • Respon Seketika 24/7</span>
+                {/* ============================================================== */}
+                {/* BOTTOM NAVIGATION TABS (Persis Screenshot 2 & 3: Beranda, Pesan, Bantuan) */}
+                {/* ============================================================== */}
+                <div className="border-t border-neutral-200 bg-white px-6 py-2.5 shrink-0 flex flex-col items-center gap-1.5 select-none">
+                    <div className="w-full flex items-center justify-around">
+                        <button
+                            type="button"
+                            onClick={() => setActiveTab('beranda')}
+                            className={`flex flex-col items-center gap-1 text-[11px] font-medium transition-colors cursor-pointer ${
+                                activeTab === 'beranda'
+                                    ? 'text-[#E0A800] font-bold'
+                                    : 'text-neutral-400 hover:text-neutral-600'
+                            }`}
+                        >
+                            <HomeIcon className="size-4.5" />
+                            <span>Beranda</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => setActiveTab('pesan')}
+                            className={`flex flex-col items-center gap-1 text-[11px] font-medium transition-colors cursor-pointer relative ${
+                                activeTab === 'pesan'
+                                    ? 'text-[#E0A800] font-bold'
+                                    : 'text-neutral-400 hover:text-neutral-600'
+                            }`}
+                        >
+                            <MessageSquare className="size-4.5" />
+                            <span>Pesan</span>
+                            {activeTab === 'pesan' && (
+                                <span className="absolute -top-1 right-2 size-2 rounded-full bg-amber-500 animate-pulse" />
+                            )}
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => setActiveTab('bantuan')}
+                            className={`flex flex-col items-center gap-1 text-[11px] font-medium transition-colors cursor-pointer ${
+                                activeTab === 'bantuan'
+                                    ? 'text-[#E0A800] font-bold'
+                                    : 'text-neutral-400 hover:text-neutral-600'
+                            }`}
+                        >
+                            <HelpCircle className="size-4.5" />
+                            <span>Bantuan</span>
+                        </button>
+                    </div>
+
+                    <div className="text-[10px] text-neutral-400 font-medium">
+                        Powered by <span className="font-bold text-neutral-600">AutoChat</span>
                     </div>
                 </div>
             </div>
-        </PublicChatLayout>
+        </div>
     );
 }
