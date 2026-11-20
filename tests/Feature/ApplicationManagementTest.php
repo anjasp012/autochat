@@ -22,6 +22,23 @@ test('admin accessing applications index is redirected to dashboard', function (
     $response->assertRedirect('/dashboard');
 });
 
+test('admin can view bot setting page', function () {
+    $app = Application::factory()->create([
+        'app_id' => 'support-bot',
+        'is_active' => true,
+    ]);
+
+    $response = $this->actingAs($this->admin)
+        ->withSession(['current_app_id' => 'support-bot'])
+        ->get('/setting');
+
+    $response->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('admin/settings/index')
+            ->where('application.app_id', 'support-bot')
+        );
+});
+
 test('admin can create a new application', function () {
     $response = $this->actingAs($this->admin)->post('/admin/applications', [
         'name' => 'Marketing AI Bot',
