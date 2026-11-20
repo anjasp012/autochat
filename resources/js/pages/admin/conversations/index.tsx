@@ -3,7 +3,6 @@ import { Head, router, useForm } from '@inertiajs/react';
 import {
     Bot,
     Clock,
-    Filter,
     HandMetal,
     MessageSquare,
     Search,
@@ -25,14 +24,15 @@ import {
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
+import { echo } from '@/echo';
 
 interface Message {
     id: number;
-    conversation_id: number;
+    conversation_id?: number;
     role: 'user' | 'assistant' | 'system';
     content: string;
-    tokens_used: number;
-    created_at: string;
+    tokens_used?: number;
+    created_at?: string;
 }
 
 interface ConversationItem {
@@ -66,9 +66,9 @@ interface ConversationDetail extends ConversationItem {
 }
 
 interface Props {
-    conversations: ConversationItem[];
+    conversations?: ConversationItem[] | { data: ConversationItem[] };
     activeConversation?: ConversationDetail | null;
-    filters: {
+    filters?: {
         search?: string | null;
         status?: string | null;
     };
@@ -83,12 +83,23 @@ interface Props {
 export default function ConversationsIndex({
     conversations = [],
     activeConversation,
-    filters,
+    filters = {},
     selectedApp,
 }: Props) {
-    const [search, setSearch] = useState(filters.search || '');
-    const [status, setStatus] = useState(filters.status || '');
+    const rawConversations = conversations as any;
+    const convList: ConversationItem[] = Array.isArray(rawConversations)
+        ? rawConversations
+        : Array.isArray(rawConversations?.data)
+          ? rawConversations.data
+          : [];
+
+    const [search, setSearch] = useState(filters?.search || '');
+    const [status, setStatus] = useState(filters?.status || '');
     const [convToDelete, setConvToDelete] = useState<ConversationItem | null>(null);
+
+    const activeMessages: Message[] = Array.isArray(activeConversation?.messages)
+        ? activeConversation.messages
+        : [];
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -102,9 +113,27 @@ export default function ConversationsIndex({
 
     useEffect(() => {
         scrollToBottom();
-    }, [activeConversation?.messages?.length, activeConversation?.uuid]);
+    }, [activeMessages.length, activeConversation?.uuid]);
 
-    // Live sync polling setiap 3 detik
+    // WebSocket realtime listener via Laravel Reverb Echo
+    useEffect(() => {
+        if (!activeConversation?.uuid) return;
+
+        const channel = echo.channel(`conversation.${activeConversation.uuid}`);
+        channel.listen('MessageSent', () => {
+            router.reload({
+                only: ['conversations', 'activeConversation'],
+                preserveScroll: true,
+                preserveState: true,
+            });
+        });
+
+        return () => {
+            channel.stopListening('MessageSent');
+        };
+    }, [activeConversation?.uuid]);
+
+    // Live sync polling backup setiap 3 detik
     useEffect(() => {
         const interval = setInterval(() => {
             router.reload({
@@ -120,7 +149,7 @@ export default function ConversationsIndex({
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
         router.get(
-            '/admin/conversations',
+            '/conversations',
             {
                 search: search || undefined,
                 status: status || undefined,
@@ -132,7 +161,7 @@ export default function ConversationsIndex({
     const handleStatusFilter = (newStatus: string) => {
         setStatus(newStatus);
         router.get(
-            '/admin/conversations',
+            '/conversations',
             {
                 search: search || undefined,
                 status: newStatus || undefined,
@@ -145,7 +174,7 @@ export default function ConversationsIndex({
         if (activeConversation?.uuid === conv.uuid) return;
 
         router.get(
-            `/admin/conversations/${conv.uuid}`,
+            `/conversations/${conv.uuid}`,
             {},
             {
                 preserveState: true,
@@ -157,9 +186,9 @@ export default function ConversationsIndex({
 
     const handleToggleTakeover = (conv: ConversationItem) => {
         if (conv.is_taken_over) {
-            router.post(`/admin/conversations/${conv.uuid}/release-takeover`, {}, { preserveScroll: true });
+            router.post(`/conversations/${conv.uuid}/release-takeover`, {}, { preserveScroll: true });
         } else {
-            router.post(`/admin/conversations/${conv.uuid}/takeover`, {}, { preserveScroll: true });
+            router.post(`/conversations/${conv.uuid}/takeover`, {}, { preserveScroll: true });
         }
     };
 
@@ -167,7 +196,7 @@ export default function ConversationsIndex({
         if (e) e.preventDefault();
         if (!activeConversation || !data.message.trim() || processing) return;
 
-        post(`/admin/conversations/${activeConversation.uuid}/reply`, {
+        post(`/conversations/${activeConversation.uuid}/reply`, {
             preserveScroll: true,
             onSuccess: () => {
                 reset();
@@ -184,7 +213,7 @@ export default function ConversationsIndex({
 
     const handleDeleteConfirm = () => {
         if (!convToDelete) return;
-        router.delete(`/admin/conversations/${convToDelete.uuid}`, {
+        router.delete(`/conversations/${convToDelete.uuid}`, {
             onSuccess: () => setConvToDelete(null),
         });
     };
@@ -204,7 +233,7 @@ export default function ConversationsIndex({
                                     Conversations
                                 </h2>
                                 <Badge variant="secondary" className="text-[10px] h-5 px-1.5 font-semibold">
-                                    {conversations.length}
+                                    {convList.length}
                                 </Badge>
                             </div>
                             {selectedApp && (
@@ -260,13 +289,13 @@ export default function ConversationsIndex({
 
                     {/* Scrollable Conversation List */}
                     <div className="flex-1 overflow-y-auto divide-y divide-border/40">
-                        {conversations.length === 0 ? (
+                        {convList.length === 0 ? (
                             <div className="flex flex-col items-center justify-center p-8 text-center text-muted-foreground">
                                 <MessageSquare className="size-8 opacity-30 mb-2" />
                                 <p className="text-xs">Belum ada percakapan</p>
                             </div>
                         ) : (
-                            conversations.map((conv) => {
+                            convList.map((conv) => {
                                 const isSelected = activeConversation?.uuid === conv.uuid;
                                 const latestMsg = conv.messages && conv.messages[0] ? conv.messages[0].content : '';
 
@@ -406,13 +435,13 @@ export default function ConversationsIndex({
 
                             {/* Chat Messages Stream */}
                             <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3.5 bg-sidebar/5">
-                                {activeConversation.messages.length === 0 ? (
+                                {activeMessages.length === 0 ? (
                                     <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground py-16">
                                         <Bot className="size-8 opacity-40 mb-2" />
                                         <p className="text-xs">Belum ada pesan pada percakapan ini.</p>
                                     </div>
                                 ) : (
-                                    activeConversation.messages.map((msg) => {
+                                    activeMessages.map((msg) => {
                                         if (msg.role === 'system') {
                                             return (
                                                 <div key={msg.id} className="flex justify-center my-2">
@@ -576,7 +605,7 @@ ConversationsIndex.layout = {
     breadcrumbs: [
         {
             title: 'Conversations',
-            href: '/admin/conversations',
+            href: '/conversations',
         },
     ],
 };

@@ -44,17 +44,17 @@ export function AppSidebar() {
         },
         {
             title: 'Knowledge Base',
-            href: '/admin/knowledge-base',
+            href: '/knowledge-base',
             icon: BookOpen,
         },
         {
             title: 'Conversations',
-            href: '/admin/conversations',
+            href: '/conversations',
             icon: MessageSquare,
         },
         {
             title: 'Pengaturan Bot',
-            href: currentApp ? `/admin/applications/${currentApp.id}/edit` : '/dashboard',
+            href: '/setting',
             icon: Settings2,
         },
     ];

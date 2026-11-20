@@ -45,7 +45,7 @@ export function AppSwitcher() {
         if (appId === currentAppId) return;
 
         router.post(
-            '/admin/applications/switch-current',
+            '/applications/switch-current',
             { app_id: appId },
             { preserveScroll: true }
         );
@@ -139,7 +139,7 @@ export function AppSwitcher() {
                         <DropdownMenuSeparator className="my-1" />
 
                         <DropdownMenuItem asChild className="cursor-pointer rounded-lg px-2 py-1.5 text-xs">
-                            <Link href="/admin/applications/create" className="flex items-center gap-2 text-foreground font-medium">
+                            <Link href="/applications/create" className="flex items-center gap-2 text-foreground font-medium">
                                 <div className="flex size-5 items-center justify-center rounded-md bg-primary/10 text-primary">
                                     <Plus className="size-3.5" />
                                 </div>

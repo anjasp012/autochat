@@ -14,6 +14,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { echo } from '@/echo';
 import PublicChatLayout from '@/layouts/public-chat-layout';
 
 interface ChatMessage {
@@ -115,6 +116,34 @@ export default function ChatShow({
         // New visitor: create initial UUID
         startNewChat();
     }, [application.app_id]);
+
+    // Realtime WebSocket listener via Laravel Reverb
+    useEffect(() => {
+        if (!sessionUuid) return;
+
+        const channel = echo.channel(`conversation.${sessionUuid}`);
+        channel.listen('MessageSent', (event: any) => {
+            if (event.role !== 'user') {
+                setMessages((prev) => {
+                    const alreadyExists = prev.some((m) => m.id === String(event.id));
+                    if (alreadyExists) return prev;
+                    return [
+                        ...prev,
+                        {
+                            id: String(event.id),
+                            role: event.role,
+                            content: event.content,
+                            created_at: event.created_at,
+                        },
+                    ];
+                });
+            }
+        });
+
+        return () => {
+            channel.stopListening('MessageSent');
+        };
+    }, [sessionUuid]);
 
     // Fetch existing messages from backend for current active session
     const fetchSessionMessages = async (uuid: string) => {
