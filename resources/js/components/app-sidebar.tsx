@@ -71,6 +71,9 @@ export function AppSidebar() {
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                 </SidebarMenu>
+
+                {/* Dropdown Ganti-Ganti Aplikasi diletakkan di atas sebelum menu utama */}
+                <AppSwitcher />
             </SidebarHeader>
 
             <SidebarContent>
@@ -78,7 +81,6 @@ export function AppSidebar() {
             </SidebarContent>
 
             <SidebarFooter className="gap-2">
-                <AppSwitcher />
                 <NavUser />
             </SidebarFooter>
         </Sidebar>

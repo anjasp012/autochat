@@ -52,7 +52,7 @@ export function AppSwitcher() {
     };
 
     return (
-        <SidebarMenu className="mb-1">
+        <SidebarMenu className="mt-1">
             <SidebarMenuItem>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -92,8 +92,8 @@ export function AppSwitcher() {
                             isMobile
                                 ? 'bottom'
                                 : state === 'collapsed'
-                                  ? 'left'
-                                  : 'top'
+                                  ? 'right'
+                                  : 'bottom'
                         }
                     >
                         <DropdownMenuLabel className="flex items-center justify-between text-[11px] font-medium text-muted-foreground px-2 py-1.5">

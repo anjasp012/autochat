@@ -135,9 +135,20 @@ export default function ConversationsIndex({
             <div className="flex h-full flex-1 flex-col gap-6 p-6">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <h1 className="text-2xl font-bold tracking-tight">Conversations</h1>
-                        <p className="text-sm text-muted-foreground">
-                            Riwayat sesi percakapan pengunjung dan fitur intervensi live support (Ambil Alih).
+                        <div className="flex items-center gap-2.5">
+                            <h1 className="text-2xl font-bold tracking-tight">Conversations</h1>
+                            {selectedApp && (
+                                <Badge variant="secondary" className="gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg border border-border">
+                                    <Bot className="size-3.5 text-primary" />
+                                    <span>{selectedApp.name}</span>
+                                    <span className="font-mono text-[10px] text-muted-foreground">({selectedApp.app_id})</span>
+                                </Badge>
+                            )}
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-0.5">
+                            {selectedApp
+                                ? `Riwayat percakapan khusus untuk chatbot ${selectedApp.name}. Ganti chatbot di dropdown atas sidebar untuk melihat percakapan bot lain.`
+                                : 'Riwayat sesi percakapan pengunjung dan fitur intervensi live support (Ambil Alih).'}
                         </p>
                     </div>
                 </div>
