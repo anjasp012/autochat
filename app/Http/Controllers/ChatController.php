@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\MessageSent;
 use App\Models\Application;
 use App\Models\Conversation;
 use App\Models\Message;
@@ -133,6 +134,8 @@ class ChatController extends Controller
             'content' => $userText,
             'tokens_used' => 0,
         ]);
+
+        MessageSent::dispatch($userMessage);
 
         // If conversation is taken over by admin, do not invoke AI
         if ($conversation->is_taken_over) {

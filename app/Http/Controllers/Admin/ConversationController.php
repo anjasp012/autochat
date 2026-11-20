@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Events\MessageSent;
 use App\Http\Controllers\Controller;
 use App\Models\Application;
 use App\Models\Conversation;
@@ -14,9 +15,25 @@ use Inertia\Response;
 class ConversationController extends Controller
 {
     /**
-     * Display a listing of conversations.
+     * Display a listing of conversations (WhatsApp-style live console).
      */
     public function index(Request $request): Response
+    {
+        return $this->renderConsole($request, null);
+    }
+
+    /**
+     * Display a specific conversation in the live console.
+     */
+    public function show(Request $request, Conversation $conversation): Response
+    {
+        return $this->renderConsole($request, $conversation);
+    }
+
+    /**
+     * Helper to render the WhatsApp-style 2-column live console.
+     */
+    protected function renderConsole(Request $request, ?Conversation $activeConversation): Response
     {
         $search = $request->query('search');
         $status = $request->query('status'); // 'taken_over', 'ai', 'all'
@@ -37,12 +54,15 @@ class ConversationController extends Controller
         }
 
         $conversations = Conversation::query()
-            ->with(['application:id,app_id,name', 'takenOverBy:id,name'])
+            ->with([
+                'application:id,app_id,name',
+                'takenOverBy:id,name',
+                'messages' => fn ($q) => $q->orderBy('created_at', 'desc')->limit(1),
+            ])
             ->withCount('messages')
             ->when($currentApp, function ($query, $app) {
                 $query->where('application_id', $app->id);
             }, function ($query) {
-                // Jika belum ada aplikasi sama sekali di sistem
                 $query->whereRaw('1 = 0');
             })
             ->when($search, function ($query, $search) {
@@ -55,11 +75,24 @@ class ConversationController extends Controller
             ->when($status === 'taken_over', fn ($q) => $q->where('is_taken_over', true))
             ->when($status === 'ai', fn ($q) => $q->where('is_taken_over', false))
             ->orderBy('last_activity_at', 'desc')
-            ->paginate(15)
-            ->withQueryString();
+            ->get();
+
+        // Default ke percakapan pertama jika tidak ditentukan
+        if (! $activeConversation && $conversations->isNotEmpty()) {
+            $activeConversation = $conversations->first();
+        }
+
+        if ($activeConversation) {
+            $activeConversation->load([
+                'application:id,app_id,name,is_active',
+                'takenOverBy:id,name,email',
+                'messages' => fn ($q) => $q->orderBy('created_at', 'asc'),
+            ]);
+        }
 
         return Inertia::render('admin/conversations/index', [
             'conversations' => $conversations,
+            'activeConversation' => $activeConversation,
             'filters' => [
                 'search' => $search,
                 'status' => $status,
@@ -70,22 +103,6 @@ class ConversationController extends Controller
                 'name' => $currentApp->name,
                 'is_active' => (bool) $currentApp->is_active,
             ] : null,
-        ]);
-    }
-
-    /**
-     * Display a specific conversation detail and live admin interaction console.
-     */
-    public function show(Conversation $conversation): Response
-    {
-        $conversation->load([
-            'application:id,app_id,name,is_active',
-            'takenOverBy:id,name,email',
-            'messages' => fn ($q) => $q->orderBy('created_at', 'asc'),
-        ]);
-
-        return Inertia::render('admin/conversations/show', [
-            'conversation' => $conversation,
         ]);
     }
 
@@ -101,11 +118,13 @@ class ConversationController extends Controller
             'last_activity_at' => now(),
         ]);
 
-        Message::create([
+        $systemMessage = Message::create([
             'conversation_id' => $conversation->id,
             'role' => 'system',
             'content' => 'Percakapan telah diambil alih oleh administrator. AI dihentikan sementara.',
         ]);
+
+        MessageSent::dispatch($systemMessage);
 
         return back()->with('success', 'Percakapan berhasil diambil alih. AI tidak akan menjawab otomatis.');
     }
@@ -122,11 +141,13 @@ class ConversationController extends Controller
             'last_activity_at' => now(),
         ]);
 
-        Message::create([
+        $systemMessage = Message::create([
             'conversation_id' => $conversation->id,
             'role' => 'system',
             'content' => 'Percakapan telah dikembalikan ke asisten AI.',
         ]);
+
+        MessageSent::dispatch($systemMessage);
 
         return back()->with('success', 'Percakapan telah dikembalikan ke asisten AI.');
     }
@@ -140,7 +161,7 @@ class ConversationController extends Controller
             'message' => ['required', 'string', 'max:4000'],
         ]);
 
-        Message::create([
+        $adminMessage = Message::create([
             'conversation_id' => $conversation->id,
             'role' => 'assistant',
             'content' => trim($validated['message']),
@@ -148,6 +169,8 @@ class ConversationController extends Controller
         ]);
 
         $conversation->update(['last_activity_at' => now()]);
+
+        MessageSent::dispatch($adminMessage);
 
         return back()->with('success', 'Pesan balasan admin berhasil dikirim.');
     }
@@ -164,3 +187,4 @@ class ConversationController extends Controller
             ->with('success', 'Riwayat percakapan berhasil dihapus.');
     }
 }
+
