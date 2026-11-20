@@ -96,7 +96,6 @@ export default function ConversationsIndex({
             {
                 search: search || undefined,
                 status: status || undefined,
-                app_id: filters.app_id || undefined,
             },
             { preserveState: true }
         );
@@ -109,7 +108,6 @@ export default function ConversationsIndex({
             {
                 search: search || undefined,
                 status: newStatus || undefined,
-                app_id: filters.app_id || undefined,
             },
             { preserveState: true }
         );

@@ -1,5 +1,5 @@
-import { Link, usePage } from '@inertiajs/react';
-import { Bot, ExternalLink, Settings2 } from 'lucide-react';
+import { usePage } from '@inertiajs/react';
+import { Bot, ExternalLink } from 'lucide-react';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { Button } from '@/components/ui/button';
 import { SidebarTrigger } from '@/components/ui/sidebar';
@@ -34,21 +34,6 @@ export function AppSidebarHeader({
             </div>
 
             <div className="flex items-center gap-2">
-                {currentApp && (
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        asChild
-                        className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground hidden sm:flex cursor-pointer"
-                        title="Pengaturan Prompt & Identitas Bot Ini"
-                    >
-                        <Link href={`/admin/applications/${currentApp.id}/edit`}>
-                            <Settings2 className="size-3.5" />
-                            <span>Pengaturan Bot</span>
-                        </Link>
-                    </Button>
-                )}
-
                 <Button
                     variant="default"
                     size="sm"
@@ -59,9 +44,10 @@ export function AppSidebarHeader({
                         href={chatUrl}
                         target="_blank"
                         rel="noopener noreferrer"
+                        title={currentApp ? `Buka Link Chatbot: ${chatUrl}` : 'Buka Link Chatbot'}
                     >
                         <Bot className="size-3.5" />
-                        <span>Tes Chatbot</span>
+                        <span>Link Chatbot</span>
                         <ExternalLink className="size-3 opacity-70" />
                     </a>
                 </Button>

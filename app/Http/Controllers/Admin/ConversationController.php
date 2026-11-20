@@ -19,14 +19,31 @@ class ConversationController extends Controller
     public function index(Request $request): Response
     {
         $search = $request->query('search');
-        $appId = $request->query('app_id') ?: $request->session()->get('current_app_id');
         $status = $request->query('status'); // 'taken_over', 'ai', 'all'
+
+        // Ambil aplikasi yang sedang dipilih di sidebar / session
+        $sessionAppId = $request->session()->get('current_app_id');
+        $currentApp = null;
+
+        if ($sessionAppId) {
+            $currentApp = Application::where('app_id', $sessionAppId)->first();
+        }
+
+        if (! $currentApp) {
+            $currentApp = Application::where('is_active', true)->first() ?? Application::first();
+            if ($currentApp) {
+                $request->session()->put('current_app_id', $currentApp->app_id);
+            }
+        }
 
         $conversations = Conversation::query()
             ->with(['application:id,app_id,name', 'takenOverBy:id,name'])
             ->withCount('messages')
-            ->when($appId, function ($query, $appId) {
-                $query->whereHas('application', fn ($q) => $q->where('app_id', $appId));
+            ->when($currentApp, function ($query, $app) {
+                $query->where('application_id', $app->id);
+            }, function ($query) {
+                // Jika belum ada aplikasi sama sekali di sistem
+                $query->whereRaw('1 = 0');
             })
             ->when($search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
@@ -45,10 +62,14 @@ class ConversationController extends Controller
             'conversations' => $conversations,
             'filters' => [
                 'search' => $search,
-                'app_id' => $appId,
                 'status' => $status,
             ],
-            'selectedApp' => $appId ? Application::where('app_id', $appId)->first(['id', 'app_id', 'name']) : null,
+            'selectedApp' => $currentApp ? [
+                'id' => $currentApp->id,
+                'app_id' => $currentApp->app_id,
+                'name' => $currentApp->name,
+                'is_active' => (bool) $currentApp->is_active,
+            ] : null,
         ]);
     }
 
