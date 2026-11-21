@@ -326,9 +326,9 @@ export default function ConversationsIndex({
         <>
             <Head title="Conversations - Admin" />
 
-            <div className="flex h-[calc(100vh-4rem)] flex-1 overflow-hidden bg-background">
+            <div className="flex h-full flex-1 overflow-hidden bg-background min-h-0">
                 {/* PANEL 1: Kategori Percakapan (Sesuai Referensi Gambar User) */}
-                <div className="hidden md:flex w-56 shrink-0 flex-col border-r border-border bg-sidebar/30 p-3 space-y-4">
+                <div className="hidden md:flex w-56 shrink-0 flex-col border-r border-border bg-sidebar/30 p-3 space-y-4 overflow-y-auto min-h-0">
                     <div className="px-3 pt-2">
                         <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                             PERCAKAPAN
@@ -383,7 +383,7 @@ export default function ConversationsIndex({
                 </div>
 
                 {/* PANEL 2: Thread List Percakapan */}
-                <div className="flex w-full sm:w-80 lg:w-96 shrink-0 flex-col border-r border-border bg-sidebar/10">
+                <div className="flex w-full sm:w-80 lg:w-96 shrink-0 flex-col border-r border-border bg-sidebar/10 h-full overflow-hidden min-h-0">
                     {/* Header Thread List */}
                     <div className="p-3 border-b border-border bg-sidebar/20 space-y-2.5 shrink-0">
                         <div className="flex items-center justify-between">
@@ -513,7 +513,7 @@ export default function ConversationsIndex({
                 </div>
 
                 {/* PANEL 3: Chat Thread Aktif */}
-                <div className="hidden sm:flex flex-1 flex-col h-full bg-background overflow-hidden">
+                <div className="hidden sm:flex flex-1 flex-col h-full bg-background overflow-hidden min-h-0">
                     {activeConversation ? (
                         <>
                             {/* Header Chat Thread */}
@@ -612,7 +612,7 @@ export default function ConversationsIndex({
                             </div>
 
                             {/* Chat Messages Stream */}
-                            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3.5 bg-sidebar/5">
+                            <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 space-y-3.5 bg-sidebar/5">
                                 {localMessages.length === 0 ? (
                                     <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground py-16">
                                         <Bot className="size-8 opacity-40 mb-2" />
@@ -679,7 +679,7 @@ export default function ConversationsIndex({
                             </div>
 
                             {/* Reply Input Box */}
-                            <div className="border-t border-border bg-sidebar/30 p-3 sm:p-4">
+                            <div className="border-t border-border bg-sidebar/30 p-3 sm:p-4 shrink-0">
                                 {!activeConversation.is_taken_over && (
                                     <div className="mb-2 flex items-center justify-between rounded-lg bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 text-xs text-amber-800 dark:text-amber-200">
                                         <span className="flex items-center gap-1.5">
