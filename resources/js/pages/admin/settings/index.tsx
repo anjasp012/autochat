@@ -445,7 +445,70 @@ export default function AdminSettings({ application }: Props) {
                 <form onSubmit={handleSubmit} className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
                     {/* KOLOM KIRI: SEMUA PENGATURAN (7 COLS) */}
                     <div className="xl:col-span-7 space-y-6">
-                        {/* 1. INFORMASI UTAMA & STATUS BOT */}
+
+                        {/* TAB NAVIGASI PENGATURAN */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-1.5 rounded-2xl bg-muted/60 border border-border/80 shadow-2xs">
+                            <button
+                                type="button"
+                                onClick={() => setActiveSettingsTab('identity')}
+                                className={`flex items-center justify-center gap-2 px-3 py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+                                    activeSettingsTab === 'identity'
+                                        ? 'bg-background text-foreground shadow-sm ring-1 ring-border'
+                                        : 'text-muted-foreground hover:text-foreground hover:bg-background/40'
+                                }`}
+                            >
+                                <Sliders className="size-3.5 text-emerald-600 shrink-0" />
+                                <span className="truncate">Identitas & Status</span>
+                                {hasIdentityError && <span className="size-2 rounded-full bg-destructive shrink-0" />}
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => setActiveSettingsTab('branding')}
+                                className={`flex items-center justify-center gap-2 px-3 py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+                                    activeSettingsTab === 'branding'
+                                        ? 'bg-background text-foreground shadow-sm ring-1 ring-border'
+                                        : 'text-muted-foreground hover:text-foreground hover:bg-background/40'
+                                }`}
+                            >
+                                <Palette className="size-3.5 text-amber-500 shrink-0" />
+                                <span className="truncate">Warna & Ikon Brand</span>
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => setActiveSettingsTab('welcome')}
+                                className={`flex items-center justify-center gap-2 px-3 py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+                                    activeSettingsTab === 'welcome'
+                                        ? 'bg-background text-foreground shadow-sm ring-1 ring-border'
+                                        : 'text-muted-foreground hover:text-foreground hover:bg-background/40'
+                                }`}
+                            >
+                                <Layout className="size-3.5 text-blue-500 shrink-0" />
+                                <span className="truncate">Judul & Sambutan</span>
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => setActiveSettingsTab('automate')}
+                                className={`flex items-center justify-center gap-2 px-3 py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+                                    activeSettingsTab === 'automate'
+                                        ? 'bg-background text-foreground shadow-sm ring-1 ring-border'
+                                        : 'text-muted-foreground hover:text-foreground hover:bg-background/40'
+                                }`}
+                            >
+                                <Zap className="size-3.5 text-amber-500 shrink-0" />
+                                <span className="truncate">Automate</span>
+                                <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-amber-500/15 text-amber-700 dark:text-amber-300 font-mono shrink-0">
+                                    {(data.chat_settings.canned_responses || []).length}
+                                </span>
+                            </button>
+                        </div>
+
+                        {/* TAB 1: IDENTITAS & STATUS CHATBOT + MODEL AI */}
+                        {activeSettingsTab === 'identity' && (
+                            <div className="space-y-6">
+                                {/* 1. INFORMASI UTAMA & STATUS BOT */}
                         <Card>
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-sm font-bold flex items-center gap-2">
@@ -520,8 +583,90 @@ export default function AdminSettings({ application }: Props) {
                                 </div>
                             </CardContent>
                         </Card>
+                                {/* 8. PENGATURAN MODEL AI & SYSTEM PROMPT */}
+                        <Card>
+                            <CardHeader className="pb-3">
+                                <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                    <Bot className="size-4 text-emerald-600" />
+                                    <span>Instruksi AI (System Prompt) & Model</span>
+                                </CardTitle>
+                                <CardDescription className="text-xs">
+                                    Atur perilaku, nada bicara, serta model AI untuk menjawab chat secara otomatis.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    <div className="space-y-1">
+                                        <Label htmlFor="model" className="text-xs font-semibold">Model AI</Label>
+                                        <Input
+                                            id="model"
+                                            value={data.model}
+                                            onChange={(e) => setData('model', e.target.value)}
+                                            required
+                                            className="font-mono text-xs"
+                                        />
+                                        <InputError message={errors.model} />
+                                    </div>
 
-                        {/* 2. WARNA (KIRI & KANAN), FILE IKON & FAVICON */}
+                                    <div className="space-y-1">
+                                        <Label htmlFor="temperature" className="text-xs font-semibold">
+                                            Temperature ({data.temperature})
+                                        </Label>
+                                        <Input
+                                            id="temperature"
+                                            type="number"
+                                            step="0.05"
+                                            min="0"
+                                            max="2"
+                                            value={data.temperature}
+                                            onChange={(e) => setData('temperature', parseFloat(e.target.value))}
+                                            className="text-xs"
+                                        />
+                                        <InputError message={errors.temperature} />
+                                    </div>
+
+                                    <div className="space-y-1">
+                                        <Label htmlFor="max_tokens" className="text-xs font-semibold">
+                                            Max Tokens
+                                        </Label>
+                                        <Input
+                                            id="max_tokens"
+                                            type="number"
+                                            step="128"
+                                            min="128"
+                                            max="8192"
+                                            value={data.max_tokens}
+                                            onChange={(e) => setData('max_tokens', parseInt(e.target.value))}
+                                            className="text-xs"
+                                        />
+                                        <InputError message={errors.max_tokens} />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="system_prompt" className="text-xs font-semibold">
+                                        System Prompt (Karakter & Instruksi Bot)
+                                    </Label>
+                                    <Textarea
+                                        id="system_prompt"
+                                        value={data.system_prompt}
+                                        onChange={(e) => setData('system_prompt', e.target.value)}
+                                        rows={10}
+                                        required
+                                        className="font-mono text-xs leading-relaxed"
+                                        placeholder="Kamu adalah asisten customer support profesional..."
+                                    />
+                                    <InputError message={errors.system_prompt} />
+                                </div>
+                            </CardContent>
+                        </Card>
+                            </div>
+                        )}
+
+                        {/* TAB 2: WARNA, IKON & FAVICON BRAND */}
+                        {activeSettingsTab === 'branding' && (
+                            <div className="space-y-6">
+                                {/* 2. WARNA (KIRI & KANAN), FILE IKON & FAVICON */}
                         <Card>
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-sm font-bold flex items-center gap-2">
@@ -702,8 +847,13 @@ export default function AdminSettings({ application }: Props) {
                                 </div>
                             </CardContent>
                         </Card>
+                            </div>
+                        )}
 
-                        {/* 3. JUDUL & SUBTITLE SAMBUTAN */}
+                        {/* TAB 3: JUDUL & SAMBUTAN */}
+                        {activeSettingsTab === 'welcome' && (
+                            <div className="space-y-6">
+                                {/* 3. JUDUL & SUBTITLE SAMBUTAN */}
                         <Card>
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-sm font-bold flex items-center gap-2">
@@ -746,8 +896,272 @@ export default function AdminSettings({ application }: Props) {
                                 </div>
                             </CardContent>
                         </Card>
+                                {/* 5. KARTU BANNER PROMOSI (PILIH GAMBAR ATAU TEKS) */}
+                        <Card>
+                            <CardHeader className="pb-3">
+                                <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                    <ImageIcon className="size-4 text-amber-500" />
+                                    <span>Banner Promosi Beranda</span>
+                                </CardTitle>
+                                <CardDescription className="text-xs">
+                                    Pilih jenis banner yang ingin ditampilkan pada halaman beranda pengunjung: Foto banner penuh atau teks promosi.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                {/* PILIHAN JENIS BANNER: GAMBAR ATAU TEKS */}
+                                <div className="flex rounded-lg bg-muted p-1 gap-1 border border-border/60">
+                                    <button
+                                        type="button"
+                                        onClick={() => updateChatSetting('banner_type', 'image')}
+                                        className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center justify-center gap-1.5 cursor-pointer ${data.chat_settings.banner_type === 'image' || (!data.chat_settings.banner_type && data.chat_settings.banner_image_url)
+                                            ? 'bg-background text-foreground shadow-xs'
+                                            : 'text-muted-foreground hover:text-foreground'
+                                            }`}
+                                    >
+                                        <ImageIcon className="size-3.5" />
+                                        <span>Gunakan Foto / Gambar Banner</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => updateChatSetting('banner_type', 'text')}
+                                        className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center justify-center gap-1.5 cursor-pointer ${data.chat_settings.banner_type === 'text' || (!data.chat_settings.banner_type && !data.chat_settings.banner_image_url)
+                                            ? 'bg-background text-foreground shadow-xs'
+                                            : 'text-muted-foreground hover:text-foreground'
+                                            }`}
+                                    >
+                                        <Layout className="size-3.5" />
+                                        <span>Gunakan Teks & Badge Promosi</span>
+                                    </button>
+                                </div>
 
-                        {/* 4. GALERI FOTO PROFIL CS (4 CS: Rahma, Nindy, Rosa, Intan) */}
+                                {/* KONTEN SESUAI PILIHAN BANNER */}
+                                {data.chat_settings.banner_type === 'image' || (!data.chat_settings.banner_type && data.chat_settings.banner_image_url) ? (
+                                    /* PILIHAN 1: HANYA FORM FOTO BANNER */
+                                    <div className="space-y-3 pt-1">
+                                        {data.chat_settings.banner_image_url ? (
+                                            <div className="relative rounded-2xl overflow-hidden border border-border shadow-xs group">
+                                                <img
+                                                    src={data.chat_settings.banner_image_url}
+                                                    alt="Banner Preview"
+                                                    className="w-full h-auto rounded-2xl block"
+                                                />
+                                                <div className="absolute top-3 right-3 flex items-center gap-2">
+                                                    <Button
+                                                        type="button"
+                                                        variant="secondary"
+                                                        size="sm"
+                                                        onClick={() => bannerInputRef.current?.click()}
+                                                        className="h-8 text-xs font-semibold gap-1.5 cursor-pointer bg-white/90 hover:bg-white text-neutral-900 shadow-sm"
+                                                    >
+                                                        <Upload className="size-3" /> Ganti Foto
+                                                    </Button>
+                                                    <Button
+                                                        type="button"
+                                                        variant="destructive"
+                                                        size="sm"
+                                                        onClick={() => updateChatSetting('banner_image_url', '')}
+                                                        className="h-8 text-xs gap-1 cursor-pointer shadow-sm"
+                                                    >
+                                                        <Trash2 className="size-3" /> Hapus
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div
+                                                onClick={() => bannerInputRef.current?.click()}
+                                                className="border-2 border-dashed border-border/80 hover:border-amber-400 rounded-2xl p-6 text-center cursor-pointer transition-colors bg-muted/20 hover:bg-amber-50/20 space-y-2"
+                                            >
+                                                <div className="flex size-10 items-center justify-center rounded-full bg-muted mx-auto text-muted-foreground">
+                                                    <Upload className="size-5" />
+                                                </div>
+                                                <p className="text-xs font-bold text-foreground">Upload Foto Banner Penuh</p>
+                                                <p className="text-[11px] text-muted-foreground">
+                                                    Klik untuk memilih gambar banner (JPG, PNG, WebP). Banner akan tampil penuh tanpa border/card.
+                                                </p>
+                                            </div>
+                                        )}
+                                        <input
+                                            ref={bannerInputRef}
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={(e) => handleFileUpload(e, 'banner_image_url')}
+                                            className="hidden"
+                                        />
+                                    </div>
+                                ) : (
+                                    /* PILIHAN 2: HANYA FORM TEKS & BADGE PROMOSI */
+                                    <div className="space-y-3.5 pt-1">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            <div className="space-y-1">
+                                                <Label className="text-xs font-semibold">Teks Badge Banner</Label>
+                                                <Input
+                                                    value={data.chat_settings.banner_badge}
+                                                    onChange={(e) => updateChatSetting('banner_badge', e.target.value)}
+                                                    placeholder="Contoh: OFFICIAL 24/7 SUPPORT"
+                                                    className="text-xs"
+                                                />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <Label className="text-xs font-semibold">Judul Brand Banner</Label>
+                                                <Input
+                                                    value={data.chat_settings.banner_title}
+                                                    onChange={(e) => updateChatSetting('banner_title', e.target.value)}
+                                                    placeholder="Contoh: CVTOGEL"
+                                                    className="text-xs font-bold"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-1">
+                                            <Label className="text-xs font-semibold">Deskripsi Banner Promosi</Label>
+                                            <Textarea
+                                                value={data.chat_settings.banner_description}
+                                                onChange={(e) => updateChatSetting('banner_description', e.target.value)}
+                                                rows={2}
+                                                placeholder="Pusat Bantuan Resmi & Layanan Member 24 Jam Nonstop..."
+                                                className="text-xs"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                                {/* 6. TOMBOL CEPAT DINAMIS BERANDA (BISA 1, 2, ATAU BANYAK, TIPE PERTANYAAN / LINK) */}
+                        <Card>
+                            <CardHeader className="pb-3">
+                                <div className="flex items-center justify-between">
+                                    <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                        <ArrowUpRight className="size-4 text-amber-500" />
+                                        <span>Tombol Cepat Beranda ({currentQuickButtons.length} Tombol)</span>
+                                    </CardTitle>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={handleAddButton}
+                                        className="h-8 text-xs font-semibold gap-1.5 cursor-pointer text-emerald-600 border-emerald-500/40 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+                                    >
+                                        <Plus className="size-3.5" />
+                                        <span>Tambah Tombol</span>
+                                    </Button>
+                                </div>
+                                <CardDescription className="text-xs">
+                                    Atur tombol di beranda secara fleksibel (bisa 1, 2, atau berapapun). Tiap tombol bisa berupa pesan otomatis ke chat atau link eksternal (WA, Telegram, APK, web).
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-3.5">
+                                {currentQuickButtons.length === 0 ? (
+                                    <div className="text-center py-6 border border-dashed border-border rounded-xl space-y-2">
+                                        <p className="text-xs text-muted-foreground">Belum ada tombol cepat.</p>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={handleAddButton}
+                                            className="h-8 text-xs font-semibold gap-1.5 cursor-pointer"
+                                        >
+                                            <Plus className="size-3.5" />
+                                            <span>Tambah Tombol Sekarang</span>
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    currentQuickButtons.map((btn: any, idx: number) => (
+                                        <div
+                                            key={btn.id || idx}
+                                            className="rounded-xl border border-border/80 bg-muted/10 p-3 space-y-3"
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                                    <span className="flex size-5 items-center justify-center rounded-full bg-amber-500/20 text-amber-800 dark:text-amber-300 text-[10px] font-bold">
+                                                        {idx + 1}
+                                                    </span>
+                                                    <span>Tombol #{idx + 1}</span>
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleRemoveButton(idx)}
+                                                    className="text-muted-foreground hover:text-destructive text-xs cursor-pointer p-1 rounded-md transition-colors"
+                                                    title="Hapus tombol ini"
+                                                >
+                                                    <Trash2 className="size-3.5" />
+                                                </button>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                <div className="space-y-1">
+                                                    <Label className="text-[11px] font-semibold text-muted-foreground">
+                                                        Judul / Label Tombol
+                                                    </Label>
+                                                    <Input
+                                                        value={btn.title}
+                                                        onChange={(e) => handleUpdateButton(idx, 'title', e.target.value)}
+                                                        placeholder="Contoh: Prediksi Togel atau WhatsApp CS"
+                                                        className="text-xs"
+                                                    />
+                                                </div>
+
+                                                <div className="space-y-1">
+                                                    <Label className="text-[11px] font-semibold text-muted-foreground">
+                                                        Aksi Saat Diklik
+                                                    </Label>
+                                                    <div className="flex rounded-lg bg-muted p-0.5 gap-0.5 border border-border/60 h-9">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleUpdateButton(idx, 'type', 'query')}
+                                                            className={`flex-1 text-[11px] font-semibold rounded-md transition-all flex items-center justify-center gap-1.5 cursor-pointer ${btn.type === 'query'
+                                                                ? 'bg-background text-foreground shadow-xs'
+                                                                : 'text-muted-foreground hover:text-foreground'
+                                                                }`}
+                                                        >
+                                                            <MessageSquare className="size-3" />
+                                                            <span>Pertanyaan</span>
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleUpdateButton(idx, 'type', 'link')}
+                                                            className={`flex-1 text-[11px] font-semibold rounded-md transition-all flex items-center justify-center gap-1.5 cursor-pointer ${btn.type === 'link'
+                                                                ? 'bg-background text-foreground shadow-xs'
+                                                                : 'text-muted-foreground hover:text-foreground'
+                                                                }`}
+                                                        >
+                                                            <Globe className="size-3" />
+                                                            <span>Link URL</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-1">
+                                                <Label className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1">
+                                                    {btn.type === 'link' ? (
+                                                        <>
+                                                            <Globe className="size-3 text-emerald-600" />
+                                                            <span>Alamat URL Tujuan (Buka di Tab Baru)</span>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <MessageSquare className="size-3 text-amber-500" />
+                                                            <span>Pesan / Pertanyaan Otomatis (Dikirim ke Chat)</span>
+                                                        </>
+                                                    )}
+                                                </Label>
+                                                <Input
+                                                    value={btn.value}
+                                                    onChange={(e) => handleUpdateButton(idx, 'value', e.target.value)}
+                                                    placeholder={
+                                                        btn.type === 'link'
+                                                            ? 'https://wa.me/628123456789 atau https://kiamkiam.site/...'
+                                                            : 'Halo CS, saya mau informasi bocoran pasaran hari ini...'
+                                                    }
+                                                    className={`text-xs ${btn.type === 'link' ? 'font-mono' : ''}`}
+                                                />
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </CardContent>
+                        </Card>
+                                {/* 4. GALERI FOTO PROFIL CS (4 CS: Rahma, Nindy, Rosa, Intan) */}
                         <Card>
                             <CardHeader className="pb-3">
                                 <div className="flex items-center justify-between">
@@ -821,8 +1235,139 @@ export default function AdminSettings({ application }: Props) {
                                 </div>
                             </CardContent>
                         </Card>
+                                {/* 7. PESAN PEMBUKA & LINK ANTI NAWALA */}
+                        <Card>
+                            <CardHeader className="pb-3">
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                    <div>
+                                        <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                            <MessageSquare className="size-4 text-amber-500" />
+                                            <span>Pesan Pembuka & Link Resmi Anti Nawala</span>
+                                        </CardTitle>
+                                        <CardDescription className="text-xs mt-0.5">
+                                            Pesan selamat datang yang muncul pertama kali di kartu informasi livechat.
+                                        </CardDescription>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={handleAutoFormatOpening}
+                                        className="px-3 py-1.5 text-xs font-bold text-amber-850 dark:text-amber-200 bg-amber-100 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700/80 rounded-xl hover:bg-amber-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs active:scale-95 shrink-0"
+                                        title="Otomatis rapikan link & kontak ke format Markdown terbaik"
+                                    >
+                                        <Sparkles className="size-3.5 text-amber-600 dark:text-amber-400" />
+                                        <span>Rapikan Otomatis</span>
+                                    </button>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                                {/* Tab Selector: Editor vs Preview */}
+                                <div className="flex items-center justify-between border-b border-border pb-2.5">
+                                    <div className="flex items-center gap-1 bg-muted/60 p-0.5 rounded-lg border border-border/60">
+                                        <button
+                                            type="button"
+                                            onClick={() => setOpeningTab('editor')}
+                                            className={`px-3 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${openingTab === 'editor'
+                                                ? 'bg-background text-foreground shadow-xs'
+                                                : 'text-muted-foreground hover:text-foreground'
+                                                }`}
+                                        >
+                                            Editor Teks (Markdown)
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setOpeningTab('preview')}
+                                            className={`px-3 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer flex items-center gap-1.5 ${openingTab === 'preview'
+                                                ? 'bg-background text-foreground shadow-xs'
+                                                : 'text-muted-foreground hover:text-foreground'
+                                                }`}
+                                        >
+                                            <Eye className="size-3 text-emerald-500" />
+                                            <span>Pratinjau Hasil</span>
+                                        </button>
+                                    </div>
 
-                        {/* 5. TEMPLATE CHAT & TOPIK FORMULIR AWAL */}
+                                    {/* Quick helper buttons */}
+                                    {openingTab === 'editor' && (
+                                        <div className="hidden sm:flex items-center gap-1 text-[11px]">
+                                            <button
+                                                type="button"
+                                                onClick={() => handleInsertHelper('👉 [Link Alternatif](https://...)')}
+                                                className="px-2 py-0.5 rounded bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                                            >
+                                                + Link
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleInsertHelper('💬 [WhatsApp CS](https://wa.me/...)')}
+                                                className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/60 hover:bg-emerald-100 transition-colors cursor-pointer"
+                                            >
+                                                + WhatsApp
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleInsertHelper('✈️ [Telegram CS](https://t.me/...)')}
+                                                className="px-2 py-0.5 rounded bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300 border border-sky-200/60 hover:bg-sky-100 transition-colors cursor-pointer"
+                                            >
+                                                + Telegram
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleInsertHelper('**Teks Tebal**')}
+                                                className="px-2 py-0.5 rounded bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground font-bold transition-colors cursor-pointer"
+                                            >
+                                                B
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {openingTab === 'editor' ? (
+                                    <div className="space-y-1.5">
+                                        <Textarea
+                                            value={data.chat_settings.welcome_opening}
+                                            onChange={(e) => updateChatSetting('welcome_opening', e.target.value)}
+                                            rows={7}
+                                            className="font-mono text-xs leading-relaxed"
+                                            placeholder="Selamat Datang di Link Alternatif Resmi..."
+                                        />
+                                        <span className="text-[11px] text-muted-foreground block">
+                                            Format Markdown didukung: <code className="font-mono text-emerald-600">[Nama Link](https://...)</code>, <code className="font-mono text-amber-600">**teks tebal**</code>, atau klik tombol <strong>Rapikan Otomatis</strong> di atas.
+                                        </span>
+                                    </div>
+                                ) : (
+                                    <div className="p-4 rounded-xl border border-border bg-slate-50/70 dark:bg-neutral-900/40 min-h-[140px] space-y-2">
+                                        <div className="flex items-center gap-2 font-bold text-xs text-neutral-800 dark:text-neutral-200 border-b border-border/60 pb-2">
+                                            <Sparkles className="size-3.5 text-amber-500" />
+                                            <span>Informasi Resmi & Link Alternatif (Pratinjau Livechat)</span>
+                                        </div>
+                                        <ChatMarkdown content={data.chat_settings.welcome_opening || ''} />
+                                    </div>
+                                )}
+
+                                {/* Template Balasan Singkat Otomatis Formulir */}
+                                <div className="space-y-1.5 pt-3 border-t border-border">
+                                    <Label className="text-xs font-bold text-foreground">
+                                        Template Balasan Awal Formulir (Otomatis)
+                                    </Label>
+                                    <Input
+                                        value={data.chat_settings.first_reply_template ?? ''}
+                                        onChange={(e) => updateChatSetting('first_reply_template', e.target.value)}
+                                        placeholder="Hallo bosku 👋 {waktu}, ada yang bisa dibantu terkait {topik}, Bosku?"
+                                        className="text-xs font-mono"
+                                    />
+                                    <p className="text-[11px] text-muted-foreground">
+                                        Tag dinamis: <code className="text-amber-600 font-mono">&#123;waktu&#125;</code> (Pagi/Siang/Sore/Malam), <code className="text-amber-600 font-mono">&#123;topik&#125;</code> (depositnya/klaim bonusnya/dll.), <code className="text-amber-600 font-mono">&#123;user_id&#125;</code>.
+                                    </p>
+                                </div>
+                            </CardContent>
+                        </Card>
+                            </div>
+                        )}
+
+                        {/* TAB 4: AUTOMATE & TEMPLATE CHAT */}
+                        {activeSettingsTab === 'automate' && (
+                            <div className="space-y-6">
+                                {/* 5. TEMPLATE CHAT & TOPIK FORMULIR AWAL */}
                         <Card>
                             <CardHeader className="pb-3">
                                 <div className="flex items-center justify-between">
@@ -960,18 +1505,17 @@ export default function AdminSettings({ application }: Props) {
                                 </div>
                             </CardContent>
                         </Card>
-
-                        {/* 6. AUTOMATE / CANNED RESPONSES (BALASAN CEPAT OTOMATIS) */}
+                                {/* AUTOMATE */}
                         <Card className="border border-border shadow-xs">
                             <CardHeader className="pb-3 border-b border-border/50 bg-muted/15">
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                                     <div>
                                         <CardTitle className="text-sm font-bold flex items-center gap-2">
                                             <Zap className="size-4 text-amber-500" />
-                                            <span>Automate / Canned Responses (Balasan Cepat)</span>
+                                            <span>Automate</span>
                                         </CardTitle>
                                         <CardDescription className="text-xs mt-0.5">
-                                            Daftar respons cepat dengan hashtag shortcut (misal: <code>#marketing</code>, <code>#telegram</code>). 
+                                            Daftar respons cepat otomatis dengan hashtag shortcut (misal: <code>#marketing</code>, <code>#telegram</code>). 
                                             Bot AI akan otomatis menjawab pertanyaan pengunjung terkait topik ini berdasarkan informasi resmi di sini.
                                         </CardDescription>
                                     </div>
@@ -993,7 +1537,7 @@ export default function AdminSettings({ application }: Props) {
                                             className="h-8 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer gap-1.5 shadow-xs"
                                         >
                                             <Plus className="size-3.5" />
-                                            <span>Tambah Balasan Cepat</span>
+                                            <span>Tambah Automate</span>
                                         </Button>
                                     </div>
                                 </div>
@@ -1053,10 +1597,10 @@ export default function AdminSettings({ application }: Props) {
                                 {/* Banner Total Count (Sesuai Gambar User: 'X canned responses') */}
                                 <div className="rounded-lg bg-muted/60 px-3 py-1.5 text-xs font-semibold text-muted-foreground flex items-center justify-between border border-border/40">
                                     <span>
-                                        {filteredCannedResponses.length} canned {filteredCannedResponses.length === 1 ? 'response' : 'responses'}
+                                        {filteredCannedResponses.length} automate
                                     </span>
                                     <span className="text-[11px] font-normal text-muted-foreground/80">
-                                        Ketik <code>#</code> di chat console untuk menyisipkan balasan cepat
+                                        Ketik <code>#</code> di chat console untuk menyisipkan automate
                                     </span>
                                 </div>
 
@@ -1064,7 +1608,7 @@ export default function AdminSettings({ application }: Props) {
                                 <div className="space-y-3">
                                     {filteredCannedResponses.length === 0 ? (
                                         <div className="text-center py-8 text-muted-foreground text-xs border border-dashed rounded-xl">
-                                            Tidak ada balasan cepat yang cocok dengan pencarian atau filter.
+                                            Tidak ada automate yang cocok dengan pencarian atau filter.
                                         </div>
                                     ) : (
                                         filteredCannedResponses.map((cr: CannedResponse) => (
@@ -1098,7 +1642,7 @@ export default function AdminSettings({ application }: Props) {
                                                             size="sm"
                                                             onClick={() => handleOpenEditCanned(cr)}
                                                             className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
-                                                            title="Edit Balasan Cepat"
+                                                            title="Edit Automate"
                                                         >
                                                             <Edit className="size-3 mr-1" />
                                                             <span>Edit</span>
@@ -1109,7 +1653,7 @@ export default function AdminSettings({ application }: Props) {
                                                             size="icon"
                                                             onClick={() => handleRemoveCanned(cr.id)}
                                                             className="size-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer"
-                                                            title="Hapus Balasan Cepat"
+                                                            title="Hapus Automate"
                                                         >
                                                             <Trash2 className="size-3.5" />
                                                         </Button>
@@ -1135,478 +1679,9 @@ export default function AdminSettings({ application }: Props) {
                                 </div>
                             </CardContent>
                         </Card>
+                            </div>
+                        )}
 
-                        {/* 5. KARTU BANNER PROMOSI (PILIH GAMBAR ATAU TEKS) */}
-                        <Card>
-                            <CardHeader className="pb-3">
-                                <CardTitle className="text-sm font-bold flex items-center gap-2">
-                                    <ImageIcon className="size-4 text-amber-500" />
-                                    <span>Banner Promosi Beranda</span>
-                                </CardTitle>
-                                <CardDescription className="text-xs">
-                                    Pilih jenis banner yang ingin ditampilkan pada halaman beranda pengunjung: Foto banner penuh atau teks promosi.
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                {/* PILIHAN JENIS BANNER: GAMBAR ATAU TEKS */}
-                                <div className="flex rounded-lg bg-muted p-1 gap-1 border border-border/60">
-                                    <button
-                                        type="button"
-                                        onClick={() => updateChatSetting('banner_type', 'image')}
-                                        className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center justify-center gap-1.5 cursor-pointer ${data.chat_settings.banner_type === 'image' || (!data.chat_settings.banner_type && data.chat_settings.banner_image_url)
-                                            ? 'bg-background text-foreground shadow-xs'
-                                            : 'text-muted-foreground hover:text-foreground'
-                                            }`}
-                                    >
-                                        <ImageIcon className="size-3.5" />
-                                        <span>Gunakan Foto / Gambar Banner</span>
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => updateChatSetting('banner_type', 'text')}
-                                        className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center justify-center gap-1.5 cursor-pointer ${data.chat_settings.banner_type === 'text' || (!data.chat_settings.banner_type && !data.chat_settings.banner_image_url)
-                                            ? 'bg-background text-foreground shadow-xs'
-                                            : 'text-muted-foreground hover:text-foreground'
-                                            }`}
-                                    >
-                                        <Layout className="size-3.5" />
-                                        <span>Gunakan Teks & Badge Promosi</span>
-                                    </button>
-                                </div>
-
-                                {/* KONTEN SESUAI PILIHAN BANNER */}
-                                {data.chat_settings.banner_type === 'image' || (!data.chat_settings.banner_type && data.chat_settings.banner_image_url) ? (
-                                    /* PILIHAN 1: HANYA FORM FOTO BANNER */
-                                    <div className="space-y-3 pt-1">
-                                        {data.chat_settings.banner_image_url ? (
-                                            <div className="relative rounded-2xl overflow-hidden border border-border shadow-xs group">
-                                                <img
-                                                    src={data.chat_settings.banner_image_url}
-                                                    alt="Banner Preview"
-                                                    className="w-full h-auto rounded-2xl block"
-                                                />
-                                                <div className="absolute top-3 right-3 flex items-center gap-2">
-                                                    <Button
-                                                        type="button"
-                                                        variant="secondary"
-                                                        size="sm"
-                                                        onClick={() => bannerInputRef.current?.click()}
-                                                        className="h-8 text-xs font-semibold gap-1.5 cursor-pointer bg-white/90 hover:bg-white text-neutral-900 shadow-sm"
-                                                    >
-                                                        <Upload className="size-3" /> Ganti Foto
-                                                    </Button>
-                                                    <Button
-                                                        type="button"
-                                                        variant="destructive"
-                                                        size="sm"
-                                                        onClick={() => updateChatSetting('banner_image_url', '')}
-                                                        className="h-8 text-xs gap-1 cursor-pointer shadow-sm"
-                                                    >
-                                                        <Trash2 className="size-3" /> Hapus
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div
-                                                onClick={() => bannerInputRef.current?.click()}
-                                                className="border-2 border-dashed border-border/80 hover:border-amber-400 rounded-2xl p-6 text-center cursor-pointer transition-colors bg-muted/20 hover:bg-amber-50/20 space-y-2"
-                                            >
-                                                <div className="flex size-10 items-center justify-center rounded-full bg-muted mx-auto text-muted-foreground">
-                                                    <Upload className="size-5" />
-                                                </div>
-                                                <p className="text-xs font-bold text-foreground">Upload Foto Banner Penuh</p>
-                                                <p className="text-[11px] text-muted-foreground">
-                                                    Klik untuk memilih gambar banner (JPG, PNG, WebP). Banner akan tampil penuh tanpa border/card.
-                                                </p>
-                                            </div>
-                                        )}
-                                        <input
-                                            ref={bannerInputRef}
-                                            type="file"
-                                            accept="image/*"
-                                            onChange={(e) => handleFileUpload(e, 'banner_image_url')}
-                                            className="hidden"
-                                        />
-                                    </div>
-                                ) : (
-                                    /* PILIHAN 2: HANYA FORM TEKS & BADGE PROMOSI */
-                                    <div className="space-y-3.5 pt-1">
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                            <div className="space-y-1">
-                                                <Label className="text-xs font-semibold">Teks Badge Banner</Label>
-                                                <Input
-                                                    value={data.chat_settings.banner_badge}
-                                                    onChange={(e) => updateChatSetting('banner_badge', e.target.value)}
-                                                    placeholder="Contoh: OFFICIAL 24/7 SUPPORT"
-                                                    className="text-xs"
-                                                />
-                                            </div>
-                                            <div className="space-y-1">
-                                                <Label className="text-xs font-semibold">Judul Brand Banner</Label>
-                                                <Input
-                                                    value={data.chat_settings.banner_title}
-                                                    onChange={(e) => updateChatSetting('banner_title', e.target.value)}
-                                                    placeholder="Contoh: CVTOGEL"
-                                                    className="text-xs font-bold"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-1">
-                                            <Label className="text-xs font-semibold">Deskripsi Banner Promosi</Label>
-                                            <Textarea
-                                                value={data.chat_settings.banner_description}
-                                                onChange={(e) => updateChatSetting('banner_description', e.target.value)}
-                                                rows={2}
-                                                placeholder="Pusat Bantuan Resmi & Layanan Member 24 Jam Nonstop..."
-                                                className="text-xs"
-                                            />
-                                        </div>
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
-
-                        {/* 6. TOMBOL CEPAT DINAMIS BERANDA (BISA 1, 2, ATAU BANYAK, TIPE PERTANYAAN / LINK) */}
-                        <Card>
-                            <CardHeader className="pb-3">
-                                <div className="flex items-center justify-between">
-                                    <CardTitle className="text-sm font-bold flex items-center gap-2">
-                                        <ArrowUpRight className="size-4 text-amber-500" />
-                                        <span>Tombol Cepat Beranda ({currentQuickButtons.length} Tombol)</span>
-                                    </CardTitle>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={handleAddButton}
-                                        className="h-8 text-xs font-semibold gap-1.5 cursor-pointer text-emerald-600 border-emerald-500/40 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
-                                    >
-                                        <Plus className="size-3.5" />
-                                        <span>Tambah Tombol</span>
-                                    </Button>
-                                </div>
-                                <CardDescription className="text-xs">
-                                    Atur tombol di beranda secara fleksibel (bisa 1, 2, atau berapapun). Tiap tombol bisa berupa pesan otomatis ke chat atau link eksternal (WA, Telegram, APK, web).
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-3.5">
-                                {currentQuickButtons.length === 0 ? (
-                                    <div className="text-center py-6 border border-dashed border-border rounded-xl space-y-2">
-                                        <p className="text-xs text-muted-foreground">Belum ada tombol cepat.</p>
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={handleAddButton}
-                                            className="h-8 text-xs font-semibold gap-1.5 cursor-pointer"
-                                        >
-                                            <Plus className="size-3.5" />
-                                            <span>Tambah Tombol Sekarang</span>
-                                        </Button>
-                                    </div>
-                                ) : (
-                                    currentQuickButtons.map((btn: any, idx: number) => (
-                                        <div
-                                            key={btn.id || idx}
-                                            className="rounded-xl border border-border/80 bg-muted/10 p-3 space-y-3"
-                                        >
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                                                    <span className="flex size-5 items-center justify-center rounded-full bg-amber-500/20 text-amber-800 dark:text-amber-300 text-[10px] font-bold">
-                                                        {idx + 1}
-                                                    </span>
-                                                    <span>Tombol #{idx + 1}</span>
-                                                </span>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleRemoveButton(idx)}
-                                                    className="text-muted-foreground hover:text-destructive text-xs cursor-pointer p-1 rounded-md transition-colors"
-                                                    title="Hapus tombol ini"
-                                                >
-                                                    <Trash2 className="size-3.5" />
-                                                </button>
-                                            </div>
-
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                <div className="space-y-1">
-                                                    <Label className="text-[11px] font-semibold text-muted-foreground">
-                                                        Judul / Label Tombol
-                                                    </Label>
-                                                    <Input
-                                                        value={btn.title}
-                                                        onChange={(e) => handleUpdateButton(idx, 'title', e.target.value)}
-                                                        placeholder="Contoh: Prediksi Togel atau WhatsApp CS"
-                                                        className="text-xs"
-                                                    />
-                                                </div>
-
-                                                <div className="space-y-1">
-                                                    <Label className="text-[11px] font-semibold text-muted-foreground">
-                                                        Aksi Saat Diklik
-                                                    </Label>
-                                                    <div className="flex rounded-lg bg-muted p-0.5 gap-0.5 border border-border/60 h-9">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleUpdateButton(idx, 'type', 'query')}
-                                                            className={`flex-1 text-[11px] font-semibold rounded-md transition-all flex items-center justify-center gap-1.5 cursor-pointer ${btn.type === 'query'
-                                                                ? 'bg-background text-foreground shadow-xs'
-                                                                : 'text-muted-foreground hover:text-foreground'
-                                                                }`}
-                                                        >
-                                                            <MessageSquare className="size-3" />
-                                                            <span>Pertanyaan</span>
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleUpdateButton(idx, 'type', 'link')}
-                                                            className={`flex-1 text-[11px] font-semibold rounded-md transition-all flex items-center justify-center gap-1.5 cursor-pointer ${btn.type === 'link'
-                                                                ? 'bg-background text-foreground shadow-xs'
-                                                                : 'text-muted-foreground hover:text-foreground'
-                                                                }`}
-                                                        >
-                                                            <Globe className="size-3" />
-                                                            <span>Link URL</span>
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div className="space-y-1">
-                                                <Label className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1">
-                                                    {btn.type === 'link' ? (
-                                                        <>
-                                                            <Globe className="size-3 text-emerald-600" />
-                                                            <span>Alamat URL Tujuan (Buka di Tab Baru)</span>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <MessageSquare className="size-3 text-amber-500" />
-                                                            <span>Pesan / Pertanyaan Otomatis (Dikirim ke Chat)</span>
-                                                        </>
-                                                    )}
-                                                </Label>
-                                                <Input
-                                                    value={btn.value}
-                                                    onChange={(e) => handleUpdateButton(idx, 'value', e.target.value)}
-                                                    placeholder={
-                                                        btn.type === 'link'
-                                                            ? 'https://wa.me/628123456789 atau https://kiamkiam.site/...'
-                                                            : 'Halo CS, saya mau informasi bocoran pasaran hari ini...'
-                                                    }
-                                                    className={`text-xs ${btn.type === 'link' ? 'font-mono' : ''}`}
-                                                />
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
-                            </CardContent>
-                        </Card>
-
-                        {/* 7. PESAN PEMBUKA & LINK ANTI NAWALA */}
-                        <Card>
-                            <CardHeader className="pb-3">
-                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                                    <div>
-                                        <CardTitle className="text-sm font-bold flex items-center gap-2">
-                                            <MessageSquare className="size-4 text-amber-500" />
-                                            <span>Pesan Pembuka & Link Resmi Anti Nawala</span>
-                                        </CardTitle>
-                                        <CardDescription className="text-xs mt-0.5">
-                                            Pesan selamat datang yang muncul pertama kali di kartu informasi livechat.
-                                        </CardDescription>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={handleAutoFormatOpening}
-                                        className="px-3 py-1.5 text-xs font-bold text-amber-850 dark:text-amber-200 bg-amber-100 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700/80 rounded-xl hover:bg-amber-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs active:scale-95 shrink-0"
-                                        title="Otomatis rapikan link & kontak ke format Markdown terbaik"
-                                    >
-                                        <Sparkles className="size-3.5 text-amber-600 dark:text-amber-400" />
-                                        <span>Rapikan Otomatis</span>
-                                    </button>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="space-y-3">
-                                {/* Tab Selector: Editor vs Preview */}
-                                <div className="flex items-center justify-between border-b border-border pb-2.5">
-                                    <div className="flex items-center gap-1 bg-muted/60 p-0.5 rounded-lg border border-border/60">
-                                        <button
-                                            type="button"
-                                            onClick={() => setOpeningTab('editor')}
-                                            className={`px-3 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${openingTab === 'editor'
-                                                ? 'bg-background text-foreground shadow-xs'
-                                                : 'text-muted-foreground hover:text-foreground'
-                                                }`}
-                                        >
-                                            Editor Teks (Markdown)
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setOpeningTab('preview')}
-                                            className={`px-3 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer flex items-center gap-1.5 ${openingTab === 'preview'
-                                                ? 'bg-background text-foreground shadow-xs'
-                                                : 'text-muted-foreground hover:text-foreground'
-                                                }`}
-                                        >
-                                            <Eye className="size-3 text-emerald-500" />
-                                            <span>Pratinjau Hasil</span>
-                                        </button>
-                                    </div>
-
-                                    {/* Quick helper buttons */}
-                                    {openingTab === 'editor' && (
-                                        <div className="hidden sm:flex items-center gap-1 text-[11px]">
-                                            <button
-                                                type="button"
-                                                onClick={() => handleInsertHelper('👉 [Link Alternatif](https://...)')}
-                                                className="px-2 py-0.5 rounded bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                                            >
-                                                + Link
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => handleInsertHelper('💬 [WhatsApp CS](https://wa.me/...)')}
-                                                className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/60 hover:bg-emerald-100 transition-colors cursor-pointer"
-                                            >
-                                                + WhatsApp
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => handleInsertHelper('✈️ [Telegram CS](https://t.me/...)')}
-                                                className="px-2 py-0.5 rounded bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300 border border-sky-200/60 hover:bg-sky-100 transition-colors cursor-pointer"
-                                            >
-                                                + Telegram
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => handleInsertHelper('**Teks Tebal**')}
-                                                className="px-2 py-0.5 rounded bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground font-bold transition-colors cursor-pointer"
-                                            >
-                                                B
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {openingTab === 'editor' ? (
-                                    <div className="space-y-1.5">
-                                        <Textarea
-                                            value={data.chat_settings.welcome_opening}
-                                            onChange={(e) => updateChatSetting('welcome_opening', e.target.value)}
-                                            rows={7}
-                                            className="font-mono text-xs leading-relaxed"
-                                            placeholder="Selamat Datang di Link Alternatif Resmi..."
-                                        />
-                                        <span className="text-[11px] text-muted-foreground block">
-                                            Format Markdown didukung: <code className="font-mono text-emerald-600">[Nama Link](https://...)</code>, <code className="font-mono text-amber-600">**teks tebal**</code>, atau klik tombol <strong>Rapikan Otomatis</strong> di atas.
-                                        </span>
-                                    </div>
-                                ) : (
-                                    <div className="p-4 rounded-xl border border-border bg-slate-50/70 dark:bg-neutral-900/40 min-h-[140px] space-y-2">
-                                        <div className="flex items-center gap-2 font-bold text-xs text-neutral-800 dark:text-neutral-200 border-b border-border/60 pb-2">
-                                            <Sparkles className="size-3.5 text-amber-500" />
-                                            <span>Informasi Resmi & Link Alternatif (Pratinjau Livechat)</span>
-                                        </div>
-                                        <ChatMarkdown content={data.chat_settings.welcome_opening || ''} />
-                                    </div>
-                                )}
-
-                                {/* Template Balasan Singkat Otomatis Formulir */}
-                                <div className="space-y-1.5 pt-3 border-t border-border">
-                                    <Label className="text-xs font-bold text-foreground">
-                                        Template Balasan Awal Formulir (Otomatis)
-                                    </Label>
-                                    <Input
-                                        value={data.chat_settings.first_reply_template ?? ''}
-                                        onChange={(e) => updateChatSetting('first_reply_template', e.target.value)}
-                                        placeholder="Hallo bosku 👋 {waktu}, ada yang bisa dibantu terkait {topik}, Bosku?"
-                                        className="text-xs font-mono"
-                                    />
-                                    <p className="text-[11px] text-muted-foreground">
-                                        Tag dinamis: <code className="text-amber-600 font-mono">&#123;waktu&#125;</code> (Pagi/Siang/Sore/Malam), <code className="text-amber-600 font-mono">&#123;topik&#125;</code> (depositnya/klaim bonusnya/dll.), <code className="text-amber-600 font-mono">&#123;user_id&#125;</code>.
-                                    </p>
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        {/* 8. PENGATURAN MODEL AI & SYSTEM PROMPT */}
-                        <Card>
-                            <CardHeader className="pb-3">
-                                <CardTitle className="text-sm font-bold flex items-center gap-2">
-                                    <Bot className="size-4 text-emerald-600" />
-                                    <span>Instruksi AI (System Prompt) & Model</span>
-                                </CardTitle>
-                                <CardDescription className="text-xs">
-                                    Atur perilaku, nada bicara, serta model AI untuk menjawab chat secara otomatis.
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                    <div className="space-y-1">
-                                        <Label htmlFor="model" className="text-xs font-semibold">Model AI</Label>
-                                        <Input
-                                            id="model"
-                                            value={data.model}
-                                            onChange={(e) => setData('model', e.target.value)}
-                                            required
-                                            className="font-mono text-xs"
-                                        />
-                                        <InputError message={errors.model} />
-                                    </div>
-
-                                    <div className="space-y-1">
-                                        <Label htmlFor="temperature" className="text-xs font-semibold">
-                                            Temperature ({data.temperature})
-                                        </Label>
-                                        <Input
-                                            id="temperature"
-                                            type="number"
-                                            step="0.05"
-                                            min="0"
-                                            max="2"
-                                            value={data.temperature}
-                                            onChange={(e) => setData('temperature', parseFloat(e.target.value))}
-                                            className="text-xs"
-                                        />
-                                        <InputError message={errors.temperature} />
-                                    </div>
-
-                                    <div className="space-y-1">
-                                        <Label htmlFor="max_tokens" className="text-xs font-semibold">
-                                            Max Tokens
-                                        </Label>
-                                        <Input
-                                            id="max_tokens"
-                                            type="number"
-                                            step="128"
-                                            min="128"
-                                            max="8192"
-                                            value={data.max_tokens}
-                                            onChange={(e) => setData('max_tokens', parseInt(e.target.value))}
-                                            className="text-xs"
-                                        />
-                                        <InputError message={errors.max_tokens} />
-                                    </div>
-                                </div>
-
-                                <div className="space-y-1.5">
-                                    <Label htmlFor="system_prompt" className="text-xs font-semibold">
-                                        System Prompt (Karakter & Instruksi Bot)
-                                    </Label>
-                                    <Textarea
-                                        id="system_prompt"
-                                        value={data.system_prompt}
-                                        onChange={(e) => setData('system_prompt', e.target.value)}
-                                        rows={10}
-                                        required
-                                        className="font-mono text-xs leading-relaxed"
-                                        placeholder="Kamu adalah asisten customer support profesional..."
-                                    />
-                                    <InputError message={errors.system_prompt} />
-                                </div>
-                            </CardContent>
-                        </Card>
                     </div>
 
                     {/* KOLOM KANAN: LIVE PREVIEW DARI SISI ADMIN (5 COLS - STICKY TOP-6) */}
