@@ -17,6 +17,7 @@ use Illuminate\Support\Carbon;
  * @property int $application_id
  * @property string|null $ip_address
  * @property string|null $user_agent
+ * @property string|null $user_identifier
  * @property Carbon $last_activity_at
  * @property bool $is_taken_over
  * @property bool $is_waiting_admin
@@ -31,6 +32,7 @@ use Illuminate\Support\Carbon;
 #[Fillable([
     'uuid',
     'application_id',
+    'user_identifier',
     'ip_address',
     'user_agent',
     'last_activity_at',
