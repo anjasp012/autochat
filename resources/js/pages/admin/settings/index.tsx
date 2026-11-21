@@ -6,8 +6,11 @@ import {
     Bot,
     Check,
     CheckCircle2,
+    Copy,
+    Edit,
     Eye,
     Globe,
+    Hash,
     HelpCircle,
     Home as HomeIcon,
     Image as ImageIcon,
@@ -18,15 +21,25 @@ import {
     Plus,
     RotateCcw,
     Save,
+    Search,
     Sliders,
     Sparkles,
     Trash2,
     Upload,
     Users,
+    Zap,
 } from 'lucide-react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
@@ -34,6 +47,10 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import ChatMarkdown from '@/components/chat-markdown';
 import type { ApplicationDetail } from '@/types/application';
+import {
+    DEFAULT_CANNED_RESPONSES,
+    type CannedResponse,
+} from '@/types/canned-response';
 import {
     DEFAULT_CHAT_TEMPLATES,
     PRESET_AVATARS,
@@ -133,6 +150,9 @@ export default function AdminSettings({ application }: Props) {
             chat_templates: Array.isArray(currentSettings.chat_templates) && currentSettings.chat_templates.length > 0
                 ? currentSettings.chat_templates
                 : DEFAULT_CHAT_TEMPLATES,
+            canned_responses: Array.isArray(currentSettings.canned_responses) && currentSettings.canned_responses.length > 0
+                ? currentSettings.canned_responses
+                : DEFAULT_CANNED_RESPONSES,
             banner_type: currentSettings.banner_type || (currentSettings.banner_image_url ? 'image' : 'text'),
             banner_badge: currentSettings.banner_badge || 'OFFICIAL 24/7 SUPPORT',
             banner_title: currentSettings.banner_title || application.name,
@@ -215,6 +235,98 @@ export default function AdminSettings({ application }: Props) {
     const handleResetTemplates = () => {
         updateChatSetting('chat_templates', DEFAULT_CHAT_TEMPLATES);
     };
+
+    // State Filter & Form untuk Automate / Canned Responses
+    const [cannedTab, setCannedTab] = useState<'all' | 'shared' | 'private'>('all');
+    const [cannedSearch, setCannedSearch] = useState('');
+    const [editingCannedId, setEditingCannedId] = useState<string | null>(null);
+    const [cannedForm, setCannedForm] = useState<{
+        shortcut: string;
+        content: string;
+        scope: 'shared' | 'private';
+    }>({
+        shortcut: '',
+        content: '',
+        scope: 'shared',
+    });
+    const [isCannedDialogOpen, setIsCannedDialogOpen] = useState(false);
+
+    // Handlers Automate / Canned Responses
+    const handleOpenAddCanned = () => {
+        setEditingCannedId(null);
+        setCannedForm({
+            shortcut: '',
+            content: '',
+            scope: 'shared',
+        });
+        setIsCannedDialogOpen(true);
+    };
+
+    const handleOpenEditCanned = (cr: CannedResponse) => {
+        setEditingCannedId(cr.id);
+        setCannedForm({
+            shortcut: cr.shortcut,
+            content: cr.content,
+            scope: cr.scope || 'shared',
+        });
+        setIsCannedDialogOpen(true);
+    };
+
+    const handleSaveCanned = (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
+        if (!cannedForm.shortcut.trim() || !cannedForm.content.trim()) return;
+
+        const cleanShortcut = cannedForm.shortcut.trim().replace(/^#\s*/, '').toLowerCase();
+        const current = [...(data.chat_settings.canned_responses || [])];
+
+        if (editingCannedId) {
+            const updated = current.map((item: CannedResponse) => {
+                if (item.id === editingCannedId) {
+                    return {
+                        ...item,
+                        shortcut: cleanShortcut,
+                        content: cannedForm.content.trim(),
+                        scope: cannedForm.scope || 'shared',
+                        updated_at: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
+                    };
+                }
+                return item;
+            });
+            updateChatSetting('canned_responses', updated);
+        } else {
+            const newItem: CannedResponse = {
+                id: `cr-${Date.now()}`,
+                shortcut: cleanShortcut,
+                content: cannedForm.content.trim(),
+                scope: cannedForm.scope || 'shared',
+                created_by: 'Admin ' + application.name,
+                updated_at: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
+            };
+            updateChatSetting('canned_responses', [newItem, ...current]);
+        }
+
+        setIsCannedDialogOpen(false);
+    };
+
+    const handleRemoveCanned = (id: string) => {
+        const current = (data.chat_settings.canned_responses || []).filter((cr: CannedResponse) => cr.id !== id);
+        updateChatSetting('canned_responses', current);
+    };
+
+    const handleResetCanned = () => {
+        updateChatSetting('canned_responses', DEFAULT_CANNED_RESPONSES);
+    };
+
+    const filteredCannedResponses = (data.chat_settings.canned_responses || []).filter((cr: CannedResponse) => {
+        if (cannedTab !== 'all' && (cr.scope || 'shared') !== cannedTab) return false;
+        if (cannedSearch.trim()) {
+            const q = cannedSearch.toLowerCase().replace(/^#/, '');
+            const matchShortcut = (cr.shortcut || '').toLowerCase().includes(q);
+            const matchContent = (cr.content || '').toLowerCase().includes(q);
+            return matchShortcut || matchContent;
+        }
+        return true;
+    });
 
     // Handler Tambah, Hapus, dan Edit Tombol Cepat Dinamis
     const handleAddButton = () => {
@@ -646,30 +758,11 @@ export default function AdminSettings({ application }: Props) {
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div className="space-y-1.5">
-                                        <Label className="text-xs font-semibold">Nama CS Aktif (Tampil Saat Membalas Chat)</Label>
-                                        <Input
-                                            value={data.chat_settings.cs_agent_name || ''}
-                                            onChange={(e) => updateChatSetting('cs_agent_name', e.target.value)}
-                                            placeholder="Contoh: Rahma"
-                                            className="text-xs font-medium"
-                                        />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <Label className="text-xs font-semibold">Foto CS Utama (Saat Membalas Chat)</Label>
-                                        <select
-                                            value={data.chat_settings.cs_avatar_url || PRESET_AVATARS[0].url}
-                                            onChange={(e) => updateChatSetting('cs_avatar_url', e.target.value)}
-                                            className="w-full h-9 px-3 text-xs rounded-md border border-input bg-background text-foreground font-medium"
-                                        >
-                                            {PRESET_AVATARS.map((av) => (
-                                                <option key={av.id} value={av.url}>
-                                                    {av.name} ({av.id})
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
+                                <div className="rounded-xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40 p-3 text-xs text-amber-900 dark:text-amber-200 flex items-center gap-2">
+                                    <Sparkles className="size-4 text-amber-600 shrink-0" />
+                                    <span>
+                                        <strong>CS Aktif Otomatis:</strong> Nama & avatar CS yang membalas chat akan diacak secara otomatis dari 4 pilihan CS (Rahma, Nindy, Rosa, Intan) pada setiap percakapan baru dan dikunci selama percakapan berlangsung.
+                                    </span>
                                 </div>
 
                                 <div className="space-y-2 pt-1">
@@ -858,6 +951,181 @@ export default function AdminSettings({ application }: Props) {
                                             </div>
                                         </div>
                                     ))}
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* 6. AUTOMATE / CANNED RESPONSES (BALASAN CEPAT OTOMATIS) */}
+                        <Card className="border border-border shadow-xs">
+                            <CardHeader className="pb-3 border-b border-border/50 bg-muted/15">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                    <div>
+                                        <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                            <Zap className="size-4 text-amber-500" />
+                                            <span>Automate / Canned Responses (Balasan Cepat)</span>
+                                        </CardTitle>
+                                        <CardDescription className="text-xs mt-0.5">
+                                            Daftar respons cepat dengan hashtag shortcut (misal: <code>#marketing</code>, <code>#telegram</code>). 
+                                            Bot AI akan otomatis menjawab pertanyaan pengunjung terkait topik ini berdasarkan informasi resmi di sini.
+                                        </CardDescription>
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={handleResetCanned}
+                                            className="h-8 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                                        >
+                                            <RotateCcw className="size-3 mr-1" />
+                                            Reset Default
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            onClick={handleOpenAddCanned}
+                                            className="h-8 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer gap-1.5 shadow-xs"
+                                        >
+                                            <Plus className="size-3.5" />
+                                            <span>Tambah Balasan Cepat</span>
+                                        </Button>
+                                    </div>
+                                </div>
+                            </CardHeader>
+
+                            <CardContent className="pt-4 space-y-3.5">
+                                {/* Filter Bar: Tabs & Search Input (Sesuai Referensi Gambar User) */}
+                                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                                    <div className="flex rounded-lg bg-muted p-1 gap-1 border border-border/60 self-start">
+                                        <button
+                                            type="button"
+                                            onClick={() => setCannedTab('all')}
+                                            className={`px-3 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                                                cannedTab === 'all'
+                                                    ? 'bg-background text-foreground shadow-xs'
+                                                    : 'text-muted-foreground hover:text-foreground'
+                                            }`}
+                                        >
+                                            All
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setCannedTab('shared')}
+                                            className={`px-3 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 cursor-pointer ${
+                                                cannedTab === 'shared'
+                                                    ? 'bg-background text-foreground shadow-xs'
+                                                    : 'text-muted-foreground hover:text-foreground'
+                                            }`}
+                                        >
+                                            <Users className="size-3" />
+                                            <span>Shared</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setCannedTab('private')}
+                                            className={`px-3 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 cursor-pointer ${
+                                                cannedTab === 'private'
+                                                    ? 'bg-background text-foreground shadow-xs'
+                                                    : 'text-muted-foreground hover:text-foreground'
+                                            }`}
+                                        >
+                                            <span>Private</span>
+                                        </button>
+                                    </div>
+
+                                    <div className="relative w-full sm:w-64">
+                                        <Search className="size-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                                        <Input
+                                            value={cannedSearch}
+                                            onChange={(e) => setCannedSearch(e.target.value)}
+                                            placeholder="Cari #shortcut atau isi..."
+                                            className="h-8 pl-8 text-xs rounded-lg"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Banner Total Count (Sesuai Gambar User: 'X canned responses') */}
+                                <div className="rounded-lg bg-muted/60 px-3 py-1.5 text-xs font-semibold text-muted-foreground flex items-center justify-between border border-border/40">
+                                    <span>
+                                        {filteredCannedResponses.length} canned {filteredCannedResponses.length === 1 ? 'response' : 'responses'}
+                                    </span>
+                                    <span className="text-[11px] font-normal text-muted-foreground/80">
+                                        Ketik <code>#</code> di chat console untuk menyisipkan balasan cepat
+                                    </span>
+                                </div>
+
+                                {/* Daftar Kartu Canned Response */}
+                                <div className="space-y-3">
+                                    {filteredCannedResponses.length === 0 ? (
+                                        <div className="text-center py-8 text-muted-foreground text-xs border border-dashed rounded-xl">
+                                            Tidak ada balasan cepat yang cocok dengan pencarian atau filter.
+                                        </div>
+                                    ) : (
+                                        filteredCannedResponses.map((cr: CannedResponse) => (
+                                            <div
+                                                key={cr.id}
+                                                className="p-4 rounded-xl border border-border/80 bg-card hover:border-amber-400/60 dark:hover:border-amber-500/40 transition-all shadow-2xs space-y-3"
+                                            >
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/15 border border-amber-500/30 px-2.5 py-1 text-xs font-mono font-bold text-amber-700 dark:text-amber-300">
+                                                        #{cr.shortcut}
+                                                    </span>
+
+                                                    <div className="flex items-center gap-1">
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => {
+                                                                navigator.clipboard.writeText(cr.content);
+                                                                alert(`Teks #${cr.shortcut} berhasil disalin ke clipboard!`);
+                                                            }}
+                                                            className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                                                            title="Salin Teks"
+                                                        >
+                                                            <Copy className="size-3 mr-1" />
+                                                            <span>Salin</span>
+                                                        </Button>
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => handleOpenEditCanned(cr)}
+                                                            className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                                                            title="Edit Balasan Cepat"
+                                                        >
+                                                            <Edit className="size-3 mr-1" />
+                                                            <span>Edit</span>
+                                                        </Button>
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            onClick={() => handleRemoveCanned(cr.id)}
+                                                            className="size-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer"
+                                                            title="Hapus Balasan Cepat"
+                                                        >
+                                                            <Trash2 className="size-3.5" />
+                                                        </Button>
+                                                    </div>
+                                                </div>
+
+                                                <p className="text-xs text-foreground whitespace-pre-wrap leading-relaxed bg-muted/30 p-3 rounded-lg border border-border/40 font-normal">
+                                                    {cr.content}
+                                                </p>
+
+                                                <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1 border-t border-border/30">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="size-2 rounded-full bg-emerald-500" />
+                                                        <span>Modified by {cr.created_by || 'Admin'}, {cr.updated_at || 'Hari ini'}</span>
+                                                    </div>
+                                                    <span className="capitalize text-[10px] font-semibold bg-muted px-2 py-0.5 rounded">
+                                                        {cr.scope || 'shared'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
                                 </div>
                             </CardContent>
                         </Card>
@@ -1549,6 +1817,86 @@ export default function AdminSettings({ application }: Props) {
                     </div>
                 </form>
             </div>
+
+            {/* Modal Dialog Tambah / Edit Canned Response */}
+            <Dialog open={isCannedDialogOpen} onOpenChange={setIsCannedDialogOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="text-sm font-bold flex items-center gap-2">
+                            <Zap className="size-4 text-amber-500" />
+                            <span>{editingCannedId ? 'Edit Balasan Cepat' : 'Tambah Balasan Cepat Baru'}</span>
+                        </DialogTitle>
+                        <DialogDescription className="text-xs">
+                            Atur tag shortcut hashtag dan teks isi balasan resmi. Bot AI akan otomatis mempelajari teks ini.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <form onSubmit={handleSaveCanned} className="space-y-3.5 py-2">
+                        <div className="space-y-1.5">
+                            <Label className="text-xs font-semibold">Shortcut Hashtag (#)</Label>
+                            <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-xs font-bold text-muted-foreground">
+                                    #
+                                </span>
+                                <Input
+                                    value={cannedForm.shortcut}
+                                    onChange={(e) => setCannedForm((prev) => ({ ...prev, shortcut: e.target.value.replace(/^#\s*/, '') }))}
+                                    placeholder="marketing / telegram / rekening"
+                                    className="pl-7 text-xs font-mono"
+                                    autoFocus
+                                    required
+                                />
+                            </div>
+                            <p className="text-[10px] text-muted-foreground">
+                                Gunakan satu kata atau tanda strip (misal: <code>marketing</code>, <code>telegram</code>, <code>deposit-kendala</code>).
+                            </p>
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label className="text-xs font-semibold">Akses / Scope</Label>
+                            <select
+                                value={cannedForm.scope || 'shared'}
+                                onChange={(e) => setCannedForm((prev) => ({ ...prev, scope: e.target.value as 'shared' | 'private' }))}
+                                className="w-full h-8 px-2.5 text-xs rounded-md border border-input bg-background text-foreground font-medium"
+                            >
+                                <option value="shared">Shared (Dapat digunakan oleh semua CS & AI Bot)</option>
+                                <option value="private">Private (Khusus Admin saja)</option>
+                            </select>
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label className="text-xs font-semibold">Isi Pesan Balasan Cepat</Label>
+                            <Textarea
+                                rows={5}
+                                value={cannedForm.content}
+                                onChange={(e) => setCannedForm((prev) => ({ ...prev, content: e.target.value }))}
+                                placeholder="Tuliskan teks informasi atau template balasan resmi..."
+                                className="text-xs leading-relaxed"
+                                required
+                            />
+                        </div>
+
+                        <DialogFooter className="pt-2 gap-2 sm:gap-0">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setIsCannedDialogOpen(false)}
+                                className="text-xs cursor-pointer"
+                            >
+                                Batal
+                            </Button>
+                            <Button
+                                type="submit"
+                                size="sm"
+                                className="text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer"
+                            >
+                                {editingCannedId ? 'Perbarui' : 'Simpan Balasan'}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </>
     );
 }

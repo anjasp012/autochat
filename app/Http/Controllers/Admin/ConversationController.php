@@ -151,6 +151,7 @@ class ConversationController extends Controller
                 'app_id' => $currentApp->app_id,
                 'name' => $currentApp->name,
                 'is_active' => (bool) $currentApp->is_active,
+                'canned_responses' => $currentApp->chat_settings['canned_responses'] ?? [],
             ] : null,
         ]);
     }

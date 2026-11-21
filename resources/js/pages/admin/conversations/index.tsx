@@ -15,6 +15,7 @@ import {
     User,
     UserCheck,
     X,
+    Zap,
 } from 'lucide-react';
 import ChatMarkdown from '@/components/chat-markdown';
 import { Badge } from '@/components/ui/badge';
@@ -31,6 +32,10 @@ import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import { echo } from '@/echo';
+import {
+    DEFAULT_CANNED_RESPONSES,
+    type CannedResponse,
+} from '@/types/canned-response';
 
 interface Message {
     id: number;
@@ -96,6 +101,7 @@ interface Props {
         app_id: string;
         name: string;
         is_active: boolean;
+        canned_responses?: CannedResponse[];
     } | null;
 }
 
@@ -112,6 +118,12 @@ export default function ConversationsIndex({
         : Array.isArray(rawConversations?.data)
             ? rawConversations.data
             : [];
+
+    const [showCannedMenu, setShowCannedMenu] = useState(false);
+    const cannedList: CannedResponse[] =
+        Array.isArray(selectedApp?.canned_responses) && selectedApp.canned_responses.length > 0
+            ? selectedApp.canned_responses
+            : DEFAULT_CANNED_RESPONSES;
 
     const [search, setSearch] = useState(filters?.search || '');
     const [currentStatus, setCurrentStatus] = useState(filters?.status || 'all');
@@ -832,6 +844,49 @@ export default function ConversationsIndex({
                                             }`}
                                     />
                                 </div>
+
+                                {/* Tombol Balasan Cepat (Automate / Canned Response) */}
+                                <div className="relative shrink-0">
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => setShowCannedMenu(!showCannedMenu)}
+                                        className="h-9 px-2.5 rounded-xl text-xs gap-1 font-semibold text-amber-700 dark:text-amber-300 border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 cursor-pointer shadow-2xs"
+                                        title="Pilih Balasan Cepat (#canned response)"
+                                    >
+                                        <Zap className="size-3.5 text-amber-500" />
+                                        <span className="hidden sm:inline">Balasan Cepat</span>
+                                    </Button>
+
+                                    {showCannedMenu && (
+                                        <div className="absolute bottom-11 right-0 w-80 max-h-72 overflow-y-auto rounded-xl border border-border bg-popover p-2 shadow-xl z-50 space-y-1.5">
+                                            <div className="px-2 py-1 text-[11px] font-bold text-muted-foreground flex items-center justify-between border-b border-border/50">
+                                                <span>Pilih Balasan Cepat</span>
+                                                <span className="text-[10px] font-normal">{cannedList.length} template</span>
+                                            </div>
+                                            {cannedList.map((cr) => (
+                                                <button
+                                                    key={cr.id}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setData('message', cr.content);
+                                                        setShowCannedMenu(false);
+                                                    }}
+                                                    className="w-full text-left p-2 rounded-lg hover:bg-muted/70 transition-colors cursor-pointer space-y-1"
+                                                >
+                                                    <span className="text-xs font-mono font-bold text-amber-600 dark:text-amber-400 block">
+                                                        #{cr.shortcut}
+                                                    </span>
+                                                    <p className="text-[11px] text-muted-foreground line-clamp-2 leading-snug">
+                                                        {cr.content}
+                                                    </p>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
                                 <Button
                                     type="submit"
                                     size="sm"
