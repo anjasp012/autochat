@@ -16,6 +16,7 @@ import {
     Sparkles,
     User as UserIcon,
     UserCheck,
+    X,
 } from 'lucide-react';
 import ChatMarkdown from '@/components/chat-markdown';
 import { Button } from '@/components/ui/button';
@@ -151,6 +152,9 @@ export default function ChatShow({
     const [isSessionExpired, setIsSessionExpired] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+    // Modal konfirmasi tutup percakapan
+    const [showCloseConfirm, setShowCloseConfirm] = useState(false);
+
     // Hover state untuk tombol dan chip
     const [hoveredBtn, setHoveredBtn] = useState<number | null>(null);
     const [hoveredChip, setHoveredChip] = useState<number | null>(null);
@@ -223,6 +227,7 @@ export default function ChatShow({
     const handleStartNewChat = () => {
         try {
             localStorage.removeItem(storageKey);
+            localStorage.removeItem(formStorageKey);
         } catch (e) {
             console.error('Error removing session key', e);
         }
@@ -232,8 +237,16 @@ export default function ChatShow({
         setIsSessionExpired(false);
         setMessages([]);
         setHasSubmittedForm(false);
+        setUserId('');
+        setQuestionTopic('');
         setErrorMessage(null);
-        setActiveTab('pesan');
+    };
+
+    // Tutup percakapan dan kembali ke Beranda (mulai baru)
+    const handleConfirmClose = () => {
+        setShowCloseConfirm(false);
+        handleStartNewChat();
+        setActiveTab('beranda');
     };
 
     // Initialize or restore session
@@ -533,7 +546,7 @@ export default function ChatShow({
             {/* RIGHT COLUMN: INTERACTIVE LIVE CHAT WIDGET (PERSIS 50% LAYAR KANAN) */}
             {/* ============================================================== */}
             <div className="flex flex-col w-full md:w-1/2 h-full bg-white border-l border-amber-200/80 shadow-2xl overflow-hidden">
-                {/* TOP HEADER BAR (Warna Header & Warna Teks Kustom) */}
+                {/* TOP HEADER BAR */}
                 <div
                     className="px-5 py-4 shrink-0 shadow-sm border-b border-black/10 transition-colors"
                     style={{ backgroundColor: headerColor, color: headerTextColor }}
@@ -565,50 +578,65 @@ export default function ChatShow({
                             )}
                         </div>
 
-                        {/* Customer Service Agent Avatars (3 Foto Profil Terpilih dari Galeri - RAPI BERJEJER) */}
-                        <div className="flex items-center gap-2 shrink-0">
-                            <div className="flex items-center -space-x-2.5 overflow-visible pl-1 py-0.5">
-                                {activeAvatars.slice(0, 3).map((url, idx) => (
-                                    <div
-                                        key={idx}
-                                        className="relative size-8 rounded-full ring-2 ring-white/95 shadow-xs overflow-hidden shrink-0 bg-neutral-200 transition-transform hover:scale-110 hover:z-20 cursor-default"
-                                        style={{ zIndex: 10 - idx }}
-                                    >
-                                        <img
-                                            src={url}
-                                            alt={`CS Agent ${idx + 1}`}
-                                            className="size-full object-cover"
-                                            onError={(e) => {
-                                                (e.target as any).src =
-                                                    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80';
-                                            }}
-                                        />
-                                    </div>
-                                ))}
+                        {/* KANAN ATAS: DI TAB CHAT UBAH JADI TOMBOL CLOSE, DI TAB BERANDA TETAP 3 PP ORANG */}
+                        {activeTab === 'pesan' ? (
+                            <button
+                                type="button"
+                                onClick={() => setShowCloseConfirm(true)}
+                                className="flex size-8 items-center justify-center rounded-full bg-black/10 hover:bg-black/20 dark:bg-white/15 dark:hover:bg-white/25 transition-all cursor-pointer shrink-0 active:scale-95"
+                                style={{ color: headerTextColor }}
+                                title="Tutup Percakapan"
+                            >
+                                <X className="size-4.5 stroke-2.5" />
+                            </button>
+                        ) : (
+                            /* Customer Service Agent Avatars (3 Foto Profil Terpilih dari Galeri - TAMPIL DI BERANDA) */
+                            <div className="flex items-center gap-2 shrink-0">
+                                <div className="flex items-center -space-x-2.5 overflow-visible pl-1 py-0.5">
+                                    {activeAvatars.slice(0, 3).map((url, idx) => (
+                                        <div
+                                            key={idx}
+                                            className="relative size-8 rounded-full ring-2 ring-white/95 shadow-xs overflow-hidden shrink-0 bg-neutral-200 transition-transform hover:scale-110 hover:z-20 cursor-default"
+                                            style={{ zIndex: 10 - idx }}
+                                        >
+                                            <img
+                                                src={url}
+                                                alt={`CS Agent ${idx + 1}`}
+                                                className="size-full object-cover"
+                                                onError={(e) => {
+                                                    (e.target as any).src =
+                                                        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80';
+                                                }}
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                                {/* CS Online Status Indicator Dot */}
+                                <span className="relative flex size-2.5 shrink-0" title="CS Online 24/7">
+                                    <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                                    <span className="relative inline-flex size-2.5 rounded-full bg-emerald-500 ring-1.5 ring-white" />
+                                </span>
                             </div>
-                            {/* CS Online Status Indicator Dot */}
-                            <span className="relative flex size-2.5 shrink-0" title="CS Online 24/7">
-                                <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                                <span className="relative inline-flex size-2.5 rounded-full bg-emerald-500 ring-1.5 ring-white" />
-                            </span>
-                        </div>
+                        )}
                     </div>
 
-                    {/* Subtitle in Header */}
-                    <div className="mt-3">
-                        <p
-                            className="text-[11px] font-medium line-clamp-1 opacity-80"
-                            style={{ color: headerTextColor }}
-                        >
-                            {splashTitle}
-                        </p>
-                        <h2
-                            className="text-sm font-bold line-clamp-1"
-                            style={{ color: headerTextColor }}
-                        >
-                            {splashDescription}
-                        </h2>
-                    </div>
+                    {/* Subtitle in Header (HANYA TAMPIL DI TAB BERANDA / HILANG DI TAB CHAT) */}
+                    {activeTab !== 'pesan' && (
+                        <div className="mt-3">
+                            <p
+                                className="text-[11px] font-medium line-clamp-1 opacity-80"
+                                style={{ color: headerTextColor }}
+                            >
+                                {splashTitle}
+                            </p>
+                            <h2
+                                className="text-sm font-bold line-clamp-1"
+                                style={{ color: headerTextColor }}
+                            >
+                                {splashDescription}
+                            </h2>
+                        </div>
+                    )}
                 </div>
 
                 {/* Expired Session Alert with Button */}
@@ -1199,6 +1227,42 @@ export default function ChatShow({
                     </div>
                 )}
             </div>
+
+            {/* MODAL KONFIRMASI TUTUP PERCAKAPAN */}
+            {showCloseConfirm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-150">
+                    <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl space-y-4 border border-neutral-100">
+                        <div className="flex items-center gap-3">
+                            <div className="flex size-10 items-center justify-center rounded-full bg-amber-100 text-amber-700 shrink-0">
+                                <RotateCcw className="size-5" />
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-bold text-neutral-900">Tutup Percakapan?</h3>
+                                <p className="text-xs text-neutral-500 mt-0.5">
+                                    Sesi chat saat ini akan diakhiri. Anda harus memulai chat baru jika ingin bertanya lagi.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-end gap-2 pt-2 border-t border-neutral-100">
+                            <button
+                                type="button"
+                                onClick={() => setShowCloseConfirm(false)}
+                                className="px-3.5 py-2 text-xs font-semibold text-neutral-600 hover:bg-neutral-100 rounded-xl transition-colors cursor-pointer"
+                            >
+                                Batal
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleConfirmClose}
+                                className="px-4 py-2 text-xs font-bold text-white bg-destructive hover:bg-destructive/90 rounded-xl transition-colors cursor-pointer shadow-xs"
+                            >
+                                Ya, Tutup Chat
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
