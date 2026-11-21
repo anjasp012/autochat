@@ -7,21 +7,23 @@ import {
     Bot,
     Clock,
     FileText,
+    Flame,
+    Gamepad2,
+    Headphones,
     HelpCircle,
     Home as HomeIcon,
     MessageSquare,
     Plus,
-    RotateCcw,
     Send,
+    ShieldCheck,
     Sparkles,
+    Trophy,
     User as UserIcon,
     UserCheck,
-    X,
 } from 'lucide-react';
 import ChatMarkdown from '@/components/chat-markdown';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { echo } from '@/echo';
 
 interface ChatMessage {
@@ -37,6 +39,7 @@ interface ApplicationData {
     name: string;
     description?: string | null;
     welcome_message?: string | null;
+    chat_settings?: Record<string, any> | null;
     is_active: boolean;
 }
 
@@ -51,6 +54,72 @@ export default function ChatShow({
 }: Props) {
     const storageKey = `autochat_session_${application.app_id}`;
     const formStorageKey = `autochat_form_${application.app_id}`;
+
+    // Ambil kustomisasi chat yang diatur dari CMS
+    const cs = application.chat_settings || {};
+
+    const bgColor = cs.bg_color || '#FFF9E6';
+    const headerColor = cs.header_color || '#FFD200';
+    const iconType = cs.icon_type || 'sparkles';
+    const faviconUrl = cs.favicon_url || '';
+    const splashTitle = cs.splash_title || `Selamat Datang di Livechat ${application.name} 😊`;
+    const splashSubtitle = cs.splash_subtitle || `CHAT DENGAN TIM ${application.name.toUpperCase()}`;
+    const splashDescription = cs.splash_description || 'Ada yang Bisa Kami Bantu, Bosku?';
+    const headerTitle = cs.header_title || application.name;
+
+    const avatar1 =
+        cs.avatar_1 ||
+        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80';
+    const avatar2 =
+        cs.avatar_2 ||
+        'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&auto=format&fit=crop&q=80';
+    const avatar3 =
+        cs.avatar_3 ||
+        'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80';
+
+    const bannerBadge = cs.banner_badge || 'OFFICIAL 24/7 SUPPORT';
+    const bannerTitle = cs.banner_title || application.name;
+    const bannerDesc =
+        cs.banner_description ||
+        'Pusat Bantuan Resmi & Layanan Member 24 Jam Nonstop. Proses Deposit & WD Tercepat, Promo & Event Menarik!';
+    const bannerImageUrl = cs.banner_image_url || '';
+
+    // 4 Tombol Cepat (Grid 2x2 Beranda)
+    const homeQuickLinks = [
+        {
+            title: cs.btn_1_title || 'Prediksi Togel',
+            query: cs.btn_1_query || 'Halo CS, bisa berikan bocoran prediksi togel dan pasaran hari ini?',
+        },
+        {
+            title: cs.btn_2_title || 'Rtp Slot Gacor',
+            query: cs.btn_2_query || 'Halo CS, apa saja daftar RTP slot yang lagi gacor hari ini?',
+        },
+        {
+            title: cs.btn_3_title || 'Download APK',
+            query: cs.btn_3_query || 'Bagaimana cara download dan instal aplikasi APK versi terbaru?',
+        },
+        {
+            title: cs.btn_4_title || 'Promosi',
+            query:
+                cs.btn_4_query ||
+                'Bisa jelaskan promo dan bonus deposit / new member terbaru yang sedang aktif?',
+        },
+    ];
+
+    // Quick chips saat chat berlangsung
+    const chatChips = [
+        { label: cs.btn_3_title || 'Download APK', query: cs.btn_3_query || 'Saya mau link download APK resmi' },
+        { label: cs.btn_4_title || 'Promo Kami', query: cs.btn_4_query || 'Info promo dan bonus yang tersedia' },
+        { label: 'Whatsapp', query: 'Minta link WhatsApp CS resmi' },
+        { label: 'Telegram Official', query: 'Minta channel Telegram official' },
+    ];
+
+    // Default welcome promo message if none set in CMS
+    const defaultWelcomeMessage =
+        cs.welcome_opening ||
+        application.welcome_message ||
+        `Selamat Datang di ${application.name} Link ANTI NAWALA ${application.name}
+️ [https://kiamkiam.site/cvtogel1](https://kiamkiam.site/cvtogel1) ️ [https://kiamkiam.site/cvtogel2](https://kiamkiam.site/cvtogel2) WHATSAPP ️ [https://kiamkiam.site/wacvtogel](https://kiamkiam.site/wacvtogel) TELEGRAM ️ [https://kiamkiam.site/telecvtogel](https://kiamkiam.site/telecvtogel) ( WAJIB DI SIMPAN )`;
 
     // Navigation tab: 'beranda' (Home) | 'pesan' (Messages) | 'bantuan' (Help)
     const [activeTab, setActiveTab] = useState<'beranda' | 'pesan' | 'bantuan'>('beranda');
@@ -69,7 +138,7 @@ export default function ChatShow({
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const textareaRef = useRef<HTMLInputElement>(null);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -78,34 +147,6 @@ export default function ChatShow({
     useEffect(() => {
         scrollToBottom();
     }, [messages, isLoading, activeTab]);
-
-    // Quick links on the Home view (Grid 2x2 seperti Screenshot 1)
-    const homeQuickLinks = [
-        {
-            title: 'Prediksi Togel',
-            query: 'Halo CS, bisa berikan bocoran prediksi togel dan pasaran hari ini?',
-        },
-        {
-            title: 'Rtp Slot Gacor',
-            query: 'Halo CS, apa saja daftar RTP slot yang lagi gacor hari ini?',
-        },
-        {
-            title: 'Download APK',
-            query: 'Bagaimana cara download dan instal aplikasi APK versi terbaru?',
-        },
-        {
-            title: 'Promosi',
-            query: 'Bisa jelaskan promo dan bonus deposit / new member terbaru yang sedang aktif?',
-        },
-    ];
-
-    // Quick chips on the Active Chat view (Chips seperti Screenshot 3)
-    const chatChips = [
-        { label: 'Download APK', query: 'Saya mau link download APK resmi' },
-        { label: 'Promo Kami', query: 'Info promo dan bonus yang tersedia' },
-        { label: 'Whatsapp', query: 'Minta link WhatsApp CS resmi' },
-        { label: 'Telegram Official', query: 'Minta channel Telegram official' },
-    ];
 
     // Generate UUID v4
     const generateUuid = (): string => {
@@ -133,12 +174,6 @@ export default function ChatShow({
             console.error('Failed to save session to localStorage', e);
         }
     };
-
-    // Default welcome promo message if none set in CMS
-    const defaultWelcomeMessage =
-        application.welcome_message ||
-        `Selamat Datang di ${application.name} Link ANTI NAWALA ${application.name}
-️ [https://kiamkiam.site/cvtogel1](https://kiamkiam.site/cvtogel1) ️ [https://kiamkiam.site/cvtogel2](https://kiamkiam.site/cvtogel2) WHATSAPP ️ [https://kiamkiam.site/wacvtogel](https://kiamkiam.site/wacvtogel) TELEGRAM ️ [https://kiamkiam.site/telecvtogel](https://kiamkiam.site/telecvtogel) ( WAJIB DI SIMPAN )`;
 
     // Initialize or restore session
     useEffect(() => {
@@ -239,19 +274,6 @@ export default function ChatShow({
         }
     };
 
-    // Start a completely new chat session with a fresh UUID v4
-    const startNewChat = () => {
-        const newUuid = generateUuid();
-        setSessionUuid(newUuid);
-        setMessages([]);
-        setInput('');
-        setIsSessionExpired(false);
-        setErrorMessage(null);
-        setHasSubmittedForm(false);
-        persistSession(newUuid);
-        setActiveTab('pesan');
-    };
-
     const handleStartChatFromForm = (e: React.FormEvent) => {
         e.preventDefault();
         if (!userId.trim()) {
@@ -287,7 +309,7 @@ export default function ChatShow({
         if (!text || isLoading) return;
 
         if (isSessionExpired) {
-            setErrorMessage('Sesi telah kedaluwarsa. Silakan tekan tombol Mulai Chat Baru.');
+            setErrorMessage('Sesi telah kedaluwarsa. Silakan refresh halaman untuk sesi baru.');
             return;
         }
 
@@ -370,29 +392,55 @@ export default function ChatShow({
         }
     };
 
+    // Render icon helper
+    const renderIcon = (type: string, className = 'size-6') => {
+        switch (type) {
+            case 'bot':
+                return <Bot className={className} />;
+            case 'headphones':
+                return <Headphones className={className} />;
+            case 'gamepad':
+                return <Gamepad2 className={className} />;
+            case 'trophy':
+                return <Trophy className={className} />;
+            case 'flame':
+                return <Flame className={className} />;
+            case 'shield':
+                return <ShieldCheck className={className} />;
+            default:
+                return <Sparkles className={className} />;
+        }
+    };
+
     return (
-        <div className="flex h-screen w-full overflow-hidden bg-[#FFF9E6]">
+        <div
+            className="flex h-screen w-full overflow-hidden transition-colors"
+            style={{ backgroundColor: bgColor }}
+        >
             <Head title={`Livechat - ${application.name}`} />
 
             {/* ============================================================== */}
-            {/* LEFT SPLIT COLUMN: BRAND WELCOME SPLASH (50% Layar Kiri) */}
+            {/* LEFT SPLIT COLUMN: BRAND WELCOME SPLASH (PERSIS 50% LAYAR KIRI) */}
             {/* ============================================================== */}
-            <div className="hidden lg:flex lg:w-1/2 h-full flex-col justify-center items-center px-10 xl:px-20 relative select-none">
+            <div className="hidden md:flex md:w-1/2 h-full flex-col justify-center items-center px-8 lg:px-16 xl:px-24 relative select-none">
                 <div className="w-full max-w-lg space-y-6">
                     {/* Brand Icon Circle */}
-                    <div className="flex size-14 items-center justify-center rounded-full bg-[#FFD200] text-neutral-900 shadow-sm border border-amber-300">
-                        <Sparkles className="size-7 fill-neutral-900 text-neutral-900" />
+                    <div
+                        className="flex size-14 items-center justify-center rounded-full text-neutral-950 shadow-sm border border-black/10"
+                        style={{ backgroundColor: headerColor }}
+                    >
+                        {renderIcon(iconType, 'size-7')}
                     </div>
 
                     <div className="space-y-2">
-                        <span className="text-xs font-bold uppercase tracking-widest text-neutral-600">
-                            CHAT DENGAN TIM {application.name.toUpperCase()}
+                        <span className="text-xs font-bold uppercase tracking-widest text-neutral-600 block">
+                            {splashSubtitle}
                         </span>
-                        <h1 className="text-4xl xl:text-5xl font-extrabold tracking-tight text-neutral-900 leading-tight">
-                            Selamat Datang di Livechat {application.name} <span className="inline-block">😊</span>
+                        <h1 className="text-3xl lg:text-4xl xl:text-5xl font-extrabold tracking-tight text-neutral-900 leading-tight">
+                            {splashTitle}
                         </h1>
                         <p className="text-base text-neutral-700 font-medium pt-1">
-                            Ada yang Bisa Kami Bantu, Bosku?
+                            {splashDescription}
                         </p>
                     </div>
 
@@ -404,66 +452,72 @@ export default function ChatShow({
             </div>
 
             {/* ============================================================== */}
-            {/* RIGHT COLUMN: INTERACTIVE LIVE CHAT WIDGET (50% Layar Kanan) */}
+            {/* RIGHT COLUMN: INTERACTIVE LIVE CHAT WIDGET (PERSIS 50% LAYAR KANAN) */}
             {/* ============================================================== */}
-            <div className="flex flex-col w-full lg:w-1/2 h-full bg-white border-l border-amber-200/80 shadow-2xl overflow-hidden">
-                {/* TOP HEADER BAR (Kuning Emas Khas Screenshot) */}
-                <div className="bg-[#FFD200] text-neutral-900 px-5 py-4 shrink-0 shadow-sm border-b border-amber-300">
+            <div className="flex flex-col w-full md:w-1/2 h-full bg-white border-l border-amber-200/80 shadow-2xl overflow-hidden">
+                {/* TOP HEADER BAR (Warna Header Kustom & TANPA Tombol Reset) */}
+                <div
+                    className="px-5 py-4 shrink-0 shadow-sm border-b border-black/10 text-neutral-950"
+                    style={{ backgroundColor: headerColor }}
+                >
                     <div className="flex items-center justify-between">
                         {/* App Title & Brand */}
-                        <div className="flex items-center gap-2.5">
-                            <div className="flex size-7 items-center justify-center rounded-full bg-neutral-900 text-[#FFD200]">
-                                <Bot className="size-4" />
+                        <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-neutral-900 text-amber-300">
+                                {renderIcon(iconType, 'size-4')}
                             </div>
-                            <span className="font-extrabold text-sm tracking-wide text-neutral-950 uppercase">
-                                {application.name}
+                            <span className="font-extrabold text-sm tracking-wide uppercase truncate">
+                                {headerTitle}
                             </span>
                             {isTakenOver && (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-neutral-950/10 px-2 py-0.5 text-[10px] font-bold text-neutral-950 border border-neutral-950/15">
+                                <span className="inline-flex items-center gap-1 rounded-full bg-neutral-950/10 px-2 py-0.5 text-[10px] font-bold text-neutral-950 border border-neutral-950/15 shrink-0">
                                     <UserCheck className="size-3 text-amber-800" />
                                     Admin CS
                                 </span>
                             )}
                         </div>
 
-                        {/* Customer Service Agent Avatars (Overlapping circle photos) */}
+                        {/* Customer Service Agent Avatars (3 Foto Profil Overlapping) */}
                         <div className="flex items-center gap-2">
-                            <div className="flex -space-x-2 overflow-hidden">
+                            <div className="flex -space-x-2 overflow-hidden shrink-0">
                                 <img
                                     className="inline-block size-7 rounded-full ring-2 ring-white object-cover"
-                                    src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"
+                                    src={avatar1}
                                     alt="CS Agent 1"
+                                    onError={(e) => {
+                                        (e.target as any).src =
+                                            'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80';
+                                    }}
                                 />
                                 <img
                                     className="inline-block size-7 rounded-full ring-2 ring-white object-cover"
-                                    src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&auto=format&fit=crop&q=80"
+                                    src={avatar2}
                                     alt="CS Agent 2"
+                                    onError={(e) => {
+                                        (e.target as any).src =
+                                            'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&auto=format&fit=crop&q=80';
+                                    }}
                                 />
                                 <img
                                     className="inline-block size-7 rounded-full ring-2 ring-white object-cover"
-                                    src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80"
+                                    src={avatar3}
                                     alt="CS Agent 3"
+                                    onError={(e) => {
+                                        (e.target as any).src =
+                                            'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80';
+                                    }}
                                 />
                             </div>
-
-                            <button
-                                type="button"
-                                onClick={startNewChat}
-                                title="Reset & Chat Baru"
-                                className="size-7 rounded-full flex items-center justify-center hover:bg-black/10 transition-colors cursor-pointer text-neutral-800 ml-1"
-                            >
-                                <RotateCcw className="size-3.5" />
-                            </button>
                         </div>
                     </div>
 
                     {/* Subtitle in Header */}
                     <div className="mt-3">
-                        <p className="text-[11px] font-medium text-neutral-800">
-                            Selamat Datang di Livechat {application.name} 😊
+                        <p className="text-[11px] font-medium text-neutral-800 line-clamp-1">
+                            {splashTitle}
                         </p>
-                        <h2 className="text-sm font-bold text-neutral-950">
-                            Ada yang Bisa Kami Bantu, Bosku?
+                        <h2 className="text-sm font-bold text-neutral-950 line-clamp-1">
+                            {splashDescription}
                         </h2>
                     </div>
                 </div>
@@ -471,19 +525,9 @@ export default function ChatShow({
                 {/* Expired Session Alert */}
                 {isSessionExpired && (
                     <div className="border-b border-amber-500/20 bg-amber-500/10 px-4 py-2">
-                        <div className="flex items-center justify-between gap-2 text-xs text-amber-900">
-                            <div className="flex items-center gap-1.5">
-                                <Clock className="size-3.5 text-amber-600 shrink-0" />
-                                <span>Sesi kedaluwarsa setelah {sessionTimeoutMinutes} menit.</span>
-                            </div>
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={startNewChat}
-                                className="h-6 px-2 text-[11px] font-bold border-amber-600/40 hover:bg-amber-100 cursor-pointer"
-                            >
-                                Mulai Baru
-                            </Button>
+                        <div className="flex items-center gap-1.5 text-xs text-amber-900">
+                            <Clock className="size-3.5 text-amber-600 shrink-0" />
+                            <span>Sesi kedaluwarsa setelah {sessionTimeoutMinutes} menit tanpa aktivitas. Silakan refresh halaman untuk mulai kembali.</span>
                         </div>
                     </div>
                 )}
@@ -501,30 +545,39 @@ export default function ChatShow({
                 {/* ============================================================== */}
                 {/* BODY VIEW SWITCHER: BERANDA / PRE-CHAT FORM / ACTIVE CHAT */}
                 {/* ============================================================== */}
-                <div className="flex-1 overflow-y-auto bg-slate-50/70 p-4 space-y-4">
+                <div className="flex-1 overflow-y-auto bg-slate-50/70 p-4 sm:p-6 space-y-4">
                     {/* TAB 1: BERANDA (HOME VIEW - Screenshot 1) */}
                     {activeTab === 'beranda' && (
                         <div className="space-y-4">
-                            {/* Big Promo Banner Card (Golden / Gaming Dark Banner) */}
+                            {/* Big Promo Banner Card (Golden / Gaming Dark Banner atau Custom Image) */}
                             <div className="relative overflow-hidden rounded-2xl bg-linear-to-br from-neutral-950 via-neutral-900 to-amber-950 p-6 text-white shadow-md border border-amber-500/40 text-center">
-                                <div className="absolute -right-8 -top-8 size-28 rounded-full bg-amber-500/10 blur-xl pointer-events-none" />
-                                <div className="absolute -left-8 -bottom-8 size-28 rounded-full bg-yellow-500/10 blur-xl pointer-events-none" />
+                                {bannerImageUrl ? (
+                                    <img
+                                        src={bannerImageUrl}
+                                        alt={bannerTitle}
+                                        className="w-full h-32 object-cover rounded-xl"
+                                    />
+                                ) : (
+                                    <>
+                                        <div className="absolute -right-8 -top-8 size-28 rounded-full bg-amber-500/10 blur-xl pointer-events-none" />
+                                        <div className="absolute -left-8 -bottom-8 size-28 rounded-full bg-yellow-500/10 blur-xl pointer-events-none" />
 
-                                <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/20 px-3 py-1 text-[10px] font-bold text-amber-300 border border-amber-500/30 mb-2">
-                                    <Sparkles className="size-3" /> OFFICIAL 24/7 SUPPORT
-                                </div>
+                                        <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/20 px-3 py-1 text-[10px] font-bold text-amber-300 border border-amber-500/30 mb-2">
+                                            <Sparkles className="size-3" /> {bannerBadge}
+                                        </div>
 
-                                <h3 className="text-2xl font-black tracking-wider text-transparent bg-clip-text bg-linear-to-r from-amber-200 via-yellow-400 to-amber-200 drop-shadow-sm uppercase">
-                                    {application.name}
-                                </h3>
+                                        <h3 className="text-2xl font-black tracking-wider text-transparent bg-clip-text bg-linear-to-r from-amber-200 via-yellow-400 to-amber-200 drop-shadow-sm uppercase">
+                                            {bannerTitle}
+                                        </h3>
 
-                                <p className="text-xs text-neutral-300 mt-2 line-clamp-3 leading-relaxed">
-                                    {application.description ||
-                                        'Pusat Bantuan Resmi & Layanan Member 24 Jam Nonstop. Proses Deposit & WD Tercepat, Promo & Event Menarik!'}
-                                </p>
+                                        <p className="text-xs text-neutral-300 mt-2 line-clamp-3 leading-relaxed">
+                                            {bannerDesc}
+                                        </p>
+                                    </>
+                                )}
                             </div>
 
-                            {/* Quick Links Grid (2 Columns, seperti Screenshot 1) */}
+                            {/* 4 Tombol Cepat (Grid 2x2, seperti Screenshot 1) */}
                             <div className="grid grid-cols-2 gap-2.5">
                                 {homeQuickLinks.map((item, idx) => (
                                     <button
@@ -538,10 +591,10 @@ export default function ChatShow({
                                         }}
                                         className="flex items-center justify-between rounded-xl border border-neutral-200 bg-white p-3.5 text-left shadow-2xs hover:border-amber-400 hover:bg-amber-50/50 transition-all cursor-pointer group"
                                     >
-                                        <span className="text-xs font-semibold text-neutral-800 group-hover:text-amber-950">
+                                        <span className="text-xs font-semibold text-neutral-800 group-hover:text-amber-950 truncate">
                                             {item.title}
                                         </span>
-                                        <ArrowUpRight className="size-3.5 text-neutral-400 group-hover:text-amber-600 transition-colors" />
+                                        <ArrowUpRight className="size-3.5 text-neutral-400 group-hover:text-amber-600 transition-colors shrink-0" />
                                     </button>
                                 ))}
                             </div>
@@ -551,7 +604,8 @@ export default function ChatShow({
                                 <button
                                     type="button"
                                     onClick={() => setActiveTab('pesan')}
-                                    className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#FFD200] hover:bg-[#F5C700] text-neutral-950 font-bold py-3 text-xs sm:text-sm shadow-sm transition-transform active:scale-[0.99] cursor-pointer"
+                                    className="w-full flex items-center justify-center gap-2 rounded-xl text-neutral-950 font-bold py-3 text-xs sm:text-sm shadow-sm transition-transform active:scale-[0.99] cursor-pointer"
+                                    style={{ backgroundColor: headerColor }}
                                 >
                                     <span>Kirim Pesan</span>
                                     <ArrowRight className="size-4" />
@@ -619,7 +673,8 @@ export default function ChatShow({
 
                                         <button
                                             type="submit"
-                                            className="w-full mt-2 flex items-center justify-center rounded-xl bg-[#FFD200] hover:bg-[#F5C700] text-neutral-950 font-bold py-2.5 text-xs shadow-xs transition-transform active:scale-[0.99] cursor-pointer"
+                                            className="w-full mt-2 flex items-center justify-center rounded-xl text-neutral-950 font-bold py-2.5 text-xs shadow-xs transition-transform active:scale-[0.99] cursor-pointer"
+                                            style={{ backgroundColor: headerColor }}
                                         >
                                             Mulai chat
                                         </button>
@@ -640,7 +695,10 @@ export default function ChatShow({
                                     {/* Formulir Card (Persis Screenshot 3) */}
                                     {userId && (
                                         <div className="rounded-2xl border border-amber-300 bg-white shadow-2xs overflow-hidden">
-                                            <div className="bg-[#FFD200] px-3.5 py-1.5 flex items-center gap-1.5 text-neutral-950 text-xs font-bold">
+                                            <div
+                                                className="px-3.5 py-1.5 flex items-center gap-1.5 text-neutral-950 text-xs font-bold"
+                                                style={{ backgroundColor: headerColor }}
+                                            >
                                                 <FileText className="size-3.5" />
                                                 <span>Formulir</span>
                                             </div>
@@ -661,7 +719,10 @@ export default function ChatShow({
 
                                     {/* Initial Greeting Bot Message */}
                                     <div className="flex items-start gap-2.5">
-                                        <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#FFD200] text-neutral-950 font-bold text-xs shadow-2xs">
+                                        <div
+                                            className="flex size-7 shrink-0 items-center justify-center rounded-full text-neutral-950 font-bold text-xs shadow-2xs"
+                                            style={{ backgroundColor: headerColor }}
+                                        >
                                             <Bot className="size-4" />
                                         </div>
                                         <div className="space-y-2 max-w-[85%]">
@@ -722,8 +783,9 @@ export default function ChatShow({
                                                     className={`flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold shadow-2xs ${
                                                         isUser
                                                             ? 'bg-neutral-800 text-white'
-                                                            : 'bg-[#FFD200] text-neutral-950'
+                                                            : 'text-neutral-950'
                                                     }`}
+                                                    style={!isUser ? { backgroundColor: headerColor } : undefined}
                                                 >
                                                     {isUser ? (
                                                         <UserIcon className="size-3.5" />
@@ -764,7 +826,10 @@ export default function ChatShow({
                                     {/* Typing Indicator */}
                                     {isLoading && (
                                         <div className="flex items-start gap-2.5">
-                                            <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#FFD200] text-neutral-950 font-bold shadow-2xs">
+                                            <div
+                                                className="flex size-7 shrink-0 items-center justify-center rounded-full text-neutral-950 font-bold shadow-2xs"
+                                                style={{ backgroundColor: headerColor }}
+                                            >
                                                 <Bot className="size-3.5" />
                                             </div>
                                             <div className="rounded-2xl rounded-tl-xs border border-neutral-200 bg-white px-3 py-2 shadow-2xs">
@@ -837,7 +902,6 @@ export default function ChatShow({
 
                 {/* ============================================================== */}
                 {/* BOTTOM CHAT INPUT BAR (Persis Screenshot 3) */}
-                {/* Hanya muncul jika sedang di Tab Pesan dan sudah mulai chat */}
                 {/* ============================================================== */}
                 {activeTab === 'pesan' && (hasSubmittedForm || messages.length > 0) && (
                     <div className="border-t border-neutral-200 bg-white p-3 shrink-0">
@@ -858,7 +922,7 @@ export default function ChatShow({
                             </button>
 
                             <input
-                                ref={textareaRef as any}
+                                ref={textareaRef}
                                 value={input}
                                 disabled={isSessionExpired || isLoading || !application.is_active}
                                 onChange={(e) => setInput(e.target.value)}
@@ -870,7 +934,7 @@ export default function ChatShow({
                                 }}
                                 placeholder={
                                     isSessionExpired
-                                        ? 'Sesi berakhir. Mulai chat baru...'
+                                        ? 'Sesi berakhir. Refresh untuk chat baru...'
                                         : !application.is_active
                                           ? 'Chatbot sedang offline...'
                                           : 'Tulis pesan...'
@@ -881,7 +945,8 @@ export default function ChatShow({
                             <button
                                 type="submit"
                                 disabled={!input.trim() || isLoading || !application.is_active}
-                                className="flex size-9 items-center justify-center rounded-full bg-[#FFD200] hover:bg-[#F5C700] text-neutral-950 font-bold disabled:opacity-40 transition-colors cursor-pointer shrink-0 shadow-2xs"
+                                className="flex size-9 items-center justify-center rounded-full text-neutral-950 font-bold disabled:opacity-40 transition-colors cursor-pointer shrink-0 shadow-2xs"
+                                style={{ backgroundColor: headerColor }}
                             >
                                 <Send className="size-3.5" />
                             </button>
@@ -899,7 +964,7 @@ export default function ChatShow({
                             onClick={() => setActiveTab('beranda')}
                             className={`flex flex-col items-center gap-1 text-[11px] font-medium transition-colors cursor-pointer ${
                                 activeTab === 'beranda'
-                                    ? 'text-[#E0A800] font-bold'
+                                    ? 'text-amber-600 font-bold'
                                     : 'text-neutral-400 hover:text-neutral-600'
                             }`}
                         >
@@ -912,7 +977,7 @@ export default function ChatShow({
                             onClick={() => setActiveTab('pesan')}
                             className={`flex flex-col items-center gap-1 text-[11px] font-medium transition-colors cursor-pointer relative ${
                                 activeTab === 'pesan'
-                                    ? 'text-[#E0A800] font-bold'
+                                    ? 'text-amber-600 font-bold'
                                     : 'text-neutral-400 hover:text-neutral-600'
                             }`}
                         >
@@ -928,7 +993,7 @@ export default function ChatShow({
                             onClick={() => setActiveTab('bantuan')}
                             className={`flex flex-col items-center gap-1 text-[11px] font-medium transition-colors cursor-pointer ${
                                 activeTab === 'bantuan'
-                                    ? 'text-[#E0A800] font-bold'
+                                    ? 'text-amber-600 font-bold'
                                     : 'text-neutral-400 hover:text-neutral-600'
                             }`}
                         >

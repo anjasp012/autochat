@@ -8,6 +8,7 @@ import {
     Eye,
     Flame,
     Gamepad2,
+    Globe,
     Headphones,
     HelpCircle,
     Home as HomeIcon,
@@ -58,6 +59,7 @@ export default function AdminSettings({ application }: Props) {
             bg_color: currentSettings.bg_color || '#FFF9E6',
             header_color: currentSettings.header_color || '#FFD200',
             icon_type: currentSettings.icon_type || 'sparkles',
+            favicon_url: currentSettings.favicon_url || '',
             splash_title: currentSettings.splash_title || `Selamat Datang di Livechat ${application.name} 😊`,
             splash_subtitle: currentSettings.splash_subtitle || `CHAT DENGAN TIM ${application.name.toUpperCase()}`,
             splash_description: currentSettings.splash_description || 'Ada yang Bisa Kami Bantu, Bosku?',
@@ -194,15 +196,15 @@ export default function AdminSettings({ application }: Props) {
                         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
                             {/* KOLOM KIRI: FORM PENGATURAN KOMPONEN (7 COLS) */}
                             <div className="xl:col-span-7 space-y-6">
-                                {/* CARD 1: WARNA & IKON */}
+                                {/* CARD 1: WARNA, IKON & FAVICON */}
                                 <Card>
                                     <CardHeader className="pb-4">
                                         <CardTitle className="text-sm font-bold flex items-center gap-2">
                                             <Palette className="size-4 text-amber-500" />
-                                            <span>Warna & Ikon Brand</span>
+                                            <span>Warna, Ikon & Favicon Brand</span>
                                         </CardTitle>
                                         <CardDescription className="text-xs">
-                                            Sesuaikan tema warna latar belakang, warna bar header, dan ikon badge.
+                                            Sesuaikan tema warna latar belakang, warna bar header, favicon tab browser, dan ikon badge.
                                         </CardDescription>
                                     </CardHeader>
                                     <CardContent className="space-y-4">
@@ -272,6 +274,39 @@ export default function AdminSettings({ application }: Props) {
                                                     );
                                                 })}
                                             </div>
+                                        </div>
+
+                                        {/* Favicon URL */}
+                                        <div className="space-y-1.5 pt-2">
+                                            <Label className="text-xs font-semibold flex items-center gap-1.5">
+                                                <Globe className="size-3.5 text-amber-500" />
+                                                <span>URL Favicon Tab Browser (Opsional)</span>
+                                            </Label>
+                                            <div className="flex items-center gap-2">
+                                                {data.chat_settings.favicon_url ? (
+                                                    <img
+                                                        src={data.chat_settings.favicon_url}
+                                                        alt="Favicon"
+                                                        className="size-8 rounded-md border border-border object-contain p-1 shrink-0 bg-background"
+                                                        onError={(e) => {
+                                                            (e.target as any).style.display = 'none';
+                                                        }}
+                                                    />
+                                                ) : (
+                                                    <div className="size-8 rounded-md border border-dashed border-border flex items-center justify-center text-muted-foreground shrink-0 text-[10px]">
+                                                        Icon
+                                                    </div>
+                                                )}
+                                                <Input
+                                                    value={data.chat_settings.favicon_url}
+                                                    onChange={(e) => updateChatSetting('favicon_url', e.target.value)}
+                                                    placeholder="https://... URL icon favicon (.ico / .png / .svg)"
+                                                    className="text-xs font-mono h-9"
+                                                />
+                                            </div>
+                                            <span className="text-[10px] text-muted-foreground">
+                                                Favicon ini akan otomatis muncul pada tab browser pengunjung saat membuka livechat aplikasi ini.
+                                            </span>
                                         </div>
                                     </CardContent>
                                 </Card>
