@@ -395,9 +395,13 @@ export default function ChatShow({
         setHasSubmittedForm(true);
         setActiveTab('pesan');
         setErrorMessage(null);
+
+        // Kirim topik pertanyaan dari formulir ke AI agar jawaban pertama langsung menjawab topik formulir
+        const initialText = `Halo CS, User ID saya: ${formData.userId}. Saya ingin bantuan terkait: ${formData.questionTopic}.`;
+        handleSendMessage(initialText, true);
     };
 
-    const handleSendMessage = async (textToSend?: string) => {
+    const handleSendMessage = async (textToSend?: string, isFormInquiry: boolean = false) => {
         const text = (textToSend ?? input).trim();
 
         if (!text || isLoading) return;
@@ -417,14 +421,17 @@ export default function ChatShow({
             minute: '2-digit',
         });
 
-        const tempUserMsg: ChatMessage = {
-            id: `temp-${Date.now()}`,
-            role: 'user',
-            content: text,
-            created_at: nowFormatted,
-        };
+        // Jika bukan formulir awal, render bubble chat user secara normal
+        if (!isFormInquiry) {
+            const tempUserMsg: ChatMessage = {
+                id: `temp-${Date.now()}`,
+                role: 'user',
+                content: text,
+                created_at: nowFormatted,
+            };
+            setMessages((prev) => [...prev, tempUserMsg]);
+        }
 
-        setMessages((prev) => [...prev, tempUserMsg]);
         setInput('');
         setIsLoading(true);
         setErrorMessage(null);
@@ -507,15 +514,16 @@ export default function ChatShow({
                 style={{ color: textColor }}
             >
                 <div className="w-full max-w-lg space-y-6">
-                    {/* Brand Icon Circle */}
-                    <div
-                        className="flex size-14 items-center justify-center rounded-full shadow-sm border border-black/10 overflow-hidden"
-                        style={{ backgroundColor: headerColor, color: headerTextColor }}
-                    >
+                    {/* Brand Logo / Icon (Tanpa background & tanpa border rounded) */}
+                    <div className="flex items-center">
                         {customIconUrl ? (
-                            <img src={customIconUrl} alt="Logo" className="size-8 object-contain" />
+                            <img
+                                src={customIconUrl}
+                                alt="Logo"
+                                className="h-16 w-auto max-w-[240px] object-contain drop-shadow-xs"
+                            />
                         ) : (
-                            <Sparkles className="size-7" />
+                            <Sparkles className="size-10" style={{ color: headerColor }} />
                         )}
                     </div>
 
@@ -548,13 +556,17 @@ export default function ChatShow({
                     style={{ backgroundColor: headerColor, color: headerTextColor }}
                 >
                     <div className="flex items-center justify-between">
-                        {/* App Title & Brand */}
+                        {/* App Title & Brand (Tanpa background & tanpa border rounded) */}
                         <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-neutral-900 text-amber-300 overflow-hidden shadow-2xs">
+                            <div className="flex items-center shrink-0">
                                 {customIconUrl ? (
-                                    <img src={customIconUrl} alt="Logo" className="size-4 object-contain" />
+                                    <img
+                                        src={customIconUrl}
+                                        alt="Logo"
+                                        className="h-7 w-auto max-w-[120px] object-contain"
+                                    />
                                 ) : (
-                                    <Sparkles className="size-4" />
+                                    <Sparkles className="size-5 shrink-0" />
                                 )}
                             </div>
                             <span
@@ -677,7 +689,7 @@ export default function ChatShow({
                                     <img
                                         src={bannerImageUrl}
                                         alt={bannerTitle || 'Banner'}
-                                        className="w-full h-auto max-h-56 object-cover rounded-2xl block"
+                                        className="w-full h-auto rounded-2xl block"
                                     />
                                 </div>
                             ) : (
@@ -874,73 +886,6 @@ export default function ChatShow({
                                             </div>
                                         </div>
                                     )}
-
-                                    {/* Initial Greeting Bot Message */}
-                                    <div className="flex items-start gap-2.5">
-                                        <div
-                                            className="flex size-7 shrink-0 items-center justify-center rounded-full font-bold text-xs shadow-2xs"
-                                            style={{ backgroundColor: headerColor, color: headerTextColor }}
-                                        >
-                                            <Bot className="size-4" />
-                                        </div>
-                                        <div className="space-y-2 max-w-[85%]">
-                                            <span className="text-[10px] font-bold text-neutral-600 block">
-                                                {application.name}
-                                            </span>
-                                            <div className="rounded-2xl rounded-tl-xs bg-white border border-neutral-200/90 p-3 text-xs text-neutral-900 shadow-2xs leading-relaxed">
-                                                Hallo bosku 👋 Selamat datang di layanan kami, ada yang bisa dibantu,
-                                                Bosku?
-                                            </div>
-
-                                            {/* Quick Action Chips Dinamis */}
-                                            <div className="flex flex-wrap gap-1.5 pt-1">
-                                                {quickButtons.map((chip, idx) => {
-                                                    const isChipHovered = hoveredChip === idx;
-                                                    const chipHoverStyle = isChipHovered
-                                                        ? {
-                                                              borderColor: headerColor,
-                                                              backgroundColor: `${headerColor}1f`,
-                                                          }
-                                                        : {};
-
-                                                    if (chip.type === 'link') {
-                                                        return (
-                                                            <a
-                                                                key={idx}
-                                                                href={chip.value || '#'}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                onMouseEnter={() => setHoveredChip(idx)}
-                                                                onMouseLeave={() => setHoveredChip(null)}
-                                                                style={chipHoverStyle}
-                                                                className="inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-white px-2.5 py-1 text-[10px] font-medium text-neutral-700 transition-colors shadow-2xs cursor-pointer"
-                                                            >
-                                                                <span>{chip.title}</span>
-                                                                <ExternalLink
-                                                                    className="size-2.5 text-neutral-400"
-                                                                    style={isChipHovered ? { color: headerColor } : {}}
-                                                                />
-                                                            </a>
-                                                        );
-                                                    }
-                                                    return (
-                                                        <button
-                                                            key={idx}
-                                                            type="button"
-                                                            disabled={isLoading || isSessionExpired || !application.is_active}
-                                                            onMouseEnter={() => setHoveredChip(idx)}
-                                                            onMouseLeave={() => setHoveredChip(null)}
-                                                            style={chipHoverStyle}
-                                                            onClick={() => handleSendMessage(chip.value)}
-                                                            className="rounded-full border border-neutral-200 bg-white px-2.5 py-1 text-[10px] font-medium text-neutral-700 transition-colors shadow-2xs cursor-pointer"
-                                                        >
-                                                            {chip.title}
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                    </div>
 
                                     {/* Render Messages */}
                                     {messages.map((msg) => {

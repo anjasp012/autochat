@@ -186,7 +186,7 @@ export default function AdminSettings({ application }: Props) {
             welcome_opening:
                 currentSettings.welcome_opening ||
                 application.welcome_message ||
-                `Selamat Datang di ${application.name} Link ANTI NAWALA ${application.name}\n️ [https://kiamkiam.site/cvtogel1](https://kiamkiam.site/cvtogel1) ️ [https://kiamkiam.site/cvtogel2](https://kiamkiam.site/cvtogel2) WHATSAPP ️ [https://kiamkiam.site/wacvtogel](https://kiamkiam.site/wacvtogel) TELEGRAM ️ [https://kiamkiam.site/telecvtogel](https://kiamkiam.site/telecvtogel) ( WAJIB DI SIMPAN )`,
+                `Selamat Datang di ${application.name} Link ANTI NAWALA ${application.name}\n[https://kiamkiam.site/cvtogel1](https://kiamkiam.site/cvtogel1)\n[https://kiamkiam.site/cvtogel2](https://kiamkiam.site/cvtogel2)\nWHATSAPP [https://kiamkiam.site/wacvtogel](https://kiamkiam.site/wacvtogel)\nTELEGRAM [https://kiamkiam.site/telecvtogel](https://kiamkiam.site/telecvtogel)\n( WAJIB DI SIMPAN )`,
         },
     });
 
@@ -1061,21 +1061,15 @@ export default function AdminSettings({ application }: Props) {
                                     className="w-1/2 p-5 flex flex-col justify-center space-y-3 border-r border-black/10 transition-colors"
                                     style={{ color: data.chat_settings.text_color }}
                                 >
-                                    <div
-                                        className="flex size-10 items-center justify-center rounded-full shadow-xs"
-                                        style={{
-                                            backgroundColor: data.chat_settings.header_color,
-                                            color: data.chat_settings.header_text_color || '#0a0a0a',
-                                        }}
-                                    >
+                                    <div className="flex items-center">
                                         {data.chat_settings.custom_icon_url ? (
                                             <img
                                                 src={data.chat_settings.custom_icon_url}
-                                                alt="Icon"
-                                                className="size-5 object-contain"
+                                                alt="Logo"
+                                                className="h-9 w-auto max-w-[140px] object-contain drop-shadow-xs"
                                             />
                                         ) : (
-                                            <Sparkles className="size-5" />
+                                            <Sparkles className="size-6" style={{ color: data.chat_settings.header_color }} />
                                         )}
                                     </div>
 
@@ -1104,12 +1098,12 @@ export default function AdminSettings({ application }: Props) {
                                     >
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-1.5 min-w-0">
-                                                <div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-neutral-900 text-amber-300">
+                                                <div className="flex items-center shrink-0">
                                                     {data.chat_settings.custom_icon_url ? (
                                                         <img
                                                             src={data.chat_settings.custom_icon_url}
                                                             alt="Icon"
-                                                            className="size-3.5 object-contain"
+                                                            className="h-5 w-auto max-w-[80px] object-contain"
                                                         />
                                                     ) : (
                                                         <Sparkles className="size-3" />
