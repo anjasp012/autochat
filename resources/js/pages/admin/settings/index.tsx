@@ -175,6 +175,7 @@ export default function AdminSettings({ application }: Props) {
             splash_description: currentSettings.splash_description || 'Ada yang Bisa Kami Bantu, Bosku?',
             header_title: currentSettings.header_title || application.name,
             selected_avatars: initialAvatars,
+            banner_type: currentSettings.banner_type || (currentSettings.banner_image_url ? 'image' : 'text'),
             banner_badge: currentSettings.banner_badge || 'OFFICIAL 24/7 SUPPORT',
             banner_title: currentSettings.banner_title || application.name,
             banner_description:
@@ -273,6 +274,9 @@ export default function AdminSettings({ application }: Props) {
 
     const currentAvatars = data.chat_settings.selected_avatars || initialAvatars;
     const currentQuickButtons = data.chat_settings.quick_buttons || initialQuickButtons;
+    const isImageBannerActive =
+        (data.chat_settings.banner_type === 'image' || (!data.chat_settings.banner_type && Boolean(data.chat_settings.banner_image_url))) &&
+        Boolean(data.chat_settings.banner_image_url);
 
     return (
         <>
@@ -658,70 +662,91 @@ export default function AdminSettings({ application }: Props) {
                             </CardContent>
                         </Card>
 
-                        {/* 5. KARTU BANNER PROMOSI */}
+                        {/* 5. KARTU BANNER PROMOSI (PILIH GAMBAR ATAU TEKS) */}
                         <Card>
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-sm font-bold flex items-center gap-2">
                                     <ImageIcon className="size-4 text-amber-500" />
-                                    <span>Kartu Banner Promosi (Beranda)</span>
+                                    <span>Banner Promosi Beranda</span>
                                 </CardTitle>
                                 <CardDescription className="text-xs">
-                                    Banner utama pada halaman beranda sebelum pengunjung memulai percakapan.
+                                    Pilih jenis banner yang ingin ditampilkan pada halaman beranda pengunjung: Foto banner penuh atau teks promosi.
                                 </CardDescription>
                             </CardHeader>
-                            <CardContent className="space-y-3.5">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    <div className="space-y-1">
-                                        <Label className="text-xs font-semibold">Teks Badge Banner</Label>
-                                        <Input
-                                            value={data.chat_settings.banner_badge}
-                                            onChange={(e) => updateChatSetting('banner_badge', e.target.value)}
-                                            placeholder="Contoh: OFFICIAL 24/7 SUPPORT"
-                                            className="text-xs"
-                                        />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <Label className="text-xs font-semibold">Judul Brand Banner</Label>
-                                        <Input
-                                            value={data.chat_settings.banner_title}
-                                            onChange={(e) => updateChatSetting('banner_title', e.target.value)}
-                                            placeholder="Contoh: CVTOGEL"
-                                            className="text-xs font-bold"
-                                        />
-                                    </div>
+                            <CardContent className="space-y-4">
+                                {/* PILIHAN JENIS BANNER: GAMBAR ATAU TEKS */}
+                                <div className="flex rounded-lg bg-muted p-1 gap-1 border border-border/60">
+                                    <button
+                                        type="button"
+                                        onClick={() => updateChatSetting('banner_type', 'image')}
+                                        className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                                            data.chat_settings.banner_type === 'image' || (!data.chat_settings.banner_type && data.chat_settings.banner_image_url)
+                                                ? 'bg-background text-foreground shadow-xs'
+                                                : 'text-muted-foreground hover:text-foreground'
+                                        }`}
+                                    >
+                                        <ImageIcon className="size-3.5" />
+                                        <span>Gunakan Foto / Gambar Banner</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => updateChatSetting('banner_type', 'text')}
+                                        className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                                            data.chat_settings.banner_type === 'text' || (!data.chat_settings.banner_type && !data.chat_settings.banner_image_url)
+                                                ? 'bg-background text-foreground shadow-xs'
+                                                : 'text-muted-foreground hover:text-foreground'
+                                        }`}
+                                    >
+                                        <Layout className="size-3.5" />
+                                        <span>Gunakan Teks & Badge Promosi</span>
+                                    </button>
                                 </div>
 
-                                <div className="space-y-1">
-                                    <Label className="text-xs font-semibold">Deskripsi Banner Promosi</Label>
-                                    <Textarea
-                                        value={data.chat_settings.banner_description}
-                                        onChange={(e) => updateChatSetting('banner_description', e.target.value)}
-                                        rows={2}
-                                        placeholder="Pusat Bantuan Resmi & Layanan Member 24 Jam Nonstop..."
-                                        className="text-xs"
-                                    />
-                                </div>
-
-                                <div className="space-y-1.5 pt-1">
-                                    <Label className="text-xs font-semibold flex items-center justify-between">
-                                        <span>File Gambar Banner (Opsional)</span>
-                                        {data.chat_settings.banner_image_url && (
-                                            <button
-                                                type="button"
-                                                onClick={() => updateChatSetting('banner_image_url', '')}
-                                                className="text-[10px] text-destructive hover:underline cursor-pointer flex items-center gap-0.5"
+                                {/* KONTEN SESUAI PILIHAN BANNER */}
+                                {data.chat_settings.banner_type === 'image' || (!data.chat_settings.banner_type && data.chat_settings.banner_image_url) ? (
+                                    /* PILIHAN 1: HANYA FORM FOTO BANNER */
+                                    <div className="space-y-3 pt-1">
+                                        {data.chat_settings.banner_image_url ? (
+                                            <div className="relative rounded-2xl overflow-hidden border border-border shadow-xs group">
+                                                <img
+                                                    src={data.chat_settings.banner_image_url}
+                                                    alt="Banner Preview"
+                                                    className="w-full h-44 object-cover"
+                                                />
+                                                <div className="absolute top-3 right-3 flex items-center gap-2">
+                                                    <Button
+                                                        type="button"
+                                                        variant="secondary"
+                                                        size="sm"
+                                                        onClick={() => bannerInputRef.current?.click()}
+                                                        className="h-8 text-xs font-semibold gap-1.5 cursor-pointer bg-white/90 hover:bg-white text-neutral-900 shadow-sm"
+                                                    >
+                                                        <Upload className="size-3" /> Ganti Foto
+                                                    </Button>
+                                                    <Button
+                                                        type="button"
+                                                        variant="destructive"
+                                                        size="sm"
+                                                        onClick={() => updateChatSetting('banner_image_url', '')}
+                                                        className="h-8 text-xs gap-1 cursor-pointer shadow-sm"
+                                                    >
+                                                        <Trash2 className="size-3" /> Hapus
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div
+                                                onClick={() => bannerInputRef.current?.click()}
+                                                className="border-2 border-dashed border-border/80 hover:border-amber-400 rounded-2xl p-6 text-center cursor-pointer transition-colors bg-muted/20 hover:bg-amber-50/20 space-y-2"
                                             >
-                                                <Trash2 className="size-2.5" /> Hapus Gambar
-                                            </button>
-                                        )}
-                                    </Label>
-                                    <div className="flex items-center gap-3">
-                                        {data.chat_settings.banner_image_url && (
-                                            <img
-                                                src={data.chat_settings.banner_image_url}
-                                                alt="Banner"
-                                                className="h-10 w-24 object-cover rounded-lg border border-border"
-                                            />
+                                                <div className="flex size-10 items-center justify-center rounded-full bg-muted mx-auto text-muted-foreground">
+                                                    <Upload className="size-5" />
+                                                </div>
+                                                <p className="text-xs font-bold text-foreground">Upload Foto Banner Penuh</p>
+                                                <p className="text-[11px] text-muted-foreground">
+                                                    Klik untuk memilih gambar banner (JPG, PNG, WebP). Banner akan tampil penuh tanpa border/card.
+                                                </p>
+                                            </div>
                                         )}
                                         <input
                                             ref={bannerInputRef}
@@ -730,18 +755,43 @@ export default function AdminSettings({ application }: Props) {
                                             onChange={(e) => handleFileUpload(e, 'banner_image_url')}
                                             className="hidden"
                                         />
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => bannerInputRef.current?.click()}
-                                            className="h-8 text-xs font-semibold gap-1.5 cursor-pointer"
-                                        >
-                                            <Upload className="size-3" />
-                                            <span>Upload File Banner</span>
-                                        </Button>
                                     </div>
-                                </div>
+                                ) : (
+                                    /* PILIHAN 2: HANYA FORM TEKS & BADGE PROMOSI */
+                                    <div className="space-y-3.5 pt-1">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            <div className="space-y-1">
+                                                <Label className="text-xs font-semibold">Teks Badge Banner</Label>
+                                                <Input
+                                                    value={data.chat_settings.banner_badge}
+                                                    onChange={(e) => updateChatSetting('banner_badge', e.target.value)}
+                                                    placeholder="Contoh: OFFICIAL 24/7 SUPPORT"
+                                                    className="text-xs"
+                                                />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <Label className="text-xs font-semibold">Judul Brand Banner</Label>
+                                                <Input
+                                                    value={data.chat_settings.banner_title}
+                                                    onChange={(e) => updateChatSetting('banner_title', e.target.value)}
+                                                    placeholder="Contoh: CVTOGEL"
+                                                    className="text-xs font-bold"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-1">
+                                            <Label className="text-xs font-semibold">Deskripsi Banner Promosi</Label>
+                                            <Textarea
+                                                value={data.chat_settings.banner_description}
+                                                onChange={(e) => updateChatSetting('banner_description', e.target.value)}
+                                                rows={2}
+                                                placeholder="Pusat Bantuan Resmi & Layanan Member 24 Jam Nonstop..."
+                                                className="text-xs"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
 
@@ -1109,29 +1159,29 @@ export default function AdminSettings({ application }: Props) {
 
                                     {/* BODY BERANDA DENGAN BANNER & TOMBOL DINAMIS */}
                                     <div className="flex-1 overflow-y-auto p-2.5 space-y-2.5 bg-slate-50/70">
-                                        {/* BANNER PROMOSI */}
-                                        <div className="relative overflow-hidden rounded-xl bg-linear-to-br from-neutral-950 via-neutral-900 to-amber-950 p-2.5 text-white shadow-2xs border border-amber-500/30 text-center">
-                                            {data.chat_settings.banner_image_url ? (
+                                        {/* BANNER PROMOSI (FOTO PENUH ATAU KARTU TEKS) */}
+                                        {isImageBannerActive ? (
+                                            <div className="relative overflow-hidden rounded-xl shadow-2xs w-full">
                                                 <img
                                                     src={data.chat_settings.banner_image_url}
-                                                    alt="Banner"
-                                                    className="w-full h-16 object-cover rounded-lg mb-1"
+                                                    alt="Banner Preview"
+                                                    className="w-full h-24 object-cover rounded-xl block"
                                                 />
-                                            ) : (
-                                                <>
-                                                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[8px] font-bold text-amber-300 border border-amber-500/30">
-                                                        <Sparkles className="size-2" />
-                                                        {data.chat_settings.banner_badge}
-                                                    </span>
-                                                    <h5 className="text-xs font-black tracking-wide text-transparent bg-clip-text bg-linear-to-r from-amber-200 via-yellow-400 to-amber-200 mt-1 uppercase">
-                                                        {data.chat_settings.banner_title}
-                                                    </h5>
-                                                    <p className="text-[8px] text-neutral-300 line-clamp-2 mt-0.5">
-                                                        {data.chat_settings.banner_description}
-                                                    </p>
-                                                </>
-                                            )}
-                                        </div>
+                                            </div>
+                                        ) : (
+                                            <div className="relative overflow-hidden rounded-xl bg-linear-to-br from-neutral-950 via-neutral-900 to-amber-950 p-2.5 text-white shadow-2xs border border-amber-500/30 text-center">
+                                                <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[8px] font-bold text-amber-300 border border-amber-500/30">
+                                                    <Sparkles className="size-2" />
+                                                    {data.chat_settings.banner_badge}
+                                                </span>
+                                                <h5 className="text-xs font-black tracking-wide text-transparent bg-clip-text bg-linear-to-r from-amber-200 via-yellow-400 to-amber-200 mt-1 uppercase">
+                                                    {data.chat_settings.banner_title}
+                                                </h5>
+                                                <p className="text-[8px] text-neutral-300 line-clamp-2 mt-0.5">
+                                                    {data.chat_settings.banner_description}
+                                                </p>
+                                            </div>
+                                        )}
 
                                         {/* TOMBOL CEPAT DINAMIS (PREVIEW) */}
                                         {currentQuickButtons.length > 0 && (
