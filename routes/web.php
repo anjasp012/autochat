@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\ApplicationController;
 use App\Http\Controllers\Admin\ConversationController;
+use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\ChatController;
 use App\Models\Application;
 use Illuminate\Support\Facades\Route;
@@ -48,6 +49,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Knowledge Base
     Route::inertia('knowledge-base', 'admin/knowledge-base/index')->name('knowledge-base.index');
     Route::get('admin/knowledge-base', fn () => redirect('/knowledge-base'));
+
+    // Bot Escalation Notifications
+    Route::get('admin/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('admin/notifications/{escalation}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
+    Route::post('admin/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
 
     // Conversations & Human Takeover Management (WhatsApp-Style Live Console)
     Route::get('conversations', [ConversationController::class, 'index'])->name('conversations.index');

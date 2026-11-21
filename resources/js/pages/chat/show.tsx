@@ -191,6 +191,16 @@ export default function ChatShow({
         scrollToBottom();
     }, [messages, isLoading, activeTab]);
 
+    // Jaga fokus agar selalu aktif di input chat, tidak perlu klik manual berulang kali
+    useEffect(() => {
+        if (activeTab === 'pesan' && hasSubmittedForm && application.is_active) {
+            const timer = setTimeout(() => {
+                textareaRef.current?.focus();
+            }, 50);
+            return () => clearTimeout(timer);
+        }
+    }, [activeTab, hasSubmittedForm, isLoading, messages.length, application.is_active]);
+
     // Set browser title bersih tanpa '- AutoChat'
     useEffect(() => {
         const cleanTitle = headerTitle || application.name;
