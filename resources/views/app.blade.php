@@ -32,19 +32,20 @@
 
         @php
             $customFavicon = null;
-            if (request()->is('*chat*') && isset($page['props']['application']['chat_settings'])) {
+            if (isset($page['props']['application']['chat_settings'])) {
                 $cs = $page['props']['application']['chat_settings'];
                 $customFavicon = $cs['favicon_url'] ?? $cs['custom_icon_url'] ?? null;
             }
+            $faviconVersion = file_exists(public_path('favicon.png')) ? filemtime(public_path('favicon.png')) : time();
         @endphp
         @if($customFavicon)
             <link rel="icon" href="{{ $customFavicon }}">
             <link rel="shortcut icon" href="{{ $customFavicon }}">
             <link rel="apple-touch-icon" href="{{ $customFavicon }}">
         @else
-            <link rel="icon" href="/favicon.ico" sizes="any">
-            <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-            <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+            <link rel="icon" href="/favicon.png?v={{ $faviconVersion }}" type="image/png">
+            <link rel="shortcut icon" href="/favicon.ico?v={{ $faviconVersion }}">
+            <link rel="apple-touch-icon" href="/apple-touch-icon.png?v={{ $faviconVersion }}">
         @endif
 
         @fonts
@@ -52,7 +53,7 @@
         @viteReactRefresh
         @vite(['resources/css/app.css', 'resources/js/app.tsx', "resources/js/pages/{$page['component']}.tsx"])
         <x-inertia::head>
-            @if(request()->is('*chat*') && isset($page['props']['application']['name']))
+            @if(isset($page['props']['application']['name']))
                 <title>{{ $page['props']['application']['chat_settings']['header_title'] ?? $page['props']['application']['name'] }}</title>
             @else
                 <title>{{ config('app.name', 'Laravel') }}</title>

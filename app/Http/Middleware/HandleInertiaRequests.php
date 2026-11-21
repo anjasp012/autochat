@@ -45,15 +45,37 @@ class HandleInertiaRequests extends Middleware
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'allApplications' => fn () => $request->user()
                 ? Application::query()
-                    ->select(['id', 'app_id', 'name', 'is_active', 'model', 'chat_settings'])
-                    ->latest()
+                    ->select(['id', 'app_id', 'name', 'is_active', 'model'])
+                    ->selectRaw("JSON_UNQUOTE(JSON_EXTRACT(chat_settings, '$.custom_icon_url')) as custom_icon_url")
+                    ->orderBy('id', 'desc')
                     ->get()
+                    ->map(fn ($app) => [
+                        'id' => $app->id,
+                        'app_id' => $app->app_id,
+                        'name' => $app->name,
+                        'is_active' => (bool) $app->is_active,
+                        'model' => $app->model,
+                        'chat_settings' => [
+                            'custom_icon_url' => $app->custom_icon_url && $app->custom_icon_url !== 'null' ? $app->custom_icon_url : null,
+                        ],
+                    ])
                 : [],
             'applications' => fn () => $request->user()
                 ? Application::query()
-                    ->select(['id', 'app_id', 'name', 'is_active', 'model', 'chat_settings'])
-                    ->latest()
+                    ->select(['id', 'app_id', 'name', 'is_active', 'model'])
+                    ->selectRaw("JSON_UNQUOTE(JSON_EXTRACT(chat_settings, '$.custom_icon_url')) as custom_icon_url")
+                    ->orderBy('id', 'desc')
                     ->get()
+                    ->map(fn ($app) => [
+                        'id' => $app->id,
+                        'app_id' => $app->app_id,
+                        'name' => $app->name,
+                        'is_active' => (bool) $app->is_active,
+                        'model' => $app->model,
+                        'chat_settings' => [
+                            'custom_icon_url' => $app->custom_icon_url && $app->custom_icon_url !== 'null' ? $app->custom_icon_url : null,
+                        ],
+                    ])
                 : [],
             'currentAppId' => fn () => $request->session()->get('current_app_id')
                 ?? Application::query()->where('is_active', true)->value('app_id')
