@@ -52,3 +52,8 @@ export const echo = new Echo({
     forceTLS: forceTLS,
     enabledTransports: ['ws', 'wss'],
 });
+
+if (isBrowser) {
+    window.Echo = echo;
+    (Pusher as any).logToConsole = true;
+}
