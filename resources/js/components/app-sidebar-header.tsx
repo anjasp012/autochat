@@ -37,6 +37,7 @@ export function AppSidebarHeader({
 
             <div className="flex items-center gap-2">
                 <BotEscalationNotifications />
+                <WidgetScriptDialog appId={currentApp?.app_id} appName={currentApp?.name} />
                 <Button
                     variant="default"
                     size="sm"

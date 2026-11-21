@@ -31,7 +31,7 @@ class DatabaseSeeder extends Seeder
 
         // Default Chatbot Application
         Application::updateOrCreate(
-            ['app_id' => 'customer-support'],   
+            ['app_id' => 'customer-support'],
             [
                 'name' => 'Customer Support AI',
                 'description' => 'Asisten cerdas untuk melayani dan menjawab pertanyaan seputar layanan kami.',

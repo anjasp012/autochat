@@ -565,8 +565,15 @@ export default function ConversationsIndex({
                                     </div>
                                     <div className="flex flex-col min-w-0">
                                         <div className="flex items-center gap-2">
-                                            <span className="font-mono text-sm font-bold truncate text-foreground">
-                                                {activeConversation.uuid}
+                                            <span className="text-sm font-bold truncate text-foreground flex items-center gap-1.5">
+                                                {activeConversation.user_identifier ? (
+                                                    <>
+                                                        <span>{activeConversation.user_identifier}</span>
+                                                        <span className="text-xs font-mono font-normal text-muted-foreground">({activeConversation.uuid.substring(0, 8)}...)</span>
+                                                    </>
+                                                ) : (
+                                                    <span className="font-mono">{activeConversation.uuid}</span>
+                                                )}
                                             </span>
                                             {activeConversation.is_archived ? (
                                                 <Badge variant="outline" className="text-[10px] gap-1 px-1.5 py-0 h-4.5">

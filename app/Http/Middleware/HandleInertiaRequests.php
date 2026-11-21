@@ -3,6 +3,8 @@
 namespace App\Http\Middleware;
 
 use App\Models\Application;
+use App\Models\BotEscalation;
+use App\Models\Conversation;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -81,8 +83,8 @@ class HandleInertiaRequests extends Middleware
                 ?? Application::query()->where('is_active', true)->value('app_id')
                 ?? Application::query()->value('app_id'),
             'escalations' => fn () => $request->user() ? [
-                'unread_count' => \App\Models\BotEscalation::where('is_read', false)->count(),
-                'recent' => \App\Models\BotEscalation::with('application:id,name,app_id')
+                'unread_count' => BotEscalation::where('is_read', false)->count(),
+                'recent' => BotEscalation::with('application:id,name,app_id')
                     ->latest()
                     ->take(10)
                     ->get()
@@ -90,7 +92,7 @@ class HandleInertiaRequests extends Middleware
                         'id' => $e->id,
                         'application_name' => $e->application?->name ?? 'Chatbot',
                         'application_app_id' => $e->application?->app_id ?? '',
-                        'conversation_uuid' => $e->conversation_id ? \App\Models\Conversation::where('id', $e->conversation_id)->value('uuid') : '',
+                        'conversation_uuid' => $e->conversation_id ? Conversation::where('id', $e->conversation_id)->value('uuid') : '',
                         'user_identifier' => $e->user_identifier ?? 'Pengunjung',
                         'type' => $e->type,
                         'title' => $e->title,

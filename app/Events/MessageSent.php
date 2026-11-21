@@ -8,6 +8,7 @@ use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class MessageSent implements ShouldBroadcastNow
 {
@@ -29,7 +30,7 @@ class MessageSent implements ShouldBroadcastNow
         try {
             static::dispatch($message);
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('Broadcasting MessageSent skipped: '.$e->getMessage());
+            Log::warning('Broadcasting MessageSent skipped: '.$e->getMessage());
         }
     }
 

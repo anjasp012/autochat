@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Events\MessageSent;
 use App\Http\Controllers\Controller;
 use App\Models\Application;
+use App\Models\BotEscalation;
 use App\Models\Conversation;
 use App\Models\Message;
 use Illuminate\Http\RedirectResponse;
@@ -133,7 +134,7 @@ class ConversationController extends Controller
             'last_activity_at' => now(),
         ]);
 
-        \App\Models\BotEscalation::where('conversation_id', $conversation->id)->update([
+        BotEscalation::where('conversation_id', $conversation->id)->update([
             'is_read' => true,
             'is_resolved' => true,
         ]);
@@ -193,7 +194,7 @@ class ConversationController extends Controller
             'last_activity_at' => now(),
         ]);
 
-        \App\Models\BotEscalation::where('conversation_id', $conversation->id)->update([
+        BotEscalation::where('conversation_id', $conversation->id)->update([
             'is_read' => true,
             'is_resolved' => true,
         ]);
@@ -235,4 +236,3 @@ class ConversationController extends Controller
             ->with('success', 'Riwayat percakapan berhasil dihapus.');
     }
 }
-
