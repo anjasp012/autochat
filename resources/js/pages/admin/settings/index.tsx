@@ -971,7 +971,7 @@ export default function AdminSettings({ application }: Props) {
                                             <span>Automate</span>
                                         </CardTitle>
                                         <CardDescription className="text-xs mt-0.5">
-                                            Daftar respons cepat otomatis dengan hashtag shortcut (misal: <code>#marketing</code>, <code>#telegram</code>). 
+                                            Daftar respons cepat otomatis dengan hashtag shortcut (misal: <code>#marketing</code>, <code>#telegram</code>).
                                             Bot AI akan otomatis menjawab pertanyaan pengunjung terkait topik ini berdasarkan informasi resmi di sini.
                                         </CardDescription>
                                     </div>
@@ -1006,22 +1006,20 @@ export default function AdminSettings({ application }: Props) {
                                         <button
                                             type="button"
                                             onClick={() => setCannedTab('all')}
-                                            className={`px-3 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
-                                                cannedTab === 'all'
-                                                    ? 'bg-background text-foreground shadow-xs'
-                                                    : 'text-muted-foreground hover:text-foreground'
-                                            }`}
+                                            className={`px-3 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${cannedTab === 'all'
+                                                ? 'bg-background text-foreground shadow-xs'
+                                                : 'text-muted-foreground hover:text-foreground'
+                                                }`}
                                         >
                                             All
                                         </button>
                                         <button
                                             type="button"
                                             onClick={() => setCannedTab('shared')}
-                                            className={`px-3 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 cursor-pointer ${
-                                                cannedTab === 'shared'
-                                                    ? 'bg-background text-foreground shadow-xs'
-                                                    : 'text-muted-foreground hover:text-foreground'
-                                            }`}
+                                            className={`px-3 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 cursor-pointer ${cannedTab === 'shared'
+                                                ? 'bg-background text-foreground shadow-xs'
+                                                : 'text-muted-foreground hover:text-foreground'
+                                                }`}
                                         >
                                             <Users className="size-3" />
                                             <span>Shared</span>
@@ -1029,11 +1027,10 @@ export default function AdminSettings({ application }: Props) {
                                         <button
                                             type="button"
                                             onClick={() => setCannedTab('private')}
-                                            className={`px-3 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 cursor-pointer ${
-                                                cannedTab === 'private'
-                                                    ? 'bg-background text-foreground shadow-xs'
-                                                    : 'text-muted-foreground hover:text-foreground'
-                                            }`}
+                                            className={`px-3 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 cursor-pointer ${cannedTab === 'private'
+                                                ? 'bg-background text-foreground shadow-xs'
+                                                : 'text-muted-foreground hover:text-foreground'
+                                                }`}
                                         >
                                             <span>Private</span>
                                         </button>
