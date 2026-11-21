@@ -493,10 +493,12 @@ export default function ChatShow({
             minute: '2-digit',
         });
 
+        const tempUserMsgId = `temp-${Date.now()}`;
+
         // Jika bukan formulir awal, render bubble chat user secara normal
         if (!isFormInquiry) {
             const tempUserMsg: ChatMessage = {
-                id: `temp-${Date.now()}`,
+                id: tempUserMsgId,
                 role: 'user',
                 content: text,
                 created_at: nowFormatted,
@@ -551,16 +553,34 @@ export default function ChatShow({
                 throw new Error(data.error || 'Gagal mengirim pesan.');
             }
 
+            // Update ID temp user message jika ada response user_message
+            if (data.user_message) {
+                setMessages((prev) =>
+                    prev.map((m) =>
+                        m.id === tempUserMsgId
+                            ? { ...m, id: String(data.user_message.id), created_at: data.user_message.created_at || m.created_at }
+                            : m
+                    )
+                );
+            }
+
+            // Append assistant_message HANYA jika belum masuk dari WebSocket Reverb
             if (data.assistant_message) {
-                setMessages((prev) => [
-                    ...prev,
-                    {
-                        id: String(data.assistant_message.id),
-                        role: data.assistant_message.role,
-                        content: data.assistant_message.content,
-                        created_at: data.assistant_message.created_at,
-                    },
-                ]);
+                setMessages((prev) => {
+                    const astId = String(data.assistant_message.id);
+                    if (prev.some((m) => String(m.id) === astId)) {
+                        return prev;
+                    }
+                    return [
+                        ...prev,
+                        {
+                            id: astId,
+                            role: data.assistant_message.role,
+                            content: data.assistant_message.content,
+                            created_at: data.assistant_message.created_at,
+                        },
+                    ];
+                });
             }
         } catch (err: any) {
             console.error('Send message error:', err);
