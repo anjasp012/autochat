@@ -370,6 +370,7 @@ export default function ChatShow({
 
         const channel = echo.channel(`conversation.${sessionUuid}`);
         const handleIncoming = (event: any) => {
+            console.log('[Echo Visitor Chat] Received incoming event:', event);
             if (event.is_taken_over !== undefined) {
                 setIsTakenOver(Boolean(event.is_taken_over));
                 if (event.is_taken_over) {

@@ -193,6 +193,7 @@ export default function ConversationsIndex({
 
         const roomChannel = echo.channel(`conversation.${activeConversation.uuid}`);
         const handleRoomUpdate = (event: any) => {
+            console.log('[Echo Admin] Received conversation room update:', event);
             // Instant local state append
             setLocalMessages((prev) => {
                 const idStr = String(event.id);
