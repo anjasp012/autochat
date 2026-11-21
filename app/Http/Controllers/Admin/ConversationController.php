@@ -75,6 +75,7 @@ class ConversationController extends Controller
             ->when($search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('uuid', 'like', "%{$search}%")
+                        ->orWhere('user_identifier', 'like', "%{$search}%")
                         ->orWhere('ip_address', 'like', "%{$search}%")
                         ->orWhereHas('messages', fn ($mq) => $mq->where('content', 'like', "%{$search}%"));
                 });

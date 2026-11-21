@@ -45,6 +45,7 @@ interface ConversationItem {
     id: number;
     uuid: string;
     application_id: number;
+    user_identifier?: string | null;
     ip_address: string | null;
     last_activity_at: string;
     is_taken_over: boolean;
@@ -478,11 +479,24 @@ export default function ConversationsIndex({
                                         {/* Content Preview */}
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center justify-between gap-1 mb-0.5">
-                                                <span className="font-mono text-xs font-bold truncate text-foreground">
-                                                    {conv.uuid.substring(0, 16)}...
+                                                <span className="text-xs font-bold truncate text-foreground">
+                                                    {conv.user_identifier ? (
+                                                        <span>{conv.user_identifier}</span>
+                                                    ) : (
+                                                        <span className="font-mono text-[11px] opacity-80">{conv.uuid.substring(0, 14)}...</span>
+                                                    )}
                                                 </span>
                                                 <span className="text-[10px] text-muted-foreground shrink-0 font-mono">
-                                                    {conv.last_activity_at}
+                                                    {(() => {
+                                                        if (!conv.last_activity_at) return '';
+                                                        try {
+                                                            const d = new Date(conv.last_activity_at);
+                                                            if (isNaN(d.getTime())) return conv.last_activity_at;
+                                                            return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                                                        } catch {
+                                                            return conv.last_activity_at;
+                                                        }
+                                                    })()}
                                                 </span>
                                             </div>
 
@@ -495,6 +509,11 @@ export default function ConversationsIndex({
                                                     <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.2 text-[10px] font-semibold text-muted-foreground">
                                                         <Archive className="size-2.5" />
                                                         Arsip
+                                                    </span>
+                                                ) : conv.is_waiting_admin ? (
+                                                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/20 border border-amber-500/30 px-2 py-0.2 text-[10px] font-bold text-amber-700 dark:text-amber-300 animate-pulse">
+                                                        <Clock className="size-2.5" />
+                                                        Menunggu CS
                                                     </span>
                                                 ) : conv.is_taken_over ? (
                                                     <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.2 text-[10px] font-semibold text-amber-700 dark:text-amber-300">
@@ -781,7 +800,6 @@ export default function ConversationsIndex({
                                         )}
                                     </Button>
                                 </form>
-                            </div>
                             </div>
                         </>
                     ) : (
