@@ -711,7 +711,7 @@ export default function AdminSettings({ application }: Props) {
                                                 <img
                                                     src={data.chat_settings.banner_image_url}
                                                     alt="Banner Preview"
-                                                    className="w-full h-44 object-cover"
+                                                    className="w-full h-auto rounded-2xl block"
                                                 />
                                                 <div className="absolute top-3 right-3 flex items-center gap-2">
                                                     <Button
