@@ -240,7 +240,6 @@ export default function AdminSettings({ application }: Props) {
     );
 
     // State Filter & Form untuk Automate / Canned Responses
-    const [cannedTab, setCannedTab] = useState<'all' | 'shared' | 'private'>('all');
     const [cannedSearch, setCannedSearch] = useState('');
     const [editingCannedId, setEditingCannedId] = useState<string | null>(null);
     const [cannedForm, setCannedForm] = useState<{
@@ -316,12 +315,7 @@ export default function AdminSettings({ application }: Props) {
         updateChatSetting('canned_responses', current);
     };
 
-    const handleResetCanned = () => {
-        updateChatSetting('canned_responses', DEFAULT_CANNED_RESPONSES);
-    };
-
     const filteredCannedResponses = (data.chat_settings.canned_responses || []).filter((cr: CannedResponse) => {
-        if (cannedTab !== 'all' && (cr.scope || 'shared') !== cannedTab) return false;
         if (cannedSearch.trim()) {
             const q = cannedSearch.toLowerCase().replace(/^#/, '');
             const matchShortcut = (cr.shortcut || '').toLowerCase().includes(q);
@@ -968,21 +962,11 @@ export default function AdminSettings({ application }: Props) {
                                             <span>Automate</span>
                                         </CardTitle>
                                         <CardDescription className="text-xs mt-0.5">
-                                            Daftar respons cepat otomatis dengan hashtag shortcut (misal: <code>#marketing</code>, <code>#telegram</code>).
-                                            Bot AI akan otomatis menjawab pertanyaan pengunjung terkait topik ini berdasarkan informasi resmi di sini.
+                                            Daftar respons cepat otomatis dengan hashtag shortcut (misal: <code>#marketing</code>, <code>#telegram</code>, <code>#akunlimit</code>).
+                                            Bot AI akan otomatis mengenali kata kunci dari tag ini dan menjawab pertanyaan pengunjung.
                                         </CardDescription>
                                     </div>
                                     <div className="flex items-center gap-2 shrink-0">
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={handleResetCanned}
-                                            className="h-8 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
-                                        >
-                                            <RotateCcw className="size-3 mr-1" />
-                                            Reset Default
-                                        </Button>
                                         <Button
                                             type="button"
                                             size="sm"
@@ -997,61 +981,20 @@ export default function AdminSettings({ application }: Props) {
                             </CardHeader>
 
                             <CardContent className="pt-4 space-y-3.5">
-                                {/* Filter Bar: Tabs & Search Input (Sesuai Referensi Gambar User) */}
-                                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                                    <div className="flex rounded-lg bg-muted p-1 gap-1 border border-border/60 self-start">
-                                        <button
-                                            type="button"
-                                            onClick={() => setCannedTab('all')}
-                                            className={`px-3 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${cannedTab === 'all'
-                                                ? 'bg-background text-foreground shadow-xs'
-                                                : 'text-muted-foreground hover:text-foreground'
-                                                }`}
-                                        >
-                                            All
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setCannedTab('shared')}
-                                            className={`px-3 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 cursor-pointer ${cannedTab === 'shared'
-                                                ? 'bg-background text-foreground shadow-xs'
-                                                : 'text-muted-foreground hover:text-foreground'
-                                                }`}
-                                        >
-                                            <Users className="size-3" />
-                                            <span>Shared</span>
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setCannedTab('private')}
-                                            className={`px-3 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 cursor-pointer ${cannedTab === 'private'
-                                                ? 'bg-background text-foreground shadow-xs'
-                                                : 'text-muted-foreground hover:text-foreground'
-                                                }`}
-                                        >
-                                            <span>Private</span>
-                                        </button>
-                                    </div>
-
-                                    <div className="relative w-full sm:w-64">
+                                {/* Search Bar & Count */}
+                                <div className="flex items-center justify-between gap-3">
+                                    <div className="relative flex-1 max-w-sm">
                                         <Search className="size-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                                         <Input
                                             value={cannedSearch}
                                             onChange={(e) => setCannedSearch(e.target.value)}
-                                            placeholder="Cari #shortcut atau isi..."
+                                            placeholder="Cari tag #shortcut atau isi jawaban..."
                                             className="h-8 pl-8 text-xs rounded-lg"
                                         />
                                     </div>
-                                </div>
-
-                                {/* Banner Total Count (Sesuai Gambar User: 'X canned responses') */}
-                                <div className="rounded-lg bg-muted/60 px-3 py-1.5 text-xs font-semibold text-muted-foreground flex items-center justify-between border border-border/40">
-                                    <span>
+                                    <div className="text-xs font-semibold text-muted-foreground bg-muted/60 px-3 py-1.5 rounded-lg border border-border/40 shrink-0">
                                         {filteredCannedResponses.length} automate
-                                    </span>
-                                    <span className="text-[11px] font-normal text-muted-foreground/80">
-                                        Ketik <code>#</code> di chat console untuk menyisipkan automate
-                                    </span>
+                                    </div>
                                 </div>
 
                                 {/* Daftar Kartu Canned Response */}
@@ -1119,9 +1062,6 @@ export default function AdminSettings({ application }: Props) {
                                                         <span className="size-2 rounded-full bg-emerald-500" />
                                                         <span>Modified by {cr.created_by || 'Admin'}, {cr.updated_at || 'Hari ini'}</span>
                                                     </div>
-                                                    <span className="capitalize text-[10px] font-semibold bg-muted px-2 py-0.5 rounded">
-                                                        {cr.scope || 'shared'}
-                                                    </span>
                                                 </div>
                                             </div>
                                         ))
@@ -1848,20 +1788,8 @@ export default function AdminSettings({ application }: Props) {
                                 />
                             </div>
                             <p className="text-[10px] text-muted-foreground">
-                                Gunakan satu kata atau tanda strip (misal: <code>marketing</code>, <code>telegram</code>, <code>deposit-kendala</code>).
+                                Gunakan satu kata atau tanda strip (misal: <code>marketing</code>, <code>telegram</code>, <code>akunlimit</code>).
                             </p>
-                        </div>
-
-                        <div className="space-y-1.5">
-                            <Label className="text-xs font-semibold">Akses / Scope</Label>
-                            <select
-                                value={cannedForm.scope || 'shared'}
-                                onChange={(e) => setCannedForm((prev) => ({ ...prev, scope: e.target.value as 'shared' | 'private' }))}
-                                className="w-full h-8 px-2.5 text-xs rounded-md border border-input bg-background text-foreground font-medium"
-                            >
-                                <option value="shared">Shared (Dapat digunakan oleh semua CS & AI Bot)</option>
-                                <option value="private">Private (Khusus Admin saja)</option>
-                            </select>
                         </div>
 
                         <div className="space-y-1.5">
