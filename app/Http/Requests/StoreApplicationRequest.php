@@ -45,8 +45,11 @@ class StoreApplicationRequest extends FormRequest
     {
         $appId = $this->input('app_id') ?: Str::slug((string) $this->input('name'));
 
+        $appId = $this->input('app_id') ?: \Illuminate\Support\Str::slug((string) $this->input('name'));
+
         $this->merge([
             'app_id' => Str::slug((string) $appId),
+            'app_id' => \Illuminate\Support\Str::slug((string) $appId),
             'model' => $this->input('model') ?: (SystemSetting::get('ai_model') ?: config('ai.model', 'openai/gpt-oss-120b')),
             'temperature' => (float) ($this->input('temperature') ?? 0.70),
             'max_tokens' => (int) ($this->input('max_tokens') ?? 2048),
