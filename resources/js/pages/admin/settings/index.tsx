@@ -13,8 +13,10 @@ import {
     Image as ImageIcon,
     Layout,
     MessageSquare,
+    MessageSquareCode,
     Palette,
     Plus,
+    RotateCcw,
     Save,
     Sliders,
     Sparkles,
@@ -32,6 +34,11 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import ChatMarkdown from '@/components/chat-markdown';
 import type { ApplicationDetail } from '@/types/application';
+import {
+    DEFAULT_CHAT_TEMPLATES,
+    PRESET_AVATARS,
+    type ChatTemplate,
+} from '@/types/chat-template';
 
 interface Props {
     application: ApplicationDetail;
@@ -44,72 +51,17 @@ interface QuickButton {
     value: string;
 }
 
-// Galeri pilihan foto avatar Customer Service profesional
-const PRESET_AVATARS = [
-    {
-        id: 'cs1',
-        url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-        name: 'Sarah',
-    },
-    {
-        id: 'cs2',
-        url: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
-        name: 'Jessica',
-    },
-    {
-        id: 'cs3',
-        url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-        name: 'David',
-    },
-    {
-        id: 'cs4',
-        url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
-        name: 'Amanda',
-    },
-    {
-        id: 'cs5',
-        url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
-        name: 'Rian',
-    },
-    {
-        id: 'cs6',
-        url: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80',
-        name: 'Bella',
-    },
-    {
-        id: 'cs7',
-        url: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80',
-        name: 'Kevin',
-    },
-    {
-        id: 'cs8',
-        url: 'https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?w=150&auto=format&fit=crop&q=80',
-        name: 'Maya',
-    },
-    {
-        id: 'cs9',
-        url: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80',
-        name: 'Putri',
-    },
-    {
-        id: 'cs10',
-        url: 'https://images.unsplash.com/photo-1628157582853-a796fa650a6a?w=150&auto=format&fit=crop&q=80',
-        name: 'Alex',
-    },
-];
-
 export default function AdminSettings({ application }: Props) {
     const currentSettings = application.chat_settings || {};
 
-    // Inisialisasi 3 avatar yang dipilih
+    // Inisialisasi 3 avatar yang dipilih (filter out unsplash lama)
+    const sanitizedAvatars = (Array.isArray(currentSettings.selected_avatars) ? currentSettings.selected_avatars : [])
+        .filter((url: string) => typeof url === 'string' && !url.includes('unsplash.com'));
+
     const initialAvatars: string[] =
-        Array.isArray(currentSettings.selected_avatars) && currentSettings.selected_avatars.length === 3
-            ? currentSettings.selected_avatars
-            : [
-                  currentSettings.avatar_1 || PRESET_AVATARS[0].url,
-                  currentSettings.avatar_2 || PRESET_AVATARS[1].url,
-                  currentSettings.avatar_3 || PRESET_AVATARS[2].url,
-              ];
+        sanitizedAvatars.length >= 1
+            ? sanitizedAvatars.slice(0, 3)
+            : [PRESET_AVATARS[0].url, PRESET_AVATARS[1].url, PRESET_AVATARS[2].url];
 
     // Inisialisasi tombol cepat dinamis
     const initialQuickButtons: QuickButton[] =

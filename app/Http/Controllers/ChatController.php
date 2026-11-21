@@ -161,22 +161,52 @@ class ChatController extends Controller
                 default => strtolower(trim($topicRaw)),
             };
 
-            $isDeposit = in_array(strtolower(trim($topicRaw)), ['deposit & withdraw', 'deposit', 'withdraw']);
-            $isWithdraw = in_array(strtolower(trim($topicRaw)), ['withdraw', 'penarikan']);
+            $chatSettings = $application->chat_settings ?? [];
+            $chatTemplates = $chatSettings['chat_templates'] ?? null;
+            $matchedTemplate = null;
 
-            $customTemplate = $application->chat_settings['first_reply_template'] ?? null;
-            if ($customTemplate) {
+            if (is_array($chatTemplates)) {
+                foreach ($chatTemplates as $tpl) {
+                    if (strtolower(trim($tpl['topic'] ?? '')) === strtolower(trim($topicRaw))) {
+                        $matchedTemplate = $tpl;
+                        break;
+                    }
+                }
+            }
+
+            if ($matchedTemplate) {
+                $replyRaw = $matchedTemplate['bot_reply'] ?? '';
+                $formType = $matchedTemplate['form_type'] ?? 'none';
+
+                if ($formType === 'deposit_status' && ! str_contains($replyRaw, '[FORM:deposit_status]')) {
+                    $replyRaw = "[FORM:deposit_status]\n".$replyRaw;
+                } elseif ($formType === 'withdraw_status' && ! str_contains($replyRaw, '[FORM:withdraw_status]')) {
+                    $replyRaw = "[FORM:withdraw_status]\n".$replyRaw;
+                }
+
                 $replyText = str_replace(
                     ['{waktu}', '{topik}', '{user_id}', '{app_name}'],
-                    [$timeGreeting, $topicFormatted, (string) $request->input('user_id', ''), $application->name],
-                    $customTemplate
+                    [$timeGreeting, $topicRaw, (string) $request->input('user_id', ''), $application->name],
+                    $replyRaw
                 );
-            } elseif ($isDeposit) {
-                $replyText = "[FORM:deposit_status]\nSilakan isi data di form yang muncul ya Bosku, biar saya cek status depositnya.";
-            } elseif ($isWithdraw) {
-                $replyText = "[FORM:withdraw_status]\nSilakan isi data di form yang muncul ya Bosku, biar saya cek status withdraw-nya.";
             } else {
-                $replyText = "Hallo bosku 👋 {$timeGreeting}, ada yang bisa dibantu terkait {$topicFormatted}, Bosku?";
+                $customTemplate = $chatSettings['first_reply_template'] ?? null;
+                $isDeposit = in_array(strtolower(trim($topicRaw)), ['deposit & withdraw', 'deposit', 'withdraw']);
+                $isWithdraw = in_array(strtolower(trim($topicRaw)), ['withdraw', 'penarikan']);
+
+                if ($customTemplate) {
+                    $replyText = str_replace(
+                        ['{waktu}', '{topik}', '{user_id}', '{app_name}'],
+                        [$timeGreeting, $topicFormatted, (string) $request->input('user_id', ''), $application->name],
+                        $customTemplate
+                    );
+                } elseif ($isDeposit) {
+                    $replyText = "[FORM:deposit_status]\nSilakan isi data di form yang muncul ya Bosku, biar saya cek status depositnya.";
+                } elseif ($isWithdraw) {
+                    $replyText = "[FORM:withdraw_status]\nSilakan isi data di form yang muncul ya Bosku, biar saya cek status withdraw-nya.";
+                } else {
+                    $replyText = "Hallo bosku 👋 {$timeGreeting}, ada yang bisa dibantu terkait {$topicFormatted}, Bosku?";
+                }
             }
 
             $assistantMessage = Message::create([
