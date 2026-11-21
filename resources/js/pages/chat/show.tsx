@@ -11,6 +11,7 @@ import {
     Home as HomeIcon,
     MessageSquare,
     Plus,
+    RotateCcw,
     Send,
     Sparkles,
     User as UserIcon,
@@ -56,6 +57,7 @@ export default function ChatShow({
     const bgColor = cs.bg_color || '#FFF9E6';
     const textColor = cs.text_color || '#171717';
     const headerColor = cs.header_color || '#FFD200';
+    const headerTextColor = cs.header_text_color || '#0a0a0a';
     const customIconUrl = cs.custom_icon_url || '';
     const faviconUrl = cs.favicon_url || '';
     const splashTitle = cs.splash_title || `Selamat Datang di Livechat ${application.name} 😊`;
@@ -68,13 +70,13 @@ export default function ChatShow({
         Array.isArray(cs.selected_avatars) && cs.selected_avatars.length > 0
             ? cs.selected_avatars.slice(0, 3)
             : [
-                  cs.avatar_1 ||
-                      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
-                  cs.avatar_2 ||
-                      'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&auto=format&fit=crop&q=80',
-                  cs.avatar_3 ||
-                      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80',
-              ];
+                cs.avatar_1 ||
+                'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
+                cs.avatar_2 ||
+                'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&auto=format&fit=crop&q=80',
+                cs.avatar_3 ||
+                'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80',
+            ];
 
     const bannerBadge = cs.banner_badge || 'OFFICIAL 24/7 SUPPORT';
     const bannerTitle = cs.banner_title || application.name;
@@ -160,7 +162,7 @@ export default function ChatShow({
         }
     }, [faviconUrl]);
 
-    // Generate UUID v4
+    // UUID Generator
     const generateUuid = (): string => {
         if (typeof crypto !== 'undefined' && crypto.randomUUID) {
             return crypto.randomUUID();
@@ -172,7 +174,6 @@ export default function ChatShow({
         });
     };
 
-    // Save session state to localStorage
     const persistSession = (uuid: string) => {
         try {
             localStorage.setItem(
@@ -183,23 +184,30 @@ export default function ChatShow({
                 })
             );
         } catch (e) {
-            console.error('Failed to save session to localStorage', e);
+            console.error('Error persisting session to localStorage', e);
         }
+    };
+
+    // Helper to start fresh chat session
+    const handleStartNewChat = () => {
+        try {
+            localStorage.removeItem(storageKey);
+        } catch (e) {
+            console.error('Error removing session key', e);
+        }
+        const newUuid = generateUuid();
+        setSessionUuid(newUuid);
+        persistSession(newUuid);
+        setIsSessionExpired(false);
+        setMessages([]);
+        setHasSubmittedForm(false);
+        setErrorMessage(null);
+        setActiveTab('pesan');
     };
 
     // Initialize or restore session
     useEffect(() => {
         try {
-            const savedForm = localStorage.getItem(formStorageKey);
-            if (savedForm) {
-                const parsedForm = JSON.parse(savedForm);
-                if (parsedForm.userId) {
-                    setUserId(parsedForm.userId);
-                    setQuestionTopic(parsedForm.questionTopic || '');
-                    setHasSubmittedForm(true);
-                }
-            }
-
             const raw = localStorage.getItem(storageKey);
             if (raw) {
                 const parsed = JSON.parse(raw);
@@ -210,12 +218,36 @@ export default function ChatShow({
                 if (isExpired) {
                     setIsSessionExpired(true);
                     setSessionUuid(parsed.uuid || generateUuid());
+
+                    // Prefill form values without locking user into submitted state
+                    const savedForm = localStorage.getItem(formStorageKey);
+                    if (savedForm) {
+                        try {
+                            const parsedForm = JSON.parse(savedForm);
+                            if (parsedForm.userId) {
+                                setUserId(parsedForm.userId);
+                                setQuestionTopic(parsedForm.questionTopic || '');
+                            }
+                        } catch (e) { }
+                    }
                     return;
                 }
 
                 // Active session restored
                 setSessionUuid(parsed.uuid);
                 fetchSessionMessages(parsed.uuid);
+
+                const savedForm = localStorage.getItem(formStorageKey);
+                if (savedForm) {
+                    try {
+                        const parsedForm = JSON.parse(savedForm);
+                        if (parsedForm.userId) {
+                            setUserId(parsedForm.userId);
+                            setQuestionTopic(parsedForm.questionTopic || '');
+                            setHasSubmittedForm(true);
+                        }
+                    } catch (e) { }
+                }
                 return;
             }
         } catch (e) {
@@ -293,6 +325,16 @@ export default function ChatShow({
             return;
         }
 
+        // Jika sesi sebelumnya expired, bangkitkan UUID baru
+        let activeUuid = sessionUuid;
+        if (isSessionExpired || !activeUuid) {
+            activeUuid = generateUuid();
+            setSessionUuid(activeUuid);
+            persistSession(activeUuid);
+            setIsSessionExpired(false);
+            setMessages([]);
+        }
+
         const formData = {
             userId: userId.trim(),
             questionTopic: questionTopic || 'Lainnya',
@@ -321,7 +363,7 @@ export default function ChatShow({
         if (!text || isLoading) return;
 
         if (isSessionExpired) {
-            setErrorMessage('Sesi telah kedaluwarsa. Silakan refresh halaman untuk sesi baru.');
+            setErrorMessage('Sesi telah kedaluwarsa. Silakan klik Mulai Chat Baru.');
             return;
         }
 
@@ -379,24 +421,23 @@ export default function ChatShow({
 
             if (data.assistant_message) {
                 setMessages((prev) => [
-                    ...prev.filter((m) => m.id !== tempUserMsg.id),
-                    data.user_message || tempUserMsg,
-                    data.assistant_message,
+                    ...prev,
+                    {
+                        id: String(data.assistant_message.id),
+                        role: data.assistant_message.role,
+                        content: data.assistant_message.content,
+                        created_at: data.assistant_message.created_at,
+                    },
                 ]);
             }
-
-            persistSession(sessionUuid);
-        } catch (err: unknown) {
-            const errorText = err instanceof Error ? err.message : 'Terjadi kendala jaringan.';
-            setErrorMessage(errorText);
-
+        } catch (err: any) {
+            console.error('Send message error:', err);
             setMessages((prev) => [
                 ...prev,
                 {
                     id: `err-${Date.now()}`,
                     role: 'assistant',
-                    content: 'Maaf, terjadi kendala saat menghubungi asisten. Silakan coba kembali sesaat lagi.',
-                    created_at: nowFormatted,
+                    content: 'Maaf, terjadi kendala saat memproses pesan Anda. Silakan coba kembali sebentar lagi.',
                 },
             ]);
         } finally {
@@ -405,14 +446,15 @@ export default function ChatShow({
     };
 
     // Kondisi apakah sedang di halaman Beranda awal (belum mulai chat sama sekali)
-    const isFirstTimeLanding = activeTab === 'beranda' && !hasSubmittedForm && messages.length === 0;
+    const isFirstTimeLanding =
+        !isSessionExpired && activeTab === 'beranda' && !hasSubmittedForm && messages.length === 0;
 
     return (
         <div
             className="flex h-screen w-full overflow-hidden transition-colors"
             style={{ backgroundColor: bgColor }}
         >
-            <Head title={`Livechat - ${application.name}`}>
+            <Head title={headerTitle || application.name}>
                 {faviconUrl && <link rel="icon" href={faviconUrl} />}
             </Head>
 
@@ -426,8 +468,8 @@ export default function ChatShow({
                 <div className="w-full max-w-lg space-y-6">
                     {/* Brand Icon Circle */}
                     <div
-                        className="flex size-14 items-center justify-center rounded-full text-neutral-950 shadow-sm border border-black/10 overflow-hidden"
-                        style={{ backgroundColor: headerColor }}
+                        className="flex size-14 items-center justify-center rounded-full shadow-sm border border-black/10 overflow-hidden"
+                        style={{ backgroundColor: headerColor, color: headerTextColor }}
                     >
                         {customIconUrl ? (
                             <img src={customIconUrl} alt="Logo" className="size-8 object-contain" />
@@ -459,75 +501,106 @@ export default function ChatShow({
             {/* RIGHT COLUMN: INTERACTIVE LIVE CHAT WIDGET (PERSIS 50% LAYAR KANAN) */}
             {/* ============================================================== */}
             <div className="flex flex-col w-full md:w-1/2 h-full bg-white border-l border-amber-200/80 shadow-2xl overflow-hidden">
-                {/* TOP HEADER BAR (Warna Header Kustom & TANPA Tombol Reset) */}
+                {/* TOP HEADER BAR (Warna Header & Warna Teks Kustom) */}
                 <div
-                    className="px-5 py-4 shrink-0 shadow-sm border-b border-black/10 text-neutral-950"
-                    style={{ backgroundColor: headerColor }}
+                    className="px-5 py-4 shrink-0 shadow-sm border-b border-black/10 transition-colors"
+                    style={{ backgroundColor: headerColor, color: headerTextColor }}
                 >
                     <div className="flex items-center justify-between">
                         {/* App Title & Brand */}
                         <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-neutral-900 text-amber-300 overflow-hidden">
+                            <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-neutral-900 text-amber-300 overflow-hidden shadow-2xs">
                                 {customIconUrl ? (
                                     <img src={customIconUrl} alt="Logo" className="size-4 object-contain" />
                                 ) : (
                                     <Sparkles className="size-4" />
                                 )}
                             </div>
-                            <span className="font-extrabold text-sm tracking-wide uppercase truncate">
+                            <span
+                                className="font-extrabold text-sm tracking-wide uppercase truncate"
+                                style={{ color: headerTextColor }}
+                            >
                                 {headerTitle}
                             </span>
                             {isTakenOver && (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-neutral-950/10 px-2 py-0.5 text-[10px] font-bold text-neutral-950 border border-neutral-950/15 shrink-0">
-                                    <UserCheck className="size-3 text-amber-800" />
+                                <span
+                                    className="inline-flex items-center gap-1 rounded-full bg-black/10 dark:bg-white/15 px-2 py-0.5 text-[10px] font-bold border border-black/15 shrink-0"
+                                    style={{ color: headerTextColor }}
+                                >
+                                    <UserCheck className="size-3" />
                                     Admin CS
                                 </span>
                             )}
                         </div>
 
-                        {/* Customer Service Agent Avatars (3 Foto Profil Terpilih dari Galeri) */}
-                        <div className="flex items-center gap-2">
-                            <div className="flex -space-x-2 overflow-hidden shrink-0">
-                                {activeAvatars.map((url, idx) => (
-                                    <img
+                        {/* Customer Service Agent Avatars (3 Foto Profil Terpilih dari Galeri - RAPI BERJEJER) */}
+                        <div className="flex items-center gap-2 shrink-0">
+                            <div className="flex items-center -space-x-2.5 overflow-visible pl-1 py-0.5">
+                                {activeAvatars.slice(0, 3).map((url, idx) => (
+                                    <div
                                         key={idx}
-                                        className="inline-block size-7 rounded-full ring-2 ring-white object-cover"
-                                        src={url}
-                                        alt={`CS Agent ${idx + 1}`}
-                                        onError={(e) => {
-                                            (e.target as any).src =
-                                                'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80';
-                                        }}
-                                    />
+                                        className="relative size-8 rounded-full ring-2 ring-white/95 shadow-xs overflow-hidden shrink-0 bg-neutral-200 transition-transform hover:scale-110 hover:z-20 cursor-default"
+                                        style={{ zIndex: 10 - idx }}
+                                    >
+                                        <img
+                                            src={url}
+                                            alt={`CS Agent ${idx + 1}`}
+                                            className="size-full object-cover"
+                                            onError={(e) => {
+                                                (e.target as any).src =
+                                                    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80';
+                                            }}
+                                        />
+                                    </div>
                                 ))}
                             </div>
+                            {/* CS Online Status Indicator Dot */}
+                            <span className="relative flex size-2.5 shrink-0" title="CS Online 24/7">
+                                <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                                <span className="relative inline-flex size-2.5 rounded-full bg-emerald-500 ring-1.5 ring-white" />
+                            </span>
                         </div>
                     </div>
 
                     {/* Subtitle in Header */}
                     <div className="mt-3">
-                        <p className="text-[11px] font-medium text-neutral-800 line-clamp-1">
+                        <p
+                            className="text-[11px] font-medium line-clamp-1 opacity-80"
+                            style={{ color: headerTextColor }}
+                        >
                             {splashTitle}
                         </p>
-                        <h2 className="text-sm font-bold text-neutral-950 line-clamp-1">
+                        <h2
+                            className="text-sm font-bold line-clamp-1"
+                            style={{ color: headerTextColor }}
+                        >
                             {splashDescription}
                         </h2>
                     </div>
                 </div>
 
-                {/* Expired Session Alert */}
+                {/* Expired Session Alert with Button */}
                 {isSessionExpired && (
-                    <div className="border-b border-amber-500/20 bg-amber-500/10 px-4 py-2">
-                        <div className="flex items-center gap-1.5 text-xs text-amber-900">
-                            <Clock className="size-3.5 text-amber-600 shrink-0" />
-                            <span>Sesi kedaluwarsa setelah {sessionTimeoutMinutes} menit tanpa aktivitas. Silakan refresh halaman untuk mulai kembali.</span>
+                    <div className="border-b border-amber-500/20 bg-amber-500/15 px-4 py-2.5 flex items-center justify-between gap-3 shrink-0">
+                        <div className="flex items-center gap-2 text-xs text-amber-950 font-medium">
+                            <Clock className="size-4 text-amber-700 shrink-0" />
+                            <span>Sesi kedaluwarsa setelah {sessionTimeoutMinutes} menit tanpa aktivitas.</span>
                         </div>
+                        <button
+                            type="button"
+                            onClick={handleStartNewChat}
+                            className="shrink-0 px-3.5 py-1.5 rounded-lg text-xs font-bold shadow-xs hover:opacity-90 active:scale-95 transition-all cursor-pointer flex items-center gap-1.5"
+                            style={{ backgroundColor: headerColor, color: headerTextColor }}
+                        >
+                            <RotateCcw className="size-3" />
+                            <span>Mulai Chat Baru</span>
+                        </button>
                     </div>
                 )}
 
                 {/* Error Banner */}
                 {errorMessage && !isSessionExpired && (
-                    <div className="border-b border-destructive/20 bg-destructive/10 px-4 py-1.5">
+                    <div className="border-b border-destructive/20 bg-destructive/10 px-4 py-1.5 shrink-0">
                         <div className="flex items-center gap-1.5 text-xs text-destructive">
                             <AlertCircle className="size-3.5 shrink-0" />
                             <span>{errorMessage}</span>
@@ -577,9 +650,13 @@ export default function ChatShow({
                                         key={idx}
                                         type="button"
                                         onClick={() => {
-                                            setActiveTab('pesan');
-                                            if (hasSubmittedForm) {
-                                                handleSendMessage(item.query);
+                                            if (isSessionExpired) {
+                                                handleStartNewChat();
+                                            } else {
+                                                setActiveTab('pesan');
+                                                if (hasSubmittedForm) {
+                                                    handleSendMessage(item.query);
+                                                }
                                             }
                                         }}
                                         className="flex items-center justify-between rounded-xl border border-neutral-200 bg-white p-3.5 text-left shadow-2xs hover:border-amber-400 hover:bg-amber-50/50 transition-all cursor-pointer group"
@@ -653,8 +730,8 @@ export default function ChatShow({
 
                                         <button
                                             type="submit"
-                                            className="w-full mt-2 flex items-center justify-center rounded-xl text-neutral-950 font-bold py-2.5 text-xs shadow-xs transition-transform active:scale-[0.99] cursor-pointer"
-                                            style={{ backgroundColor: headerColor }}
+                                            className="w-full mt-2 flex items-center justify-center rounded-xl font-bold py-2.5 text-xs shadow-xs transition-transform active:scale-[0.99] cursor-pointer"
+                                            style={{ backgroundColor: headerColor, color: headerTextColor }}
                                         >
                                             Mulai chat
                                         </button>
@@ -676,8 +753,8 @@ export default function ChatShow({
                                     {userId && (
                                         <div className="rounded-2xl border border-amber-300 bg-white shadow-2xs overflow-hidden">
                                             <div
-                                                className="px-3.5 py-1.5 flex items-center gap-1.5 text-neutral-950 text-xs font-bold"
-                                                style={{ backgroundColor: headerColor }}
+                                                className="px-3.5 py-1.5 flex items-center gap-1.5 text-xs font-bold"
+                                                style={{ backgroundColor: headerColor, color: headerTextColor }}
                                             >
                                                 <FileText className="size-3.5" />
                                                 <span>Formulir</span>
@@ -700,8 +777,8 @@ export default function ChatShow({
                                     {/* Initial Greeting Bot Message */}
                                     <div className="flex items-start gap-2.5">
                                         <div
-                                            className="flex size-7 shrink-0 items-center justify-center rounded-full text-neutral-950 font-bold text-xs shadow-2xs"
-                                            style={{ backgroundColor: headerColor }}
+                                            className="flex size-7 shrink-0 items-center justify-center rounded-full font-bold text-xs shadow-2xs"
+                                            style={{ backgroundColor: headerColor, color: headerTextColor }}
                                         >
                                             <Bot className="size-4" />
                                         </div>
@@ -731,96 +808,93 @@ export default function ChatShow({
                                         </div>
                                     </div>
 
-                                    {/* Message History Stream */}
-                                    {messages.map((message) => {
-                                        // Takeover / System message as clean center badge (muncul sebagai badge di sisi user)
-                                        const isSystemBadge =
-                                            message.role === 'system' ||
-                                            message.content.includes('Percakapan telah diambil alih') ||
-                                            message.content.includes('Percakapan telah dikembalikan');
-
-                                        if (isSystemBadge) {
-                                            return (
-                                                <div key={message.id} className="flex justify-center my-3.5 w-full">
-                                                    <span className="inline-flex items-center gap-2 rounded-full bg-amber-50 border border-amber-300 px-4 py-1.5 text-xs font-semibold text-amber-900 shadow-2xs text-center leading-normal">
-                                                        <UserCheck className="size-3.5 text-amber-600 shrink-0" />
-                                                        <span>{message.content}</span>
-                                                    </span>
-                                                </div>
-                                            );
-                                        }
-
-                                        const isUser = message.role === 'user';
-
+                                    {/* Render Messages */}
+                                    {messages.map((msg) => {
+                                        const isUser = msg.role === 'user';
                                         return (
                                             <div
-                                                key={message.id}
-                                                className={`flex items-start gap-2.5 ${
-                                                    isUser ? 'flex-row-reverse' : 'flex-row'
-                                                }`}
-                                            >
-                                                <div
-                                                    className={`flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold shadow-2xs ${
-                                                        isUser
-                                                            ? 'bg-neutral-800 text-white'
-                                                            : 'text-neutral-950'
+                                                key={msg.id}
+                                                className={`flex items-start gap-2.5 ${isUser ? 'flex-row-reverse' : 'flex-row'
                                                     }`}
-                                                    style={!isUser ? { backgroundColor: headerColor } : undefined}
+                                            >
+                                                {/* Avatar Icon */}
+                                                <div
+                                                    className={`flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold shadow-2xs ${isUser
+                                                        ? 'bg-neutral-900 text-white'
+                                                        : 'text-neutral-950'
+                                                        }`}
+                                                    style={!isUser ? { backgroundColor: headerColor, color: headerTextColor } : {}}
                                                 >
                                                     {isUser ? (
                                                         <UserIcon className="size-3.5" />
+                                                    ) : isTakenOver ? (
+                                                        <UserCheck className="size-3.5" />
                                                     ) : (
                                                         <Bot className="size-3.5" />
                                                     )}
                                                 </div>
 
+                                                {/* Chat Bubble */}
                                                 <div
-                                                    className={`max-w-[85%] rounded-2xl p-3 text-xs leading-relaxed shadow-2xs ${
-                                                        isUser
-                                                            ? 'rounded-tr-xs bg-neutral-900 text-white'
-                                                            : 'rounded-tl-xs border border-neutral-200/90 bg-white text-neutral-900'
-                                                    }`}
+                                                    className={`flex flex-col space-y-1 max-w-[85%] ${isUser ? 'items-end' : 'items-start'
+                                                        }`}
                                                 >
-                                                    {isUser ? (
-                                                        <div className="whitespace-pre-wrap select-text">
-                                                            {message.content}
-                                                        </div>
-                                                    ) : (
-                                                        <ChatMarkdown content={message.content} />
-                                                    )}
+                                                    <span className="text-[10px] font-bold text-neutral-500 px-1">
+                                                        {isUser
+                                                            ? 'Anda'
+                                                            : isTakenOver
+                                                                ? 'Admin CS'
+                                                                : application.name}
+                                                    </span>
 
-                                                    {message.created_at && (
-                                                        <div
-                                                            className={`mt-1 text-[9px] text-right font-mono ${
-                                                                isUser ? 'text-white/60' : 'text-neutral-400'
+                                                    <div
+                                                        className={`rounded-2xl px-3.5 py-2.5 text-xs shadow-2xs leading-relaxed ${isUser
+                                                            ? 'rounded-tr-xs bg-neutral-900 text-white'
+                                                            : 'rounded-tl-xs bg-white border border-neutral-200/90 text-neutral-900'
                                                             }`}
-                                                        >
-                                                            {message.created_at}
-                                                        </div>
+                                                    >
+                                                        {isUser ? (
+                                                            <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                                                        ) : (
+                                                            <ChatMarkdown content={msg.content} />
+                                                        )}
+                                                    </div>
+
+                                                    {msg.created_at && (
+                                                        <span className="text-[9px] text-neutral-400 px-1">
+                                                            {msg.created_at}
+                                                        </span>
                                                     )}
                                                 </div>
                                             </div>
                                         );
                                     })}
 
-                                    {/* Typing Indicator */}
+                                    {/* Loading / Typing indicator */}
                                     {isLoading && (
                                         <div className="flex items-start gap-2.5">
                                             <div
-                                                className="flex size-7 shrink-0 items-center justify-center rounded-full text-neutral-950 font-bold shadow-2xs"
-                                                style={{ backgroundColor: headerColor }}
+                                                className="flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold shadow-2xs"
+                                                style={{ backgroundColor: headerColor, color: headerTextColor }}
                                             >
-                                                <Bot className="size-3.5" />
+                                                <Bot className="size-4" />
                                             </div>
-                                            <div className="rounded-2xl rounded-tl-xs border border-neutral-200 bg-white px-3 py-2 shadow-2xs">
-                                                <div className="flex items-center gap-1">
-                                                    <span className="size-1.5 rounded-full bg-amber-500 animate-bounce [animation-delay:-0.3s]" />
-                                                    <span className="size-1.5 rounded-full bg-amber-500 animate-bounce [animation-delay:-0.15s]" />
-                                                    <span className="size-1.5 rounded-full bg-amber-500 animate-bounce" />
-                                                    <span className="text-[11px] text-neutral-500 ml-1.5">
-                                                        Sedang mengetik...
-                                                    </span>
+                                            <div className="rounded-2xl rounded-tl-xs bg-white border border-neutral-200/90 px-4 py-3 shadow-2xs">
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="size-1.5 animate-bounce rounded-full bg-amber-500 [animation-delay:-0.3s]" />
+                                                    <span className="size-1.5 animate-bounce rounded-full bg-amber-500 [animation-delay:-0.15s]" />
+                                                    <span className="size-1.5 animate-bounce rounded-full bg-amber-500" />
                                                 </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Admin takeover status banner (Badge di tengah) */}
+                                    {isTakenOver && (
+                                        <div className="flex justify-center my-2">
+                                            <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 border border-amber-300 px-3 py-1 text-[11px] font-semibold text-amber-900 shadow-2xs">
+                                                <UserCheck className="size-3.5 text-amber-700" />
+                                                <span>Admin CS bergabung dan mengambil alih percakapan.</span>
                                             </div>
                                         </div>
                                     )}
@@ -881,9 +955,9 @@ export default function ChatShow({
                 </div>
 
                 {/* ============================================================== */}
-                {/* BOTTOM CHAT INPUT BAR (Hanya muncul jika sedang di Tab Pesan dan sudah mulai chat) */}
+                {/* BOTTOM CHAT INPUT BAR (Hanya muncul jika sedang di Tab Pesan dan chat aktif) */}
                 {/* ============================================================== */}
-                {activeTab === 'pesan' && (hasSubmittedForm || messages.length > 0) && (
+                {!isSessionExpired && activeTab === 'pesan' && (hasSubmittedForm || messages.length > 0) && (
                     <div className="border-t border-neutral-200 bg-white p-3 shrink-0">
                         <form
                             onSubmit={(e) => {
@@ -896,7 +970,7 @@ export default function ChatShow({
                                 type="button"
                                 onClick={() => textareaRef.current?.focus()}
                                 className="flex size-9 items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-neutral-600 transition-colors cursor-pointer shrink-0"
-                                title="Lampiran / Pilihan Cepat"
+                                title="Fokus Input"
                             >
                                 <Plus className="size-4" />
                             </button>
@@ -904,7 +978,7 @@ export default function ChatShow({
                             <input
                                 ref={textareaRef}
                                 value={input}
-                                disabled={isSessionExpired || isLoading || !application.is_active}
+                                disabled={isLoading || !application.is_active}
                                 onChange={(e) => setInput(e.target.value)}
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter') {
@@ -913,11 +987,9 @@ export default function ChatShow({
                                     }
                                 }}
                                 placeholder={
-                                    isSessionExpired
-                                        ? 'Sesi berakhir. Refresh untuk chat baru...'
-                                        : !application.is_active
-                                          ? 'Chatbot sedang offline...'
-                                          : 'Tulis pesan...'
+                                    !application.is_active
+                                        ? 'Chatbot sedang offline...'
+                                        : 'Tulis pesan...'
                                 }
                                 className="flex-1 h-9 px-3.5 text-xs rounded-full bg-slate-100 border-none text-neutral-900 focus:outline-none focus:ring-1 focus:ring-amber-400 placeholder:text-neutral-400"
                             />
@@ -925,8 +997,8 @@ export default function ChatShow({
                             <button
                                 type="submit"
                                 disabled={!input.trim() || isLoading || !application.is_active}
-                                className="flex size-9 items-center justify-center rounded-full text-neutral-950 font-bold disabled:opacity-40 transition-colors cursor-pointer shrink-0 shadow-2xs"
-                                style={{ backgroundColor: headerColor }}
+                                className="flex size-9 items-center justify-center rounded-full font-bold disabled:opacity-40 transition-colors cursor-pointer shrink-0 shadow-2xs"
+                                style={{ backgroundColor: headerColor, color: headerTextColor }}
                             >
                                 <Send className="size-3.5" />
                             </button>
@@ -937,31 +1009,49 @@ export default function ChatShow({
                 {/* ============================================================== */}
                 {/* BOTTOM FOOTER SECTION */}
                 {/* ============================================================== */}
-                {isFirstTimeLanding ? (
+                {isSessionExpired ? (
+                    /* JIKA SESI KEDALUWARSA: TAMPILKAN TOMBOL MULAI CHAT BARU DI PALING BAWAH */
+                    <div className="border-t border-neutral-200 bg-white p-3 sm:p-4 shrink-0">
+                        <button
+                            type="button"
+                            onClick={handleStartNewChat}
+                            className="w-full flex items-center justify-center gap-2 rounded-xl font-bold py-3.5 text-xs sm:text-sm shadow-sm transition-transform active:scale-[0.99] cursor-pointer"
+                            style={{ backgroundColor: headerColor, color: headerTextColor }}
+                        >
+                            <RotateCcw className="size-4" />
+                            <span>Mulai Chat Baru</span>
+                        </button>
+                    </div>
+                ) : isFirstTimeLanding ? (
                     /* JIKA PERTAMA KALI (BERANDA AWAL): TOMBOL KIRIM PESAN DI PALING BAWAH MENGGANTIKAN 3 TAB (Persis Screenshot 1) */
                     <div className="border-t border-neutral-200 bg-white p-3 sm:p-4 shrink-0">
                         <button
                             type="button"
-                            onClick={() => setActiveTab('pesan')}
-                            className="w-full flex items-center justify-center gap-2 rounded-xl text-neutral-950 font-bold py-3.5 text-xs sm:text-sm shadow-sm transition-transform active:scale-[0.99] cursor-pointer"
-                            style={{ backgroundColor: headerColor }}
+                            onClick={() => {
+                                if (isSessionExpired) {
+                                    handleStartNewChat();
+                                } else {
+                                    setActiveTab('pesan');
+                                }
+                            }}
+                            className="w-full flex items-center justify-center gap-2 rounded-xl font-bold py-3.5 text-xs sm:text-sm shadow-sm transition-transform active:scale-[0.99] cursor-pointer"
+                            style={{ backgroundColor: headerColor, color: headerTextColor }}
                         >
                             <span>Kirim Pesan</span>
                             <ArrowRight className="size-4" />
                         </button>
                     </div>
                 ) : (
-                    /* JIKA SUDAH MULAI CHAT / BUKAN DI LANDING PERTAMA: MUNCULKAN 3 TAB (Beranda, Pesan, Bantuan) */
+                    /* JIKA SUDAH MULAI CHAT: MUNCULKAN 3 TAB (Beranda, Pesan, Bantuan) */
                     <div className="border-t border-neutral-200 bg-white px-6 py-2.5 shrink-0 flex flex-col items-center gap-1.5 select-none">
                         <div className="w-full flex items-center justify-around">
                             <button
                                 type="button"
                                 onClick={() => setActiveTab('beranda')}
-                                className={`flex flex-col items-center gap-1 text-[11px] font-medium transition-colors cursor-pointer ${
-                                    activeTab === 'beranda'
-                                        ? 'text-amber-600 font-bold'
-                                        : 'text-neutral-400 hover:text-neutral-600'
-                                }`}
+                                className={`flex flex-col items-center gap-1 text-[11px] font-medium transition-colors cursor-pointer ${activeTab === 'beranda'
+                                    ? 'text-amber-600 font-bold'
+                                    : 'text-neutral-400 hover:text-neutral-600'
+                                    }`}
                             >
                                 <HomeIcon className="size-4.5" />
                                 <span>Beranda</span>
@@ -970,11 +1060,10 @@ export default function ChatShow({
                             <button
                                 type="button"
                                 onClick={() => setActiveTab('pesan')}
-                                className={`flex flex-col items-center gap-1 text-[11px] font-medium transition-colors cursor-pointer relative ${
-                                    activeTab === 'pesan'
-                                        ? 'text-amber-600 font-bold'
-                                        : 'text-neutral-400 hover:text-neutral-600'
-                                }`}
+                                className={`flex flex-col items-center gap-1 text-[11px] font-medium transition-colors cursor-pointer relative ${activeTab === 'pesan'
+                                    ? 'text-amber-600 font-bold'
+                                    : 'text-neutral-400 hover:text-neutral-600'
+                                    }`}
                             >
                                 <MessageSquare className="size-4.5" />
                                 <span>Pesan</span>
@@ -986,11 +1075,10 @@ export default function ChatShow({
                             <button
                                 type="button"
                                 onClick={() => setActiveTab('bantuan')}
-                                className={`flex flex-col items-center gap-1 text-[11px] font-medium transition-colors cursor-pointer ${
-                                    activeTab === 'bantuan'
-                                        ? 'text-amber-600 font-bold'
-                                        : 'text-neutral-400 hover:text-neutral-600'
-                                }`}
+                                className={`flex flex-col items-center gap-1 text-[11px] font-medium transition-colors cursor-pointer ${activeTab === 'bantuan'
+                                    ? 'text-amber-600 font-bold'
+                                    : 'text-neutral-400 hover:text-neutral-600'
+                                    }`}
                             >
                                 <HelpCircle className="size-4.5" />
                                 <span>Bantuan</span>

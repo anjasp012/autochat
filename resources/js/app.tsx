@@ -9,7 +9,13 @@ import SettingsLayout from '@/layouts/settings/layout';
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
 void createInertiaApp({
-    title: (title) => (title ? `${title} - ${appName}` : appName),
+    title: (title) => {
+        if (!title) return appName;
+        if (typeof window !== 'undefined' && window.location.pathname.startsWith('/chat')) {
+            return title;
+        }
+        return `${title} - ${appName}`;
+    },
     layout: (name) => {
         switch (true) {
             case name === 'welcome':
