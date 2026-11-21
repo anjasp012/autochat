@@ -19,9 +19,15 @@ import {
     X,
 } from 'lucide-react';
 import ChatMarkdown from '@/components/chat-markdown';
+import InChatForm from '@/components/in-chat-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { echo } from '@/echo';
+import {
+    DEFAULT_CHAT_TEMPLATES,
+    PRESET_AVATARS,
+    type ChatTemplate,
+} from '@/types/chat-template';
 
 interface ChatMessage {
     id: string;
@@ -73,18 +79,33 @@ export default function ChatShow({
     const splashDescription = cs.splash_description || 'Ada yang Bisa Kami Bantu, Bosku?';
     const headerTitle = cs.header_title || application.name;
 
-    // 3 Foto profil CS terpilih dari galeri
+    // 4 CS Avatars: Rahma, Nindy, Rosa, Intan
+    const defaultAvatars = [
+        '/images/avatars/cs-1.png',
+        '/images/avatars/cs-2.png',
+        '/images/avatars/cs-3.png',
+        '/images/avatars/cs-4.png',
+    ];
+
     const activeAvatars: string[] =
         Array.isArray(cs.selected_avatars) && cs.selected_avatars.length > 0
-            ? cs.selected_avatars.slice(0, 3)
-            : [
-                cs.avatar_1 ||
-                'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
-                cs.avatar_2 ||
-                'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&auto=format&fit=crop&q=80',
-                cs.avatar_3 ||
-                'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80',
-            ];
+            ? cs.selected_avatars
+                  .filter((url: string) => typeof url === 'string' && !url.includes('unsplash.com'))
+                  .slice(0, 3)
+            : [];
+
+    if (activeAvatars.length === 0) {
+        activeAvatars.push(defaultAvatars[0], defaultAvatars[1], defaultAvatars[2]);
+    }
+
+    const csAgentName = cs.cs_agent_name || 'Rahma';
+    const csAvatarUrl = cs.cs_avatar_url || activeAvatars[0] || '/images/avatars/cs-1.png';
+
+    // Template Chat & Topik Formulir Awal dari CMS Admin
+    const chatTemplates: ChatTemplate[] =
+        Array.isArray(cs.chat_templates) && cs.chat_templates.length > 0
+            ? cs.chat_templates
+            : DEFAULT_CHAT_TEMPLATES;
 
     const bannerBadge = cs.banner_badge || 'OFFICIAL 24/7 SUPPORT';
     const bannerTitle = cs.banner_title || application.name;
@@ -614,8 +635,7 @@ export default function ChatShow({
                                                 alt={`CS Agent ${idx + 1}`}
                                                 className="size-full object-cover"
                                                 onError={(e) => {
-                                                    (e.target as any).src =
-                                                        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80';
+                                                    (e.target as any).src = '/images/avatars/cs-1.png';
                                                 }}
                                             />
                                         </div>

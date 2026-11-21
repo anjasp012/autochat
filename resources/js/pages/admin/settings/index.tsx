@@ -128,6 +128,11 @@ export default function AdminSettings({ application }: Props) {
             splash_description: currentSettings.splash_description || 'Ada yang Bisa Kami Bantu, Bosku?',
             header_title: currentSettings.header_title || application.name,
             selected_avatars: initialAvatars,
+            cs_agent_name: currentSettings.cs_agent_name || 'Rahma',
+            cs_avatar_url: currentSettings.cs_avatar_url || PRESET_AVATARS[0].url,
+            chat_templates: Array.isArray(currentSettings.chat_templates) && currentSettings.chat_templates.length > 0
+                ? currentSettings.chat_templates
+                : DEFAULT_CHAT_TEMPLATES,
             banner_type: currentSettings.banner_type || (currentSettings.banner_image_url ? 'image' : 'text'),
             banner_badge: currentSettings.banner_badge || 'OFFICIAL 24/7 SUPPORT',
             banner_title: currentSettings.banner_title || application.name,
@@ -139,7 +144,7 @@ export default function AdminSettings({ application }: Props) {
             welcome_opening:
                 currentSettings.welcome_opening ||
                 application.welcome_message ||
-                `Selamat Datang di ${application.name} Link ANTI NAWALA ${application.name}\n[https://kiamkiam.site/cvtogel1](https://kiamkiam.site/cvtogel1)\n[https://kiamkiam.site/cvtogel2](https://kiamkiam.site/cvtogel2)\nWHATSAPP [https://kiamkiam.site/wacvtogel](https://kiamkiam.site/wacvtogel)\nTELEGRAM [https://kiamkiam.site/telecvtogel](https://kiamkiam.site/telecvtogel)\n( WAJIB DI SIMPAN )`,
+                `Selamat Datang di CS ${application.name.replace(/^CS\s+/i, '')}\n\n🔥 Link Alternatif Anti Nawala Resmi:\n👉 https://kiamkiam.site/cvtogel1\n👉 https://kiamkiam.site/cvtogel2\n\n📱 Layanan Kontak Resmi (WAJIB DI SIMPAN):\n💬 WHATSAPP: https://kiamkiam.site/wacvtogel\n✈️ TELEGRAM: https://kiamkiam.site/telecvtogel`,
         },
     });
 
@@ -176,6 +181,37 @@ export default function AdminSettings({ application }: Props) {
         }
 
         updateChatSetting('selected_avatars', currentList);
+    };
+
+    // Handler Template Chat & Topik Formulir Awal
+    const handleAddTemplate = () => {
+        const current = [...(data.chat_settings.chat_templates || [])];
+        current.push({
+            id: `tpl-${Date.now()}`,
+            topic: '',
+            bot_reply: 'Hallo bosku 👋 {waktu}, ada yang bisa dibantu, Bosku?',
+            form_type: 'none',
+        });
+        updateChatSetting('chat_templates', current);
+    };
+
+    const handleRemoveTemplate = (id: string) => {
+        const current = (data.chat_settings.chat_templates || []).filter((t: ChatTemplate) => t.id !== id);
+        updateChatSetting('chat_templates', current);
+    };
+
+    const handleUpdateTemplate = (id: string, field: keyof ChatTemplate, val: any) => {
+        const current = (data.chat_settings.chat_templates || []).map((t: ChatTemplate) => {
+            if (t.id === id) {
+                return { ...t, [field]: val };
+            }
+            return t;
+        });
+        updateChatSetting('chat_templates', current);
+    };
+
+    const handleResetTemplates = () => {
+        updateChatSetting('chat_templates', DEFAULT_CHAT_TEMPLATES);
     };
 
     // Handler Tambah, Hapus, dan Edit Tombol Cepat Dinamis
@@ -225,29 +261,30 @@ export default function AdminSettings({ application }: Props) {
         const text = data.chat_settings.welcome_opening || '';
         const urls = text.match(/https?:\/\/[^\s\)\>\]]+/gi) || [];
 
-        let formatted = `Selamat Datang di CS ${application.name}\n\n`;
-        formatted += `🔥 **Link Alternatif Anti Nawala Resmi:**\n`;
+        const appCleanName = application.name.replace(/^CS\s+/i, '');
+        let formatted = `Selamat Datang di CS ${appCleanName}\n\n`;
+        formatted += `🔥 Link Alternatif Anti Nawala Resmi:\n`;
 
         const antiNawalaUrls = urls.filter(
             (u: string) => !u.includes('wa') && !u.includes('tele') && !u.includes('t.me')
         );
 
         if (antiNawalaUrls.length > 0) {
-            antiNawalaUrls.forEach((url: string, i: number) => {
-                formatted += `👉 [Link Alternatif ${i + 1}](${url})\n`;
+            antiNawalaUrls.forEach((url: string) => {
+                formatted += `👉 ${url}\n`;
             });
         } else {
-            formatted += `👉 [Link Alternatif 1](https://kiamkiam.site/cvtogel1)\n👉 [Link Alternatif 2](https://kiamkiam.site/cvtogel2)\n`;
+            formatted += `👉 https://kiamkiam.site/cvtogel1\n👉 https://kiamkiam.site/cvtogel2\n`;
         }
 
-        formatted += `\n📱 **Layanan Kontak Resmi (WAJIB DI SIMPAN):**\n`;
+        formatted += `\n📱 Layanan Kontak Resmi (WAJIB DI SIMPAN):\n`;
         const waUrl = urls.find((u: string) => u.includes('wa')) || 'https://kiamkiam.site/wacvtogel';
         const teleUrl =
             urls.find((u: string) => u.includes('tele') || u.includes('t.me')) ||
             'https://kiamkiam.site/telecvtogel';
 
-        formatted += `💬 [WHATSAPP CS RESMI](${waUrl})\n`;
-        formatted += `✈️ [TELEGRAM CS RESMI](${teleUrl})\n`;
+        formatted += `💬 WHATSAPP: ${waUrl}\n`;
+        formatted += `✈️ TELEGRAM: ${teleUrl}\n`;
 
         updateChatSetting('welcome_opening', formatted);
     };
@@ -590,66 +627,207 @@ export default function AdminSettings({ application }: Props) {
                             </CardContent>
                         </Card>
 
-                        {/* 4. GALERI FOTO PROFIL CS (CENTANG PILIH 3 GAMBAR) */}
+                        {/* 4. GALERI FOTO PROFIL CS (4 CS: Rahma, Nindy, Rosa, Intan) */}
                         <Card>
                             <CardHeader className="pb-3">
                                 <div className="flex items-center justify-between">
                                     <CardTitle className="text-sm font-bold flex items-center gap-2">
                                         <Users className="size-4 text-amber-500" />
-                                        <span>Foto Profil 3 CS (Pilih dari Galeri)</span>
+                                        <span>Foto Profil Customer Service (CS)</span>
                                     </CardTitle>
                                     <span className="text-xs font-bold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/60 px-2.5 py-0.5 rounded-full">
-                                        Terpilih: {currentAvatars.length} / 3 Foto
+                                        Terpilih di Header: {currentAvatars.length} / 3 Foto
                                     </span>
                                 </div>
                                 <CardDescription className="text-xs">
-                                    Cukup klik foto avatar di bawah untuk memilih 3 Customer Service yang akan ditampilkan rapi berjejer di header livechat.
+                                    Pilih avatar untuk Customer Service (Rahma, Nindy, Rosa, Intan). Foto yang dicentang akan ditampilkan rapi berjejer di header livechat.
                                 </CardDescription>
                             </CardHeader>
-                            <CardContent>
-                                <div className="grid grid-cols-5 sm:grid-cols-5 md:grid-cols-5 gap-3">
-                                    {PRESET_AVATARS.map((av) => {
-                                        const isSelected = currentAvatars.includes(av.url);
-                                        const selectedIndex = currentAvatars.indexOf(av.url);
+                            <CardContent className="space-y-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs font-semibold">Nama CS Aktif (Tampil Saat Membalas Chat)</Label>
+                                        <Input
+                                            value={data.chat_settings.cs_agent_name || ''}
+                                            onChange={(e) => updateChatSetting('cs_agent_name', e.target.value)}
+                                            placeholder="Contoh: Rahma"
+                                            className="text-xs font-medium"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs font-semibold">Foto CS Utama (Saat Membalas Chat)</Label>
+                                        <select
+                                            value={data.chat_settings.cs_avatar_url || PRESET_AVATARS[0].url}
+                                            onChange={(e) => updateChatSetting('cs_avatar_url', e.target.value)}
+                                            className="w-full h-9 px-3 text-xs rounded-md border border-input bg-background text-foreground font-medium"
+                                        >
+                                            {PRESET_AVATARS.map((av) => (
+                                                <option key={av.id} value={av.url}>
+                                                    {av.name} ({av.id})
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
 
-                                        return (
-                                            <button
-                                                key={av.id}
-                                                type="button"
-                                                onClick={() => handleToggleAvatar(av.url)}
-                                                className={`group relative flex flex-col items-center gap-1.5 p-1.5 rounded-2xl border-2 transition-all cursor-pointer ${
-                                                    isSelected
-                                                        ? 'border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/40 shadow-sm scale-102'
-                                                        : 'border-border/70 hover:border-amber-400 bg-card opacity-70 hover:opacity-100'
-                                                }`}
-                                            >
-                                                <div className="relative size-12 sm:size-14 rounded-full overflow-hidden ring-2 ring-background">
-                                                    <img
-                                                        src={av.url}
-                                                        alt={av.name}
-                                                        className="size-full object-cover"
-                                                    />
-                                                    {isSelected && (
-                                                        <div className="absolute inset-0 bg-emerald-900/40 flex items-center justify-center">
-                                                            <div className="flex size-5 items-center justify-center rounded-full bg-emerald-500 text-white shadow-xs">
-                                                                <Check className="size-3 stroke-3" />
+                                <div className="space-y-2 pt-1">
+                                    <Label className="text-xs font-semibold text-muted-foreground block">
+                                        Klik foto di bawah untuk memilih 3 Avatar yang tampil di Header Beranda:
+                                    </Label>
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                        {PRESET_AVATARS.map((av) => {
+                                            const isSelected = currentAvatars.includes(av.url);
+                                            const selectedIndex = currentAvatars.indexOf(av.url);
+
+                                            return (
+                                                <button
+                                                    key={av.id}
+                                                    type="button"
+                                                    onClick={() => handleToggleAvatar(av.url)}
+                                                    className={`group relative flex flex-col items-center gap-2 p-3 rounded-2xl border-2 transition-all cursor-pointer ${
+                                                        isSelected
+                                                            ? 'border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/40 shadow-sm scale-102'
+                                                            : 'border-border/70 hover:border-amber-400 bg-card opacity-70 hover:opacity-100'
+                                                    }`}
+                                                >
+                                                    <div className="relative size-16 rounded-full overflow-hidden ring-2 ring-background shadow-xs">
+                                                        <img
+                                                            src={av.url}
+                                                            alt={av.name}
+                                                            className="size-full object-cover"
+                                                        />
+                                                        {isSelected && (
+                                                            <div className="absolute inset-0 bg-emerald-900/40 flex items-center justify-center">
+                                                                <div className="flex size-6 items-center justify-center rounded-full bg-emerald-500 text-white shadow-xs">
+                                                                    <Check className="size-3.5 stroke-3" />
+                                                                </div>
                                                             </div>
-                                                        </div>
-                                                    )}
-                                                </div>
+                                                        )}
+                                                    </div>
 
-                                                <span className="text-[10px] font-semibold truncate max-w-full">
-                                                    {av.name}
-                                                </span>
-
-                                                {isSelected && (
-                                                    <span className="absolute -top-1 -right-1 flex size-5 items-center justify-center rounded-full bg-emerald-600 text-white text-[9px] font-bold shadow-2xs">
-                                                        #{selectedIndex + 1}
+                                                    <span className="text-xs font-bold truncate max-w-full">
+                                                        {av.name}
                                                     </span>
-                                                )}
-                                            </button>
-                                        );
-                                    })}
+
+                                                    {isSelected && (
+                                                        <span className="absolute -top-1 -right-1 flex size-5 items-center justify-center rounded-full bg-emerald-600 text-white text-[9px] font-bold shadow-2xs">
+                                                            #{selectedIndex + 1}
+                                                        </span>
+                                                    )}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* 5. TEMPLATE CHAT & TOPIK FORMULIR AWAL */}
+                        <Card>
+                            <CardHeader className="pb-3">
+                                <div className="flex items-center justify-between">
+                                    <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                        <MessageSquareCode className="size-4 text-amber-500" />
+                                        <span>Template Chat & Topik Formulir Awal</span>
+                                    </CardTitle>
+                                    <div className="flex items-center gap-2">
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={handleResetTemplates}
+                                            className="h-7 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                                        >
+                                            <RotateCcw className="size-3 mr-1" />
+                                            Reset Default
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={handleAddTemplate}
+                                            className="h-7 text-xs border-amber-400 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 cursor-pointer"
+                                        >
+                                            <Plus className="size-3 mr-1" />
+                                            Tambah Topik
+                                        </Button>
+                                    </div>
+                                </div>
+                                <CardDescription className="text-xs">
+                                    Atur pilihan topik yang muncul di dropdown formulir pertama kali pengunjung masuk chat, beserta pesan balasan otomatis CS/Bot dan formulir interaktif (seperti Form Deposit atau Form Withdraw).
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-3.5">
+                                <div className="rounded-xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40 p-3 text-xs text-amber-900 dark:text-amber-200 space-y-1">
+                                    <p className="font-semibold flex items-center gap-1.5">
+                                        <Sparkles className="size-3.5 text-amber-600 shrink-0" />
+                                        Tag Dinamis yang Didukung:
+                                    </p>
+                                    <p className="text-[11px] leading-relaxed text-amber-800 dark:text-amber-300">
+                                        <code className="bg-amber-100 dark:bg-amber-900/60 px-1 py-0.5 rounded font-mono text-[10px]">{"{waktu}"}</code>: Otomatis berubah menjadi <em>Selamat Pagi / Siang / Sore / Malam</em> sesuai waktu WIB.
+                                        <br />
+                                        <code className="bg-amber-100 dark:bg-amber-900/60 px-1 py-0.5 rounded font-mono text-[10px]">{"{user_id}"}</code>: User ID yang dimasukkan pengunjung di formulir.
+                                        <br />
+                                        <code className="bg-amber-100 dark:bg-amber-900/60 px-1 py-0.5 rounded font-mono text-[10px]">{"{app_name}"}</code>: Nama aplikasi ({application.name}).
+                                    </p>
+                                </div>
+
+                                <div className="space-y-3">
+                                    {(data.chat_settings.chat_templates || []).map((tpl: ChatTemplate, idx: number) => (
+                                        <div
+                                            key={tpl.id || idx}
+                                            className="p-3.5 rounded-xl border border-border/80 bg-muted/20 hover:bg-muted/30 transition-colors space-y-2.5"
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <span className="flex size-5 items-center justify-center rounded-full bg-amber-500/20 text-amber-800 dark:text-amber-300 text-[10px] font-bold shrink-0">
+                                                    {idx + 1}
+                                                </span>
+                                                <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                    <div>
+                                                        <Input
+                                                            value={tpl.topic}
+                                                            onChange={(e) => handleUpdateTemplate(tpl.id, 'topic', e.target.value)}
+                                                            placeholder="Pilihan Topik (misal: Deposit)"
+                                                            className="h-8 text-xs font-semibold"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <select
+                                                            value={tpl.form_type || 'none'}
+                                                            onChange={(e) => handleUpdateTemplate(tpl.id, 'form_type', e.target.value)}
+                                                            className="w-full h-8 px-2.5 text-xs rounded-md border border-input bg-background text-foreground font-medium"
+                                                        >
+                                                            <option value="none">Tanpa Form (Teks Saja)</option>
+                                                            <option value="deposit_status">📋 Form Interaktif: Deposit Status</option>
+                                                            <option value="withdraw_status">📋 Form Interaktif: Withdraw Status</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => handleRemoveTemplate(tpl.id)}
+                                                    className="size-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0 cursor-pointer"
+                                                >
+                                                    <Trash2 className="size-3.5" />
+                                                </Button>
+                                            </div>
+
+                                            <div>
+                                                <Label className="text-[11px] font-semibold text-muted-foreground mb-1 block">
+                                                    Template Balasan CS / Bot:
+                                                </Label>
+                                                <Textarea
+                                                    rows={2}
+                                                    value={tpl.bot_reply}
+                                                    onChange={(e) => handleUpdateTemplate(tpl.id, 'bot_reply', e.target.value)}
+                                                    placeholder="Tulis balasan bot..."
+                                                    className="text-xs leading-relaxed"
+                                                />
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             </CardContent>
                         </Card>
