@@ -78,13 +78,13 @@ export default function ChatShow({
         Array.isArray(cs.selected_avatars) && cs.selected_avatars.length > 0
             ? cs.selected_avatars.slice(0, 3)
             : [
-                  cs.avatar_1 ||
-                      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
-                  cs.avatar_2 ||
-                      'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&auto=format&fit=crop&q=80',
-                  cs.avatar_3 ||
-                      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80',
-              ];
+                cs.avatar_1 ||
+                'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
+                cs.avatar_2 ||
+                'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&auto=format&fit=crop&q=80',
+                cs.avatar_3 ||
+                'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80',
+            ];
 
     const bannerBadge = cs.banner_badge || 'OFFICIAL 24/7 SUPPORT';
     const bannerTitle = cs.banner_title || application.name;
@@ -101,33 +101,33 @@ export default function ChatShow({
         Array.isArray(cs.quick_buttons) && cs.quick_buttons.length > 0
             ? cs.quick_buttons
             : [
-                  {
-                      title: cs.btn_1_title || 'Prediksi Togel',
-                      type: 'query',
-                      value:
-                          cs.btn_1_query ||
-                          'Halo CS, bisa berikan bocoran prediksi togel dan pasaran hari ini?',
-                  },
-                  {
-                      title: cs.btn_2_title || 'Rtp Slot Gacor',
-                      type: 'query',
-                      value:
-                          cs.btn_2_query ||
-                          'Halo CS, apa saja daftar RTP slot yang lagi gacor hari ini?',
-                  },
-                  {
-                      title: cs.btn_3_title || 'Download APK',
-                      type: 'link',
-                      value: cs.btn_3_query || 'https://kiamkiam.site/cvtogel1',
-                  },
-                  {
-                      title: cs.btn_4_title || 'Promosi',
-                      type: 'query',
-                      value:
-                          cs.btn_4_query ||
-                          'Bisa jelaskan promo dan bonus deposit / new member terbaru yang sedang aktif?',
-                  },
-              ];
+                {
+                    title: cs.btn_1_title || 'Prediksi Togel',
+                    type: 'query',
+                    value:
+                        cs.btn_1_query ||
+                        'Halo CS, bisa berikan bocoran prediksi togel dan pasaran hari ini?',
+                },
+                {
+                    title: cs.btn_2_title || 'Rtp Slot Gacor',
+                    type: 'query',
+                    value:
+                        cs.btn_2_query ||
+                        'Halo CS, apa saja daftar RTP slot yang lagi gacor hari ini?',
+                },
+                {
+                    title: cs.btn_3_title || 'Download APK',
+                    type: 'link',
+                    value: cs.btn_3_query || 'https://kiamkiam.site/cvtogel1',
+                },
+                {
+                    title: cs.btn_4_title || 'Promosi',
+                    type: 'query',
+                    value:
+                        cs.btn_4_query ||
+                        'Bisa jelaskan promo dan bonus deposit / new member terbaru yang sedang aktif?',
+                },
+            ];
 
     // Default welcome promo message if none set in CMS
     const defaultWelcomeMessage =
@@ -274,7 +274,7 @@ export default function ChatShow({
                                 setUserId(parsedForm.userId);
                                 setQuestionTopic(parsedForm.questionTopic || '');
                             }
-                        } catch (e) {}
+                        } catch (e) { }
                     }
                     return;
                 }
@@ -292,7 +292,7 @@ export default function ChatShow({
                             setQuestionTopic(parsedForm.questionTopic || '');
                             setHasSubmittedForm(true);
                         }
-                    } catch (e) {}
+                    } catch (e) { }
                 }
                 return;
             }
@@ -714,17 +714,16 @@ export default function ChatShow({
                             {/* Tombol Cepat Dinamis (Bisa 1, 2, atau berapapun tombol sesuai CMS) */}
                             {quickButtons.length > 0 && (
                                 <div
-                                    className={`grid gap-2.5 ${
-                                        quickButtons.length === 1 ? 'grid-cols-1' : 'grid-cols-2'
-                                    }`}
+                                    className={`grid gap-2.5 ${quickButtons.length === 1 ? 'grid-cols-1' : 'grid-cols-2'
+                                        }`}
                                 >
                                     {quickButtons.map((item, idx) => {
                                         const isHovered = hoveredBtn === idx;
                                         const hoverStyle = isHovered
                                             ? {
-                                                  borderColor: headerColor,
-                                                  backgroundColor: `${headerColor}1f`,
-                                              }
+                                                borderColor: headerColor,
+                                                backgroundColor: `${headerColor}1f`,
+                                            }
                                             : {};
 
                                         if (item.type === 'link') {
@@ -891,69 +890,65 @@ export default function ChatShow({
                                     {messages
                                         .filter((msg) => !(msg.role === 'user' && msg.content.startsWith('Halo CS, User ID saya:')))
                                         .map((msg) => {
-                                        const isUser = msg.role === 'user';
-                                        return (
-                                            <div
-                                                key={msg.id}
-                                                className={`flex items-start gap-2.5 ${
-                                                    isUser ? 'flex-row-reverse' : 'flex-row'
-                                                }`}
-                                            >
-                                                {/* Avatar Icon */}
+                                            const isUser = msg.role === 'user';
+                                            return (
                                                 <div
-                                                    className={`flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold shadow-2xs ${
-                                                        isUser
+                                                    key={msg.id}
+                                                    className={`flex items-start gap-2.5 ${isUser ? 'flex-row-reverse' : 'flex-row'
+                                                        }`}
+                                                >
+                                                    {/* Avatar Icon */}
+                                                    <div
+                                                        className={`flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold shadow-2xs ${isUser
                                                             ? 'bg-neutral-900 text-white'
                                                             : 'text-neutral-950'
-                                                    }`}
-                                                    style={!isUser ? { backgroundColor: headerColor, color: headerTextColor } : {}}
-                                                >
-                                                    {isUser ? (
-                                                        <UserIcon className="size-3.5" />
-                                                    ) : isTakenOver ? (
-                                                        <UserCheck className="size-3.5" />
-                                                    ) : (
-                                                        <Bot className="size-3.5" />
-                                                    )}
-                                                </div>
-
-                                                {/* Chat Bubble */}
-                                                <div
-                                                    className={`flex flex-col space-y-1 max-w-[85%] ${
-                                                        isUser ? 'items-end' : 'items-start'
-                                                    }`}
-                                                >
-                                                    <span className="text-[10px] font-bold text-neutral-500 px-1">
-                                                        {isUser
-                                                            ? 'Anda'
-                                                            : isTakenOver
-                                                              ? 'Admin CS'
-                                                              : application.name}
-                                                    </span>
-
-                                                    <div
-                                                        className={`rounded-2xl px-3.5 py-2.5 text-xs shadow-2xs leading-relaxed ${
-                                                            isUser
-                                                                ? 'rounded-tr-xs bg-neutral-900 text-white'
-                                                                : 'rounded-tl-xs bg-white border border-neutral-200/90 text-neutral-900'
-                                                        }`}
+                                                            }`}
+                                                        style={!isUser ? { backgroundColor: headerColor, color: headerTextColor } : {}}
                                                     >
                                                         {isUser ? (
-                                                            <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                                                            <UserIcon className="size-3.5" />
+                                                        ) : isTakenOver ? (
+                                                            <UserCheck className="size-3.5" />
                                                         ) : (
-                                                            <ChatMarkdown content={msg.content} />
+                                                            <Bot className="size-3.5" />
                                                         )}
                                                     </div>
 
-                                                    {msg.created_at && (
-                                                        <span className="text-[9px] text-neutral-400 px-1">
-                                                            {msg.created_at}
+                                                    {/* Chat Bubble */}
+                                                    <div
+                                                        className={`flex flex-col space-y-1 max-w-[85%] ${isUser ? 'items-end' : 'items-start'
+                                                            }`}
+                                                    >
+                                                        <span className="text-[10px] font-bold text-neutral-500 px-1">
+                                                            {isUser
+                                                                ? 'Anda'
+                                                                : isTakenOver
+                                                                    ? 'Admin CS'
+                                                                    : application.name}
                                                         </span>
-                                                    )}
+
+                                                        <div
+                                                            className={`rounded-2xl px-3.5 py-2.5 text-xs shadow-2xs leading-relaxed ${isUser
+                                                                ? 'rounded-tr-xs bg-neutral-900 text-white'
+                                                                : 'rounded-tl-xs bg-white border border-neutral-200/90 text-neutral-900'
+                                                                }`}
+                                                        >
+                                                            {isUser ? (
+                                                                <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                                                            ) : (
+                                                                <ChatMarkdown content={msg.content} />
+                                                            )}
+                                                        </div>
+
+                                                        {msg.created_at && (
+                                                            <span className="text-[9px] text-neutral-400 px-1">
+                                                                {msg.created_at}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        );
-                                    })}
+                                            );
+                                        })}
 
                                     {/* Loading / Typing indicator */}
                                     {isLoading && (
@@ -1124,11 +1119,10 @@ export default function ChatShow({
                             <button
                                 type="button"
                                 onClick={() => setActiveTab('beranda')}
-                                className={`flex flex-col items-center gap-1 text-[11px] font-medium transition-colors cursor-pointer ${
-                                    activeTab === 'beranda'
-                                        ? 'text-amber-600 font-bold'
-                                        : 'text-neutral-400 hover:text-neutral-600'
-                                }`}
+                                className={`flex flex-col items-center gap-1 text-[11px] font-medium transition-colors cursor-pointer ${activeTab === 'beranda'
+                                    ? 'text-amber-600 font-bold'
+                                    : 'text-neutral-400 hover:text-neutral-600'
+                                    }`}
                             >
                                 <HomeIcon className="size-4.5" />
                                 <span>Beranda</span>
@@ -1137,11 +1131,10 @@ export default function ChatShow({
                             <button
                                 type="button"
                                 onClick={() => setActiveTab('pesan')}
-                                className={`flex flex-col items-center gap-1 text-[11px] font-medium transition-colors cursor-pointer relative ${
-                                    activeTab === 'pesan'
-                                        ? 'text-amber-600 font-bold'
-                                        : 'text-neutral-400 hover:text-neutral-600'
-                                }`}
+                                className={`flex flex-col items-center gap-1 text-[11px] font-medium transition-colors cursor-pointer relative ${activeTab === 'pesan'
+                                    ? 'text-amber-600 font-bold'
+                                    : 'text-neutral-400 hover:text-neutral-600'
+                                    }`}
                             >
                                 <MessageSquare className="size-4.5" />
                                 <span>Pesan</span>
@@ -1153,11 +1146,10 @@ export default function ChatShow({
                             <button
                                 type="button"
                                 onClick={() => setActiveTab('bantuan')}
-                                className={`flex flex-col items-center gap-1 text-[11px] font-medium transition-colors cursor-pointer ${
-                                    activeTab === 'bantuan'
-                                        ? 'text-amber-600 font-bold'
-                                        : 'text-neutral-400 hover:text-neutral-600'
-                                }`}
+                                className={`flex flex-col items-center gap-1 text-[11px] font-medium transition-colors cursor-pointer ${activeTab === 'bantuan'
+                                    ? 'text-amber-600 font-bold'
+                                    : 'text-neutral-400 hover:text-neutral-600'
+                                    }`}
                             >
                                 <HelpCircle className="size-4.5" />
                                 <span>Bantuan</span>
