@@ -216,29 +216,32 @@ export default function ConversationsShow({ conversation }: Props) {
                                     );
                                 }
 
+                                const isAdmin = msg.role === 'admin';
                                 const isUser = msg.role === 'user';
 
                                 return (
                                     <div
                                         key={msg.id}
                                         className={`flex gap-3 max-w-3xl ${
-                                            isUser ? 'ml-auto flex-row-reverse' : 'mr-auto'
+                                            isAdmin ? 'ml-auto flex-row-reverse' : 'mr-auto'
                                         }`}
                                     >
                                         <div
                                             className={`flex size-8 shrink-0 items-center justify-center rounded-xl shadow-xs text-xs font-semibold ${
-                                                isUser
-                                                    ? 'bg-primary text-primary-foreground'
-                                                    : 'bg-secondary text-secondary-foreground border border-border'
+                                                isAdmin
+                                                    ? 'bg-emerald-600 text-white'
+                                                    : isUser
+                                                      ? 'bg-neutral-800 text-white dark:bg-neutral-700'
+                                                      : 'bg-secondary text-secondary-foreground border border-border'
                                             }`}
                                         >
-                                            {isUser ? <User className="size-4" /> : <Bot className="size-4" />}
+                                            {isAdmin ? <UserCheck className="size-4" /> : isUser ? <User className="size-4" /> : <Bot className="size-4" />}
                                         </div>
 
-                                        <div className={`flex flex-col gap-1 min-w-0 ${isUser ? 'items-end' : 'items-start'}`}>
+                                        <div className={`flex flex-col gap-1 min-w-0 ${isAdmin ? 'items-end' : 'items-start'}`}>
                                             <div className="flex items-center gap-2 text-[11px] text-muted-foreground px-1">
                                                 <span className="font-semibold text-foreground">
-                                                    {isUser ? 'Pengunjung' : (conversation.is_taken_over ? 'Admin' : 'Asisten AI')}
+                                                    {isAdmin ? 'Anda (Admin CS)' : isUser ? 'Pengunjung' : 'Asisten AI'}
                                                 </span>
                                                 <span className="flex items-center gap-1 font-mono text-[10px]">
                                                     <Clock className="size-2.5" />
@@ -248,9 +251,11 @@ export default function ConversationsShow({ conversation }: Props) {
 
                                             <div
                                                 className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap break-words shadow-2xs ${
-                                                    isUser
-                                                        ? 'bg-primary text-primary-foreground rounded-tr-xs'
-                                                        : 'bg-muted/70 text-foreground border border-border/80 rounded-tl-xs'
+                                                    isAdmin
+                                                        ? 'bg-emerald-600 text-white rounded-tr-xs'
+                                                        : isUser
+                                                          ? 'bg-card text-foreground border border-border rounded-tl-xs'
+                                                          : 'bg-muted/70 text-foreground border border-border/80 rounded-tl-xs'
                                                 }`}
                                             >
                                                 {msg.content}

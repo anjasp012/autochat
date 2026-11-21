@@ -20,6 +20,13 @@ const isLocal =
     hostname.endsWith('.to') ||
     hostname.endsWith('.test');
 
+// Pusher-js secara bawaan memaksa wss:// jika window.location.protocol === 'https:'.
+// Di lingkungan lokal Laragon, Reverb berjalan pada plain HTTP port 8085 (ws://).
+// Override runtime getProtocol agar Pusher tidak memaksakan handshake TLS (wss://) ke port plain Reverb.
+if (isLocal && (Pusher as any).Runtime) {
+    (Pusher as any).Runtime.getProtocol = () => 'http:';
+}
+
 // Pada lingkungan lokal / Laragon, Reverb berjalan di HTTP port 8085 (plain ws).
 // Browser mengizinkan koneksi ws://127.0.0.1:8085 meskipun diakses via https://autochat.to karena 127.0.0.1 adalah trustworthy origin.
 const reverbHost = isLocal

@@ -686,28 +686,46 @@ export default function ConversationsIndex({
                                             );
                                         }
 
+                                        const isAdmin = msg.role === 'admin';
                                         const isUser = msg.role === 'user';
 
                                         return (
                                             <div
                                                 key={msg.id}
-                                                className={`flex items-end gap-2.5 ${isUser ? 'justify-end' : 'justify-start'}`}
+                                                className={`flex items-end gap-2.5 ${isAdmin ? 'justify-end' : 'justify-start'}`}
                                             >
-                                                {!isUser && (
-                                                    <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary mb-1 shadow-2xs">
-                                                        <Bot className="size-3.5" />
+                                                {!isAdmin && (
+                                                    <div
+                                                        className={`flex size-7 shrink-0 items-center justify-center rounded-full mb-1 shadow-2xs ${
+                                                            isUser
+                                                                ? 'bg-neutral-800 text-white dark:bg-neutral-700'
+                                                                : 'bg-primary/10 text-primary'
+                                                        }`}
+                                                        title={isUser ? 'Pengunjung' : 'Asisten AI'}
+                                                    >
+                                                        {isUser ? <User className="size-3.5" /> : <Bot className="size-3.5" />}
                                                     </div>
                                                 )}
 
-                                                <div className="flex flex-col max-w-[82%] sm:max-w-[70%]">
+                                                <div className={`flex flex-col max-w-[82%] sm:max-w-[70%] ${isAdmin ? 'items-end' : 'items-start'}`}>
+                                                    <span className="text-[10px] font-semibold text-muted-foreground px-1 mb-0.5">
+                                                        {isAdmin
+                                                            ? 'Anda (Admin CS)'
+                                                            : isUser
+                                                              ? 'Pengunjung'
+                                                              : 'Asisten AI'}
+                                                    </span>
+
                                                     <div
                                                         className={`rounded-2xl px-4 py-2.5 text-xs shadow-2xs ${
-                                                            isUser
+                                                            isAdmin
                                                                 ? 'bg-emerald-600 text-white rounded-br-xs'
-                                                                : 'bg-card text-card-foreground border border-border rounded-bl-xs'
+                                                                : isUser
+                                                                  ? 'bg-card text-card-foreground border border-border rounded-bl-xs'
+                                                                  : 'bg-muted/50 text-foreground border border-border/70 rounded-bl-xs'
                                                         }`}
                                                     >
-                                                        {isUser ? (
+                                                        {isAdmin || isUser ? (
                                                             <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
                                                         ) : (
                                                             <ChatMarkdown content={msg.content} />
@@ -715,16 +733,19 @@ export default function ConversationsIndex({
                                                     </div>
                                                     <span
                                                         className={`text-[10px] text-muted-foreground mt-1 px-1 font-mono ${
-                                                            isUser ? 'text-right' : 'text-left'
+                                                            isAdmin ? 'text-right' : 'text-left'
                                                         }`}
                                                     >
                                                         {msg.created_at || ''}
                                                     </span>
                                                 </div>
 
-                                                {isUser && (
-                                                    <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground mb-1 shadow-2xs">
-                                                        <User className="size-3.5" />
+                                                {isAdmin && (
+                                                    <div
+                                                        className="flex size-7 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white mb-1 shadow-2xs"
+                                                        title="Anda (Admin CS)"
+                                                    >
+                                                        <UserCheck className="size-3.5" />
                                                     </div>
                                                 )}
                                             </div>
