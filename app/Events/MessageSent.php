@@ -75,6 +75,7 @@ class MessageSent implements ShouldBroadcastNow
             'conversation_uuid' => $this->message->conversation->uuid,
             'application_app_id' => $this->message->conversation->application?->app_id,
             'is_taken_over' => (bool) $this->message->conversation->is_taken_over,
+            'is_waiting_admin' => (bool) $this->message->conversation->is_waiting_admin,
             'taken_over_by' => $this->message->conversation->taken_over_by,
             'is_archived' => (bool) $this->message->conversation->is_archived,
         ];

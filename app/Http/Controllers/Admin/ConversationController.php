@@ -58,6 +58,7 @@ class ConversationController extends Controller
 
         $counts = [
             'all' => (clone $baseQuery)->where('is_archived', false)->count(),
+            'waiting' => (clone $baseQuery)->where('is_archived', false)->where('is_waiting_admin', true)->count(),
             'mine' => (clone $baseQuery)->where('is_archived', false)->where('is_taken_over', true)->where('taken_over_by', $request->user()?->id)->count(),
             'unassigned' => (clone $baseQuery)->where('is_archived', false)->where('is_taken_over', false)->whereNull('taken_over_by')->count(),
             'bot' => (clone $baseQuery)->where('is_archived', false)->where('is_taken_over', false)->count(),
@@ -78,6 +79,7 @@ class ConversationController extends Controller
                         ->orWhereHas('messages', fn ($mq) => $mq->where('content', 'like', "%{$search}%"));
                 });
             })
+            ->when($status === 'waiting', fn ($q) => $q->where('is_archived', false)->where('is_waiting_admin', true))
             ->when($status === 'mine', fn ($q) => $q->where('is_archived', false)->where('is_taken_over', true)->where('taken_over_by', $request->user()?->id))
             ->when($status === 'unassigned', fn ($q) => $q->where('is_archived', false)->where('is_taken_over', false)->whereNull('taken_over_by'))
             ->when($status === 'bot' || $status === 'ai', fn ($q) => $q->where('is_archived', false)->where('is_taken_over', false))
@@ -124,9 +126,15 @@ class ConversationController extends Controller
     {
         $conversation->update([
             'is_taken_over' => true,
+            'is_waiting_admin' => false,
             'taken_over_at' => now(),
             'taken_over_by' => $request->user()?->id,
             'last_activity_at' => now(),
+        ]);
+
+        \App\Models\BotEscalation::where('conversation_id', $conversation->id)->update([
+            'is_read' => true,
+            'is_resolved' => true,
         ]);
 
         $systemMessage = Message::create([
@@ -179,7 +187,15 @@ class ConversationController extends Controller
             'tokens_used' => 0,
         ]);
 
-        $conversation->update(['last_activity_at' => now()]);
+        $conversation->update([
+            'is_waiting_admin' => false,
+            'last_activity_at' => now(),
+        ]);
+
+        \App\Models\BotEscalation::where('conversation_id', $conversation->id)->update([
+            'is_read' => true,
+            'is_resolved' => true,
+        ]);
 
         MessageSent::safeDispatch($adminMessage);
 

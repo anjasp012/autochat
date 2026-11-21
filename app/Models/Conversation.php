@@ -19,6 +19,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $user_agent
  * @property Carbon $last_activity_at
  * @property bool $is_taken_over
+ * @property bool $is_waiting_admin
  * @property Carbon|null $taken_over_at
  * @property int|null $taken_over_by
  * @property Carbon|null $created_at
@@ -34,6 +35,7 @@ use Illuminate\Support\Carbon;
     'user_agent',
     'last_activity_at',
     'is_taken_over',
+    'is_waiting_admin',
     'is_archived',
     'taken_over_at',
     'taken_over_by',
@@ -53,6 +55,7 @@ class Conversation extends Model
         return [
             'last_activity_at' => 'datetime',
             'is_taken_over' => 'boolean',
+            'is_waiting_admin' => 'boolean',
             'is_archived' => 'boolean',
             'taken_over_at' => 'datetime',
         ];

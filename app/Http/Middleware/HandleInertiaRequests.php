@@ -80,6 +80,27 @@ class HandleInertiaRequests extends Middleware
             'currentAppId' => fn () => $request->session()->get('current_app_id')
                 ?? Application::query()->where('is_active', true)->value('app_id')
                 ?? Application::query()->value('app_id'),
+            'escalations' => fn () => $request->user() ? [
+                'unread_count' => \App\Models\BotEscalation::where('is_read', false)->count(),
+                'recent' => \App\Models\BotEscalation::with('application:id,name,app_id')
+                    ->latest()
+                    ->take(10)
+                    ->get()
+                    ->map(fn ($e) => [
+                        'id' => $e->id,
+                        'application_name' => $e->application?->name ?? 'Chatbot',
+                        'application_app_id' => $e->application?->app_id ?? '',
+                        'conversation_uuid' => $e->conversation_id ? \App\Models\Conversation::where('id', $e->conversation_id)->value('uuid') : '',
+                        'user_identifier' => $e->user_identifier ?? 'Pengunjung',
+                        'type' => $e->type,
+                        'title' => $e->title,
+                        'message' => $e->message,
+                        'is_read' => (bool) $e->is_read,
+                        'is_resolved' => (bool) $e->is_resolved,
+                        'created_at' => $e->created_at?->diffForHumans() ?? 'Baru saja',
+                        'created_at_time' => $e->created_at?->format('H:i') ?? '',
+                    ]),
+            ] : null,
         ];
     }
 }

@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\BotEscalationCreated;
 use App\Events\MessageSent;
 use App\Models\Application;
+use App\Models\BotEscalation;
 use App\Models\Conversation;
 use App\Models\Message;
 use App\Services\AI\LLMService;
@@ -80,6 +82,7 @@ class ChatController extends Controller
             'exists' => true,
             'expired' => false,
             'is_taken_over' => (bool) $conversation->is_taken_over,
+            'is_waiting_admin' => (bool) $conversation->is_waiting_admin,
             'messages' => $messages,
         ]);
     }
