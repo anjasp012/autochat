@@ -61,7 +61,6 @@ class ConversationController extends Controller
             'all' => (clone $baseQuery)->where('is_archived', false)->count(),
             'waiting' => (clone $baseQuery)->where('is_archived', false)->where('is_waiting_admin', true)->count(),
             'mine' => (clone $baseQuery)->where('is_archived', false)->where('is_taken_over', true)->where('taken_over_by', $request->user()?->id)->count(),
-            'unassigned' => (clone $baseQuery)->where('is_archived', false)->where('is_taken_over', false)->whereNull('taken_over_by')->count(),
             'bot' => (clone $baseQuery)->where('is_archived', false)->where('is_taken_over', false)->count(),
             'archived' => (clone $baseQuery)->where('is_archived', true)->count(),
         ];
@@ -87,7 +86,7 @@ class ConversationController extends Controller
             ->when($status === 'bot' || $status === 'ai', fn ($q) => $q->where('is_archived', false)->where('is_taken_over', false))
             ->when($status === 'archived', fn ($q) => $q->where('is_archived', true))
             ->when($status === 'taken_over', fn ($q) => $q->where('is_archived', false)->where('is_taken_over', true))
-            ->when(! in_array($status, ['archived', 'mine', 'unassigned', 'bot', 'ai', 'taken_over']), fn ($q) => $q->where('is_archived', false))
+            ->when(! in_array($status, ['archived', 'mine', 'bot', 'ai', 'taken_over']), fn ($q) => $q->where('is_archived', false))
             ->orderBy('last_activity_at', 'desc')
             ->get()
             ->map(function ($c) {

@@ -14,7 +14,6 @@ import {
     Trash2,
     User,
     UserCheck,
-    UserX,
     X,
 } from 'lucide-react';
 import ChatMarkdown from '@/components/chat-markdown';
@@ -78,8 +77,8 @@ interface ConversationDetail extends ConversationItem {
 
 interface Counts {
     all: number;
+    waiting?: number;
     mine: number;
-    unassigned: number;
     bot: number;
     archived: number;
 }
@@ -103,7 +102,7 @@ interface Props {
 export default function ConversationsIndex({
     conversations = [],
     activeConversation,
-    counts = { all: 0, mine: 0, unassigned: 0, bot: 0, archived: 0 },
+    counts = { all: 0, waiting: 0, mine: 0, bot: 0, archived: 0 },
     filters = {},
     selectedApp,
 }: Props) {
@@ -312,12 +311,6 @@ export default function ConversationsIndex({
             label: 'Milik saya',
             icon: User,
             count: counts.mine ?? 0,
-        },
-        {
-            key: 'unassigned',
-            label: 'Belum ditugaskan',
-            icon: UserX,
-            count: counts.unassigned ?? 0,
         },
         {
             key: 'bot',
@@ -581,26 +574,10 @@ export default function ConversationsIndex({
                                 </div>
                                 <div className="flex flex-col min-w-0">
                                     <div className="flex items-center gap-2">
-                                        {(() => {
-                                            let activeDisplayName = activeConversation.user_identifier;
-                                            if (!activeDisplayName || activeDisplayName === activeConversation.uuid) {
-                                                const firstMsg = localMessages.find((m) => m.role === 'user')?.content || '';
-                                                const m = firstMsg.match(/User ID saya:\s*([^.\n]+)/i) || firstMsg.match(/Username:\*{0,2}\s*([^\n\r*]+)/i);
-                                                if (m && m[1]) {
-                                                    activeDisplayName = m[1].trim();
-                                                }
-                                            }
-                                            if (!activeDisplayName || activeDisplayName === activeConversation.uuid) {
-                                                activeDisplayName = `User_${activeConversation.uuid.substring(0, 6)}`;
-                                            }
-
-                                            return (
-                                                <span className="text-sm font-bold truncate text-foreground flex items-center gap-1.5">
-                                                    <span>{activeDisplayName}</span>
-                                                    <span className="text-xs font-mono font-normal text-muted-foreground">({activeConversation.uuid.substring(0, 8)}...)</span>
-                                                </span>
-                                            );
-                                        })()}
+                                        <span className="text-sm font-bold truncate text-foreground flex items-center gap-1.5">
+                                            <span>{activeDisplayName}</span>
+                                            <span className="text-xs font-mono font-normal text-muted-foreground">({activeConversation.uuid.substring(0, 8)}...)</span>
+                                        </span>
                                         {activeConversation.is_archived ? (
                                             <Badge variant="outline" className="text-[10px] gap-1 px-1.5 py-0 h-4.5">
                                                 <Archive className="size-2.5" />
