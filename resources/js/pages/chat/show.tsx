@@ -6,11 +6,11 @@ import {
     ArrowUpRight,
     Bot,
     Clock,
+    ExternalLink,
     FileText,
     HelpCircle,
     Home as HomeIcon,
     MessageSquare,
-    Plus,
     RotateCcw,
     Send,
     Sparkles,
@@ -44,6 +44,13 @@ interface Props {
     sessionTimeoutMinutes?: number;
 }
 
+interface QuickButton {
+    id?: string;
+    title: string;
+    type: 'query' | 'link';
+    value: string;
+}
+
 export default function ChatShow({
     application,
     sessionTimeoutMinutes = 10,
@@ -70,13 +77,13 @@ export default function ChatShow({
         Array.isArray(cs.selected_avatars) && cs.selected_avatars.length > 0
             ? cs.selected_avatars.slice(0, 3)
             : [
-                cs.avatar_1 ||
-                'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
-                cs.avatar_2 ||
-                'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&auto=format&fit=crop&q=80',
-                cs.avatar_3 ||
-                'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80',
-            ];
+                  cs.avatar_1 ||
+                      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
+                  cs.avatar_2 ||
+                      'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&auto=format&fit=crop&q=80',
+                  cs.avatar_3 ||
+                      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80',
+              ];
 
     const bannerBadge = cs.banner_badge || 'OFFICIAL 24/7 SUPPORT';
     const bannerTitle = cs.banner_title || application.name;
@@ -85,35 +92,38 @@ export default function ChatShow({
         'Pusat Bantuan Resmi & Layanan Member 24 Jam Nonstop. Proses Deposit & WD Tercepat, Promo & Event Menarik!';
     const bannerImageUrl = cs.banner_image_url || '';
 
-    // 4 Tombol Cepat (Grid 2x2 Beranda)
-    const homeQuickLinks = [
-        {
-            title: cs.btn_1_title || 'Prediksi Togel',
-            query: cs.btn_1_query || 'Halo CS, bisa berikan bocoran prediksi togel dan pasaran hari ini?',
-        },
-        {
-            title: cs.btn_2_title || 'Rtp Slot Gacor',
-            query: cs.btn_2_query || 'Halo CS, apa saja daftar RTP slot yang lagi gacor hari ini?',
-        },
-        {
-            title: cs.btn_3_title || 'Download APK',
-            query: cs.btn_3_query || 'Bagaimana cara download dan instal aplikasi APK versi terbaru?',
-        },
-        {
-            title: cs.btn_4_title || 'Promosi',
-            query:
-                cs.btn_4_query ||
-                'Bisa jelaskan promo dan bonus deposit / new member terbaru yang sedang aktif?',
-        },
-    ];
-
-    // Quick chips saat chat berlangsung
-    const chatChips = [
-        { label: cs.btn_3_title || 'Download APK', query: cs.btn_3_query || 'Saya mau link download APK resmi' },
-        { label: cs.btn_4_title || 'Promo Kami', query: cs.btn_4_query || 'Info promo dan bonus yang tersedia' },
-        { label: 'Whatsapp', query: 'Minta link WhatsApp CS resmi' },
-        { label: 'Telegram Official', query: 'Minta channel Telegram official' },
-    ];
+    // Tombol Cepat Dinamis (Bisa 1, 2, atau berapapun, tipe pertanyaan atau link URL)
+    const quickButtons: QuickButton[] =
+        Array.isArray(cs.quick_buttons) && cs.quick_buttons.length > 0
+            ? cs.quick_buttons
+            : [
+                  {
+                      title: cs.btn_1_title || 'Prediksi Togel',
+                      type: 'query',
+                      value:
+                          cs.btn_1_query ||
+                          'Halo CS, bisa berikan bocoran prediksi togel dan pasaran hari ini?',
+                  },
+                  {
+                      title: cs.btn_2_title || 'Rtp Slot Gacor',
+                      type: 'query',
+                      value:
+                          cs.btn_2_query ||
+                          'Halo CS, apa saja daftar RTP slot yang lagi gacor hari ini?',
+                  },
+                  {
+                      title: cs.btn_3_title || 'Download APK',
+                      type: 'link',
+                      value: cs.btn_3_query || 'https://kiamkiam.site/cvtogel1',
+                  },
+                  {
+                      title: cs.btn_4_title || 'Promosi',
+                      type: 'query',
+                      value:
+                          cs.btn_4_query ||
+                          'Bisa jelaskan promo dan bonus deposit / new member terbaru yang sedang aktif?',
+                  },
+              ];
 
     // Default welcome promo message if none set in CMS
     const defaultWelcomeMessage =
@@ -228,7 +238,7 @@ export default function ChatShow({
                                 setUserId(parsedForm.userId);
                                 setQuestionTopic(parsedForm.questionTopic || '');
                             }
-                        } catch (e) { }
+                        } catch (e) {}
                     }
                     return;
                 }
@@ -246,7 +256,7 @@ export default function ChatShow({
                             setQuestionTopic(parsedForm.questionTopic || '');
                             setHasSubmittedForm(true);
                         }
-                    } catch (e) { }
+                    } catch (e) {}
                 }
                 return;
             }
@@ -643,31 +653,56 @@ export default function ChatShow({
                                 )}
                             </div>
 
-                            {/* 4 Tombol Cepat (Grid 2x2, seperti Screenshot 1) */}
-                            <div className="grid grid-cols-2 gap-2.5">
-                                {homeQuickLinks.map((item, idx) => (
-                                    <button
-                                        key={idx}
-                                        type="button"
-                                        onClick={() => {
-                                            if (isSessionExpired) {
-                                                handleStartNewChat();
-                                            } else {
-                                                setActiveTab('pesan');
-                                                if (hasSubmittedForm) {
-                                                    handleSendMessage(item.query);
-                                                }
-                                            }
-                                        }}
-                                        className="flex items-center justify-between rounded-xl border border-neutral-200 bg-white p-3.5 text-left shadow-2xs hover:border-amber-400 hover:bg-amber-50/50 transition-all cursor-pointer group"
-                                    >
-                                        <span className="text-xs font-semibold text-neutral-800 group-hover:text-amber-950 truncate">
-                                            {item.title}
-                                        </span>
-                                        <ArrowUpRight className="size-3.5 text-neutral-400 group-hover:text-amber-600 transition-colors shrink-0" />
-                                    </button>
-                                ))}
-                            </div>
+                            {/* Tombol Cepat Dinamis (Bisa 1, 2, atau berapapun tombol sesuai CMS) */}
+                            {quickButtons.length > 0 && (
+                                <div
+                                    className={`grid gap-2.5 ${
+                                        quickButtons.length === 1 ? 'grid-cols-1' : 'grid-cols-2'
+                                    }`}
+                                >
+                                    {quickButtons.map((item, idx) => {
+                                        if (item.type === 'link') {
+                                            return (
+                                                <a
+                                                    key={idx}
+                                                    href={item.value || '#'}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="flex items-center justify-between rounded-xl border border-neutral-200 bg-white p-3.5 text-left shadow-2xs hover:border-amber-400 hover:bg-amber-50/50 transition-all cursor-pointer group"
+                                                >
+                                                    <span className="text-xs font-semibold text-neutral-800 group-hover:text-amber-950 truncate">
+                                                        {item.title || `Tombol ${idx + 1}`}
+                                                    </span>
+                                                    <ExternalLink className="size-3.5 text-neutral-400 group-hover:text-amber-600 transition-colors shrink-0" />
+                                                </a>
+                                            );
+                                        }
+
+                                        return (
+                                            <button
+                                                key={idx}
+                                                type="button"
+                                                onClick={() => {
+                                                    if (isSessionExpired) {
+                                                        handleStartNewChat();
+                                                    } else {
+                                                        setActiveTab('pesan');
+                                                        if (hasSubmittedForm) {
+                                                            handleSendMessage(item.value);
+                                                        }
+                                                    }
+                                                }}
+                                                className="flex items-center justify-between rounded-xl border border-neutral-200 bg-white p-3.5 text-left shadow-2xs hover:border-amber-400 hover:bg-amber-50/50 transition-all cursor-pointer group"
+                                            >
+                                                <span className="text-xs font-semibold text-neutral-800 group-hover:text-amber-950 truncate">
+                                                    {item.title || `Tombol ${idx + 1}`}
+                                                </span>
+                                                <ArrowUpRight className="size-3.5 text-neutral-400 group-hover:text-amber-600 transition-colors shrink-0" />
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -704,7 +739,7 @@ export default function ChatShow({
                                                 onChange={(e) => setUserId(e.target.value)}
                                                 placeholder="Masukkan User ID / Username..."
                                                 required
-                                                className="h-10 text-xs rounded-xl bg-slate-50 border-neutral-200"
+                                                className="h-10 text-xs rounded-xl bg-slate-50 border-neutral-200 text-neutral-900 font-medium placeholder:text-neutral-400 focus:bg-white"
                                             />
                                         </div>
 
@@ -716,7 +751,7 @@ export default function ChatShow({
                                             <select
                                                 value={questionTopic}
                                                 onChange={(e) => setQuestionTopic(e.target.value)}
-                                                className="w-full h-10 px-3 text-xs rounded-xl bg-slate-50 border border-neutral-200 text-neutral-800 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                                                className="w-full h-10 px-3 text-xs rounded-xl bg-slate-50 border border-neutral-200 text-neutral-900 font-medium focus:outline-none focus:ring-1 focus:ring-amber-400 focus:bg-white"
                                             >
                                                 <option value="">Pilih...</option>
                                                 <option value="Deposit & Withdraw">Deposit & Withdraw</option>
@@ -791,19 +826,35 @@ export default function ChatShow({
                                                 Bosku?
                                             </div>
 
-                                            {/* Quick Action Chips (Screenshot 3) */}
+                                            {/* Quick Action Chips Dinamis */}
                                             <div className="flex flex-wrap gap-1.5 pt-1">
-                                                {chatChips.map((chip, idx) => (
-                                                    <button
-                                                        key={idx}
-                                                        type="button"
-                                                        disabled={isLoading || isSessionExpired || !application.is_active}
-                                                        onClick={() => handleSendMessage(chip.query)}
-                                                        className="rounded-full border border-neutral-200 bg-white px-2.5 py-1 text-[10px] font-medium text-neutral-700 hover:border-amber-400 hover:bg-amber-50 transition-colors shadow-2xs cursor-pointer"
-                                                    >
-                                                        {chip.label}
-                                                    </button>
-                                                ))}
+                                                {quickButtons.map((chip, idx) => {
+                                                    if (chip.type === 'link') {
+                                                        return (
+                                                            <a
+                                                                key={idx}
+                                                                href={chip.value || '#'}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-white px-2.5 py-1 text-[10px] font-medium text-neutral-700 hover:border-amber-400 hover:bg-amber-50 transition-colors shadow-2xs cursor-pointer"
+                                                            >
+                                                                <span>{chip.title}</span>
+                                                                <ExternalLink className="size-2.5 text-neutral-400" />
+                                                            </a>
+                                                        );
+                                                    }
+                                                    return (
+                                                        <button
+                                                            key={idx}
+                                                            type="button"
+                                                            disabled={isLoading || isSessionExpired || !application.is_active}
+                                                            onClick={() => handleSendMessage(chip.value)}
+                                                            className="rounded-full border border-neutral-200 bg-white px-2.5 py-1 text-[10px] font-medium text-neutral-700 hover:border-amber-400 hover:bg-amber-50 transition-colors shadow-2xs cursor-pointer"
+                                                        >
+                                                            {chip.title}
+                                                        </button>
+                                                    );
+                                                })}
                                             </div>
                                         </div>
                                     </div>
@@ -814,15 +865,17 @@ export default function ChatShow({
                                         return (
                                             <div
                                                 key={msg.id}
-                                                className={`flex items-start gap-2.5 ${isUser ? 'flex-row-reverse' : 'flex-row'
-                                                    }`}
+                                                className={`flex items-start gap-2.5 ${
+                                                    isUser ? 'flex-row-reverse' : 'flex-row'
+                                                }`}
                                             >
                                                 {/* Avatar Icon */}
                                                 <div
-                                                    className={`flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold shadow-2xs ${isUser
-                                                        ? 'bg-neutral-900 text-white'
-                                                        : 'text-neutral-950'
-                                                        }`}
+                                                    className={`flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold shadow-2xs ${
+                                                        isUser
+                                                            ? 'bg-neutral-900 text-white'
+                                                            : 'text-neutral-950'
+                                                    }`}
                                                     style={!isUser ? { backgroundColor: headerColor, color: headerTextColor } : {}}
                                                 >
                                                     {isUser ? (
@@ -836,22 +889,24 @@ export default function ChatShow({
 
                                                 {/* Chat Bubble */}
                                                 <div
-                                                    className={`flex flex-col space-y-1 max-w-[85%] ${isUser ? 'items-end' : 'items-start'
-                                                        }`}
+                                                    className={`flex flex-col space-y-1 max-w-[85%] ${
+                                                        isUser ? 'items-end' : 'items-start'
+                                                    }`}
                                                 >
                                                     <span className="text-[10px] font-bold text-neutral-500 px-1">
                                                         {isUser
                                                             ? 'Anda'
                                                             : isTakenOver
-                                                                ? 'Admin CS'
-                                                                : application.name}
+                                                              ? 'Admin CS'
+                                                              : application.name}
                                                     </span>
 
                                                     <div
-                                                        className={`rounded-2xl px-3.5 py-2.5 text-xs shadow-2xs leading-relaxed ${isUser
-                                                            ? 'rounded-tr-xs bg-neutral-900 text-white'
-                                                            : 'rounded-tl-xs bg-white border border-neutral-200/90 text-neutral-900'
-                                                            }`}
+                                                        className={`rounded-2xl px-3.5 py-2.5 text-xs shadow-2xs leading-relaxed ${
+                                                            isUser
+                                                                ? 'rounded-tr-xs bg-neutral-900 text-white'
+                                                                : 'rounded-tl-xs bg-white border border-neutral-200/90 text-neutral-900'
+                                                        }`}
                                                     >
                                                         {isUser ? (
                                                             <p className="whitespace-pre-wrap break-words">{msg.content}</p>
@@ -955,7 +1010,7 @@ export default function ChatShow({
                 </div>
 
                 {/* ============================================================== */}
-                {/* BOTTOM CHAT INPUT BAR (Hanya muncul jika sedang di Tab Pesan dan chat aktif) */}
+                {/* BOTTOM CHAT INPUT BAR (TANPA TOMBOL +) */}
                 {/* ============================================================== */}
                 {!isSessionExpired && activeTab === 'pesan' && (hasSubmittedForm || messages.length > 0) && (
                     <div className="border-t border-neutral-200 bg-white p-3 shrink-0">
@@ -966,15 +1021,6 @@ export default function ChatShow({
                             }}
                             className="flex items-center gap-2"
                         >
-                            <button
-                                type="button"
-                                onClick={() => textareaRef.current?.focus()}
-                                className="flex size-9 items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-neutral-600 transition-colors cursor-pointer shrink-0"
-                                title="Fokus Input"
-                            >
-                                <Plus className="size-4" />
-                            </button>
-
                             <input
                                 ref={textareaRef}
                                 value={input}
@@ -1048,10 +1094,11 @@ export default function ChatShow({
                             <button
                                 type="button"
                                 onClick={() => setActiveTab('beranda')}
-                                className={`flex flex-col items-center gap-1 text-[11px] font-medium transition-colors cursor-pointer ${activeTab === 'beranda'
-                                    ? 'text-amber-600 font-bold'
-                                    : 'text-neutral-400 hover:text-neutral-600'
-                                    }`}
+                                className={`flex flex-col items-center gap-1 text-[11px] font-medium transition-colors cursor-pointer ${
+                                    activeTab === 'beranda'
+                                        ? 'text-amber-600 font-bold'
+                                        : 'text-neutral-400 hover:text-neutral-600'
+                                }`}
                             >
                                 <HomeIcon className="size-4.5" />
                                 <span>Beranda</span>
@@ -1060,10 +1107,11 @@ export default function ChatShow({
                             <button
                                 type="button"
                                 onClick={() => setActiveTab('pesan')}
-                                className={`flex flex-col items-center gap-1 text-[11px] font-medium transition-colors cursor-pointer relative ${activeTab === 'pesan'
-                                    ? 'text-amber-600 font-bold'
-                                    : 'text-neutral-400 hover:text-neutral-600'
-                                    }`}
+                                className={`flex flex-col items-center gap-1 text-[11px] font-medium transition-colors cursor-pointer relative ${
+                                    activeTab === 'pesan'
+                                        ? 'text-amber-600 font-bold'
+                                        : 'text-neutral-400 hover:text-neutral-600'
+                                }`}
                             >
                                 <MessageSquare className="size-4.5" />
                                 <span>Pesan</span>
@@ -1075,10 +1123,11 @@ export default function ChatShow({
                             <button
                                 type="button"
                                 onClick={() => setActiveTab('bantuan')}
-                                className={`flex flex-col items-center gap-1 text-[11px] font-medium transition-colors cursor-pointer ${activeTab === 'bantuan'
-                                    ? 'text-amber-600 font-bold'
-                                    : 'text-neutral-400 hover:text-neutral-600'
-                                    }`}
+                                className={`flex flex-col items-center gap-1 text-[11px] font-medium transition-colors cursor-pointer ${
+                                    activeTab === 'bantuan'
+                                        ? 'text-amber-600 font-bold'
+                                        : 'text-neutral-400 hover:text-neutral-600'
+                                }`}
                             >
                                 <HelpCircle className="size-4.5" />
                                 <span>Bantuan</span>
