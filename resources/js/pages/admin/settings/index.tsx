@@ -14,6 +14,7 @@ import {
     Layout,
     MessageSquare,
     Palette,
+    Plus,
     Save,
     Sliders,
     Sparkles,
@@ -33,6 +34,13 @@ import type { ApplicationDetail } from '@/types/application';
 
 interface Props {
     application: ApplicationDetail;
+}
+
+interface QuickButton {
+    id?: string;
+    title: string;
+    type: 'query' | 'link';
+    value: string;
 }
 
 // Galeri pilihan foto avatar Customer Service profesional
@@ -102,6 +110,43 @@ export default function AdminSettings({ application }: Props) {
                   currentSettings.avatar_3 || PRESET_AVATARS[2].url,
               ];
 
+    // Inisialisasi tombol cepat dinamis
+    const initialQuickButtons: QuickButton[] =
+        Array.isArray(currentSettings.quick_buttons) && currentSettings.quick_buttons.length > 0
+            ? currentSettings.quick_buttons
+            : [
+                  {
+                      id: 'btn-1',
+                      title: currentSettings.btn_1_title || 'Prediksi Togel',
+                      type: 'query',
+                      value:
+                          currentSettings.btn_1_query ||
+                          'Halo CS, bisa berikan bocoran prediksi togel dan pasaran hari ini?',
+                  },
+                  {
+                      id: 'btn-2',
+                      title: currentSettings.btn_2_title || 'Rtp Slot Gacor',
+                      type: 'query',
+                      value:
+                          currentSettings.btn_2_query ||
+                          'Halo CS, apa saja daftar RTP slot yang lagi gacor hari ini?',
+                  },
+                  {
+                      id: 'btn-3',
+                      title: currentSettings.btn_3_title || 'Download APK',
+                      type: 'link',
+                      value: currentSettings.btn_3_query || 'https://kiamkiam.site/cvtogel1',
+                  },
+                  {
+                      id: 'btn-4',
+                      title: currentSettings.btn_4_title || 'Promosi',
+                      type: 'query',
+                      value:
+                          currentSettings.btn_4_query ||
+                          'Bisa jelaskan promo dan bonus deposit / new member terbaru yang sedang aktif?',
+                  },
+              ];
+
     const iconInputRef = useRef<HTMLInputElement>(null);
     const faviconInputRef = useRef<HTMLInputElement>(null);
     const bannerInputRef = useRef<HTMLInputElement>(null);
@@ -136,19 +181,7 @@ export default function AdminSettings({ application }: Props) {
                 currentSettings.banner_description ||
                 'Pusat Bantuan Resmi & Layanan Member 24 Jam Nonstop. Proses Deposit & WD Tercepat, Promo & Event Menarik!',
             banner_image_url: currentSettings.banner_image_url || '',
-            btn_1_title: currentSettings.btn_1_title || 'Prediksi Togel',
-            btn_1_query:
-                currentSettings.btn_1_query || 'Halo CS, bisa berikan bocoran prediksi togel dan pasaran hari ini?',
-            btn_2_title: currentSettings.btn_2_title || 'Rtp Slot Gacor',
-            btn_2_query:
-                currentSettings.btn_2_query || 'Halo CS, apa saja daftar RTP slot yang lagi gacor hari ini?',
-            btn_3_title: currentSettings.btn_3_title || 'Download APK',
-            btn_3_query:
-                currentSettings.btn_3_query || 'Bagaimana cara download dan instal aplikasi APK versi terbaru?',
-            btn_4_title: currentSettings.btn_4_title || 'Promosi',
-            btn_4_query:
-                currentSettings.btn_4_query ||
-                'Bisa jelaskan promo dan bonus deposit / new member terbaru yang sedang aktif?',
+            quick_buttons: initialQuickButtons,
             welcome_opening:
                 currentSettings.welcome_opening ||
                 application.welcome_message ||
@@ -179,18 +212,43 @@ export default function AdminSettings({ application }: Props) {
         const index = currentList.indexOf(url);
 
         if (index > -1) {
-            // Jangan biarkan kurang dari 1
             if (currentList.length <= 1) return;
             currentList.splice(index, 1);
         } else {
             if (currentList.length >= 3) {
-                // Gantikan yang pertama jika sudah 3
                 currentList.shift();
             }
             currentList.push(url);
         }
 
         updateChatSetting('selected_avatars', currentList);
+    };
+
+    // Handler Tambah, Hapus, dan Edit Tombol Cepat Dinamis
+    const handleAddButton = () => {
+        const list = [...(data.chat_settings.quick_buttons || [])];
+        list.push({
+            id: `btn-${Date.now()}`,
+            title: '',
+            type: 'query',
+            value: '',
+        });
+        updateChatSetting('quick_buttons', list);
+    };
+
+    const handleRemoveButton = (index: number) => {
+        const list = [...(data.chat_settings.quick_buttons || [])];
+        list.splice(index, 1);
+        updateChatSetting('quick_buttons', list);
+    };
+
+    const handleUpdateButton = (index: number, key: 'title' | 'type' | 'value', val: string) => {
+        const list = [...(data.chat_settings.quick_buttons || [])];
+        list[index] = {
+            ...list[index],
+            [key]: val,
+        };
+        updateChatSetting('quick_buttons', list);
     };
 
     // Handle upload file ke base64 Data URL untuk Icon, Favicon, Banner
@@ -214,6 +272,7 @@ export default function AdminSettings({ application }: Props) {
     };
 
     const currentAvatars = data.chat_settings.selected_avatars || initialAvatars;
+    const currentQuickButtons = data.chat_settings.quick_buttons || initialQuickButtons;
 
     return (
         <>
@@ -686,79 +745,141 @@ export default function AdminSettings({ application }: Props) {
                             </CardContent>
                         </Card>
 
-                        {/* 6. 4 TOMBOL CEPAT (GRID 2x2) */}
+                        {/* 6. TOMBOL CEPAT DINAMIS BERANDA (BISA 1, 2, ATAU BANYAK, TIPE PERTANYAAN / LINK) */}
                         <Card>
                             <CardHeader className="pb-3">
-                                <CardTitle className="text-sm font-bold flex items-center gap-2">
-                                    <ArrowUpRight className="size-4 text-amber-500" />
-                                    <span>4 Tombol Cepat (Grid 2×2 Beranda)</span>
-                                </CardTitle>
+                                <div className="flex items-center justify-between">
+                                    <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                        <ArrowUpRight className="size-4 text-amber-500" />
+                                        <span>Tombol Cepat Beranda ({currentQuickButtons.length} Tombol)</span>
+                                    </CardTitle>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={handleAddButton}
+                                        className="h-8 text-xs font-semibold gap-1.5 cursor-pointer text-emerald-600 border-emerald-500/40 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+                                    >
+                                        <Plus className="size-3.5" />
+                                        <span>Tambah Tombol</span>
+                                    </Button>
+                                </div>
                                 <CardDescription className="text-xs">
-                                    Tombol pilihan di beranda. Pengunjung cukup klik untuk mengirim pertanyaan.
+                                    Atur tombol di beranda secara fleksibel (bisa 1, 2, atau berapapun). Tiap tombol bisa berupa pesan otomatis ke chat atau link eksternal (WA, Telegram, APK, web).
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-3.5">
-                                {[
-                                    {
-                                        num: 1,
-                                        titleKey: 'btn_1_title',
-                                        queryKey: 'btn_1_query',
-                                        defaultTitle: 'Prediksi Togel',
-                                    },
-                                    {
-                                        num: 2,
-                                        titleKey: 'btn_2_title',
-                                        queryKey: 'btn_2_query',
-                                        defaultTitle: 'Rtp Slot Gacor',
-                                    },
-                                    {
-                                        num: 3,
-                                        titleKey: 'btn_3_title',
-                                        queryKey: 'btn_3_query',
-                                        defaultTitle: 'Download APK',
-                                    },
-                                    {
-                                        num: 4,
-                                        titleKey: 'btn_4_title',
-                                        queryKey: 'btn_4_query',
-                                        defaultTitle: 'Promosi',
-                                    },
-                                ].map((btn) => (
-                                    <div
-                                        key={btn.num}
-                                        className="rounded-xl border border-border/80 bg-muted/10 p-3 space-y-2.5"
-                                    >
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-xs font-bold text-foreground">
-                                                Tombol #{btn.num}
-                                            </span>
-                                        </div>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                                            <div className="space-y-1">
-                                                <Label className="text-[11px] font-semibold text-muted-foreground">
-                                                    Judul Tombol
-                                                </Label>
-                                                <Input
-                                                    value={(data.chat_settings as any)[btn.titleKey]}
-                                                    onChange={(e) => updateChatSetting(btn.titleKey, e.target.value)}
-                                                    placeholder={btn.defaultTitle}
-                                                    className="text-xs"
-                                                />
-                                            </div>
-                                            <div className="space-y-1">
-                                                <Label className="text-[11px] font-semibold text-muted-foreground">
-                                                    Pertanyaan Otomatis (Saat Diklik)
-                                                </Label>
-                                                <Input
-                                                    value={(data.chat_settings as any)[btn.queryKey]}
-                                                    onChange={(e) => updateChatSetting(btn.queryKey, e.target.value)}
-                                                    placeholder="Pesan yang otomatis dikirim..."
-                                                    className="text-xs"
-                                                />
-                                            </div>
-                                        </div>
+                                {currentQuickButtons.length === 0 ? (
+                                    <div className="text-center py-6 border border-dashed border-border rounded-xl space-y-2">
+                                        <p className="text-xs text-muted-foreground">Belum ada tombol cepat.</p>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={handleAddButton}
+                                            className="h-8 text-xs font-semibold gap-1.5 cursor-pointer"
+                                        >
+                                            <Plus className="size-3.5" />
+                                            <span>Tambah Tombol Sekarang</span>
+                                        </Button>
                                     </div>
-                                ))}
+                                ) : (
+                                    currentQuickButtons.map((btn: any, idx: number) => (
+                                        <div
+                                            key={btn.id || idx}
+                                            className="rounded-xl border border-border/80 bg-muted/10 p-3 space-y-3"
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                                    <span className="flex size-5 items-center justify-center rounded-full bg-amber-500/20 text-amber-800 dark:text-amber-300 text-[10px] font-bold">
+                                                        {idx + 1}
+                                                    </span>
+                                                    <span>Tombol #{idx + 1}</span>
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleRemoveButton(idx)}
+                                                    className="text-muted-foreground hover:text-destructive text-xs cursor-pointer p-1 rounded-md transition-colors"
+                                                    title="Hapus tombol ini"
+                                                >
+                                                    <Trash2 className="size-3.5" />
+                                                </button>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                <div className="space-y-1">
+                                                    <Label className="text-[11px] font-semibold text-muted-foreground">
+                                                        Judul / Label Tombol
+                                                    </Label>
+                                                    <Input
+                                                        value={btn.title}
+                                                        onChange={(e) => handleUpdateButton(idx, 'title', e.target.value)}
+                                                        placeholder="Contoh: Prediksi Togel atau WhatsApp CS"
+                                                        className="text-xs"
+                                                    />
+                                                </div>
+
+                                                <div className="space-y-1">
+                                                    <Label className="text-[11px] font-semibold text-muted-foreground">
+                                                        Aksi Saat Diklik
+                                                    </Label>
+                                                    <div className="flex rounded-lg bg-muted p-0.5 gap-0.5 border border-border/60 h-9">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleUpdateButton(idx, 'type', 'query')}
+                                                            className={`flex-1 text-[11px] font-semibold rounded-md transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                                                                btn.type === 'query'
+                                                                    ? 'bg-background text-foreground shadow-xs'
+                                                                    : 'text-muted-foreground hover:text-foreground'
+                                                            }`}
+                                                        >
+                                                            <MessageSquare className="size-3" />
+                                                            <span>Pertanyaan</span>
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleUpdateButton(idx, 'type', 'link')}
+                                                            className={`flex-1 text-[11px] font-semibold rounded-md transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                                                                btn.type === 'link'
+                                                                    ? 'bg-background text-foreground shadow-xs'
+                                                                    : 'text-muted-foreground hover:text-foreground'
+                                                            }`}
+                                                        >
+                                                            <Globe className="size-3" />
+                                                            <span>Link URL</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-1">
+                                                <Label className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1">
+                                                    {btn.type === 'link' ? (
+                                                        <>
+                                                            <Globe className="size-3 text-emerald-600" />
+                                                            <span>Alamat URL Tujuan (Buka di Tab Baru)</span>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <MessageSquare className="size-3 text-amber-500" />
+                                                            <span>Pesan / Pertanyaan Otomatis (Dikirim ke Chat)</span>
+                                                        </>
+                                                    )}
+                                                </Label>
+                                                <Input
+                                                    value={btn.value}
+                                                    onChange={(e) => handleUpdateButton(idx, 'value', e.target.value)}
+                                                    placeholder={
+                                                        btn.type === 'link'
+                                                            ? 'https://wa.me/628123456789 atau https://kiamkiam.site/...'
+                                                            : 'Halo CS, saya mau informasi bocoran pasaran hari ini...'
+                                                    }
+                                                    className={`text-xs ${btn.type === 'link' ? 'font-mono' : ''}`}
+                                                />
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
                             </CardContent>
                         </Card>
 
@@ -986,7 +1107,7 @@ export default function AdminSettings({ application }: Props) {
                                         </div>
                                     </div>
 
-                                    {/* BODY BERANDA DENGAN BANNER & 4 TOMBOL */}
+                                    {/* BODY BERANDA DENGAN BANNER & TOMBOL DINAMIS */}
                                     <div className="flex-1 overflow-y-auto p-2.5 space-y-2.5 bg-slate-50/70">
                                         {/* BANNER PROMOSI */}
                                         <div className="relative overflow-hidden rounded-xl bg-linear-to-br from-neutral-950 via-neutral-900 to-amber-950 p-2.5 text-white shadow-2xs border border-amber-500/30 text-center">
@@ -1012,25 +1133,30 @@ export default function AdminSettings({ application }: Props) {
                                             )}
                                         </div>
 
-                                        {/* 4 TOMBOL CEPAT (GRID 2x2) */}
-                                        <div className="grid grid-cols-2 gap-1.5">
-                                            {[
-                                                data.chat_settings.btn_1_title,
-                                                data.chat_settings.btn_2_title,
-                                                data.chat_settings.btn_3_title,
-                                                data.chat_settings.btn_4_title,
-                                            ].map((t, idx) => (
-                                                <div
-                                                    key={idx}
-                                                    className="flex items-center justify-between rounded-lg border border-neutral-200 bg-white p-2 text-left shadow-2xs"
-                                                >
-                                                    <span className="text-[9px] font-bold text-neutral-800 truncate">
-                                                        {t || `Tombol ${idx + 1}`}
-                                                    </span>
-                                                    <ArrowUpRight className="size-2.5 text-neutral-400 shrink-0" />
-                                                </div>
-                                            ))}
-                                        </div>
+                                        {/* TOMBOL CEPAT DINAMIS (PREVIEW) */}
+                                        {currentQuickButtons.length > 0 && (
+                                            <div
+                                                className={`grid gap-1.5 ${
+                                                    currentQuickButtons.length === 1 ? 'grid-cols-1' : 'grid-cols-2'
+                                                }`}
+                                            >
+                                                {currentQuickButtons.map((btn: any, idx: number) => (
+                                                    <div
+                                                        key={idx}
+                                                        className="flex items-center justify-between rounded-lg border border-neutral-200 bg-white p-2 text-left shadow-2xs"
+                                                    >
+                                                        <span className="text-[9px] font-bold text-neutral-800 truncate">
+                                                            {btn.title || `Tombol ${idx + 1}`}
+                                                        </span>
+                                                        {btn.type === 'link' ? (
+                                                            <Globe className="size-2.5 text-emerald-600 shrink-0" />
+                                                        ) : (
+                                                            <ArrowUpRight className="size-2.5 text-neutral-400 shrink-0" />
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
 
                                         {/* TOMBOL KIRIM PESAN */}
                                         <div
@@ -1077,7 +1203,7 @@ export default function AdminSettings({ application }: Props) {
                         </Button>
 
                         <p className="text-[11px] text-muted-foreground text-center">
-                            Setiap perubahan warna, teks kiri/kanan, foto CS, banner, dan tombol langsung tampil pada preview di atas secara real-time.
+                            Setiap perubahan warna, teks kiri/kanan, foto CS, banner, dan tombol cepat langsung tampil pada preview di atas secara real-time.
                         </p>
                     </div>
                 </form>
