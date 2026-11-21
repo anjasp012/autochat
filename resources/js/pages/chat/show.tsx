@@ -91,6 +91,9 @@ export default function ChatShow({
         cs.banner_description ||
         'Pusat Bantuan Resmi & Layanan Member 24 Jam Nonstop. Proses Deposit & WD Tercepat, Promo & Event Menarik!';
     const bannerImageUrl = cs.banner_image_url || '';
+    const isPhotoBanner =
+        (cs.banner_type === 'image' || (!cs.banner_type && Boolean(bannerImageUrl))) &&
+        Boolean(bannerImageUrl);
 
     // Tombol Cepat Dinamis (Bisa 1, 2, atau berapapun, tipe pertanyaan atau link URL)
     const quickButtons: QuickButton[] =
@@ -158,6 +161,14 @@ export default function ChatShow({
     useEffect(() => {
         scrollToBottom();
     }, [messages, isLoading, activeTab]);
+
+    // Set page title cleanly (tanpa suffix - AutoChat)
+    useEffect(() => {
+        const cleanTitle = headerTitle || application.name;
+        if (cleanTitle) {
+            document.title = cleanTitle;
+        }
+    }, [headerTitle, application.name]);
 
     // Dynamically update browser tab favicon
     useEffect(() => {
@@ -625,33 +636,33 @@ export default function ChatShow({
                     {/* TAB 1: BERANDA (HOME VIEW - Persis Screenshot 1) */}
                     {activeTab === 'beranda' && (
                         <div className="space-y-4">
-                            {/* Big Promo Banner Card (Golden / Gaming Dark Banner atau Custom Image) */}
-                            <div className="relative overflow-hidden rounded-2xl bg-linear-to-br from-neutral-950 via-neutral-900 to-amber-950 p-6 text-white shadow-md border border-amber-500/40 text-center">
-                                {bannerImageUrl ? (
+                            {/* Banner Beranda: Foto Penuh atau Kartu Teks Promosi */}
+                            {isPhotoBanner ? (
+                                <div className="relative overflow-hidden rounded-2xl shadow-sm w-full">
                                     <img
                                         src={bannerImageUrl}
-                                        alt={bannerTitle}
-                                        className="w-full h-32 object-cover rounded-xl"
+                                        alt={bannerTitle || 'Banner'}
+                                        className="w-full h-auto max-h-56 object-cover rounded-2xl block"
                                     />
-                                ) : (
-                                    <>
-                                        <div className="absolute -right-8 -top-8 size-28 rounded-full bg-amber-500/10 blur-xl pointer-events-none" />
-                                        <div className="absolute -left-8 -bottom-8 size-28 rounded-full bg-yellow-500/10 blur-xl pointer-events-none" />
+                                </div>
+                            ) : (
+                                <div className="relative overflow-hidden rounded-2xl bg-linear-to-br from-neutral-950 via-neutral-900 to-amber-950 p-6 text-white shadow-md border border-amber-500/40 text-center">
+                                    <div className="absolute -right-8 -top-8 size-28 rounded-full bg-amber-500/10 blur-xl pointer-events-none" />
+                                    <div className="absolute -left-8 -bottom-8 size-28 rounded-full bg-yellow-500/10 blur-xl pointer-events-none" />
 
-                                        <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/20 px-3 py-1 text-[10px] font-bold text-amber-300 border border-amber-500/30 mb-2">
-                                            <Sparkles className="size-3" /> {bannerBadge}
-                                        </div>
+                                    <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/20 px-3 py-1 text-[10px] font-bold text-amber-300 border border-amber-500/30 mb-2">
+                                        <Sparkles className="size-3" /> {bannerBadge}
+                                    </div>
 
-                                        <h3 className="text-2xl font-black tracking-wider text-transparent bg-clip-text bg-linear-to-r from-amber-200 via-yellow-400 to-amber-200 drop-shadow-sm uppercase">
-                                            {bannerTitle}
-                                        </h3>
+                                    <h3 className="text-2xl font-black tracking-wider text-transparent bg-clip-text bg-linear-to-r from-amber-200 via-yellow-400 to-amber-200 drop-shadow-sm uppercase">
+                                        {bannerTitle}
+                                    </h3>
 
-                                        <p className="text-xs text-neutral-300 mt-2 line-clamp-3 leading-relaxed">
-                                            {bannerDesc}
-                                        </p>
-                                    </>
-                                )}
-                            </div>
+                                    <p className="text-xs text-neutral-300 mt-2 line-clamp-3 leading-relaxed">
+                                        {bannerDesc}
+                                    </p>
+                                </div>
+                            )}
 
                             {/* Tombol Cepat Dinamis (Bisa 1, 2, atau berapapun tombol sesuai CMS) */}
                             {quickButtons.length > 0 && (
