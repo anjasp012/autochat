@@ -30,9 +30,22 @@
             }
         </style>
 
-        <link rel="icon" href="/favicon.ico" sizes="any">
-        <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+        @php
+            $customFavicon = null;
+            if (request()->is('*chat*') && isset($page['props']['application']['chat_settings'])) {
+                $cs = $page['props']['application']['chat_settings'];
+                $customFavicon = $cs['favicon_url'] ?? $cs['custom_icon_url'] ?? null;
+            }
+        @endphp
+        @if($customFavicon)
+            <link rel="icon" href="{{ $customFavicon }}">
+            <link rel="shortcut icon" href="{{ $customFavicon }}">
+            <link rel="apple-touch-icon" href="{{ $customFavicon }}">
+        @else
+            <link rel="icon" href="/favicon.ico" sizes="any">
+            <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+            <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+        @endif
 
         @fonts
 

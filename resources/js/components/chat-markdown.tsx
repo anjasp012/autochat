@@ -8,12 +8,24 @@ interface Props {
 }
 
 export default function ChatMarkdown({ content, className = '' }: Props) {
+    // Normalisasi line break: di dalam pesan chat atau opening announcement, setiap enter (newline)
+    // dari admin/user harus tetap turun ke baris berikutnya (hard break), bukan bablas ke samping.
+    const formattedContent = React.useMemo(() => {
+        if (!content) return '';
+        const normalized = content.replace(/\r\n/g, '\n');
+        // Tambahkan dua trailing spasi pada setiap baris berteks agar diinterpretasikan sebagai hard line break (<br />) oleh Markdown
+        return normalized
+            .split('\n')
+            .map((line) => (line.trim() === '' ? '' : `${line}  `))
+            .join('\n');
+    }, [content]);
+
     return (
         <div className={`prose prose-sm dark:prose-invert max-w-none text-inherit leading-relaxed ${className}`}>
             <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 components={{
-                    p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                    p: ({ children }) => <p className="mb-2 last:mb-0 whitespace-pre-line">{children}</p>,
                     h1: ({ children }) => <h1 className="text-base font-bold my-2">{children}</h1>,
                     h2: ({ children }) => <h2 className="text-sm font-bold my-2">{children}</h2>,
                     h3: ({ children }) => <h3 className="text-xs font-bold my-1.5">{children}</h3>,
