@@ -122,6 +122,14 @@ class ChatController extends Controller
                 ], 422);
             }
 
+            if ($conversation->is_waiting_admin) {
+                return response()->json([
+                    'conversation_uuid' => $conversation->uuid,
+                    'is_waiting_admin' => true,
+                    'error' => 'Percakapan Anda sedang menunggu respon dari Admin CS. Mohon ditunggu sebentar ya Bosku 🙏',
+                ], 422);
+            }
+
             $conversation->update(['last_activity_at' => now()]);
         } else {
             $conversation = Conversation::create([
@@ -142,6 +150,119 @@ class ChatController extends Controller
         ]);
 
         MessageSent::safeDispatch($userMessage);
+
+        // Cek apakah pesan adalah formulir deposit/withdraw atau pengecekan mutasi/saldo depo & wd
+        $isDepoWdForm = (bool) preg_match('/Formulir\s+(Deposit|Withdraw)\s+Status/i', $userText)
+            || (preg_match('/(deposit|depo|withdraw|wd)/i', $userText) && preg_match('/(username|tanggal|mutasi|saldo)/i', $userText));
+
+        if ($isDepoWdForm) {
+            $isWithdraw = (bool) preg_match('/withdraw/i', $userText);
+            $type = $isWithdraw ? 'withdraw_check' : 'deposit_check';
+            $transTitle = $isWithdraw ? 'withdraw' : 'deposit';
+
+            $username = '';
+            if (preg_match('/Username:\*{0,2}\s*([^\n\r]+)/i', $userText, $matches)) {
+                $username = trim(str_replace('*', '', $matches[1]));
+            } elseif ($request->filled('user_id')) {
+                $username = trim((string) $request->input('user_id'));
+            }
+
+            $conversation->update([
+                'is_waiting_admin' => true,
+                'last_activity_at' => now(),
+            ]);
+
+            $escalation = BotEscalation::create([
+                'application_id' => $application->id,
+                'conversation_id' => $conversation->id,
+                'user_identifier' => $username ?: ($conversation->uuid),
+                'type' => $type,
+                'title' => $isWithdraw ? "Pengecekan Withdraw ({$username})" : "Pengecekan Deposit ({$username})",
+                'message' => $userText,
+                'is_read' => false,
+                'is_resolved' => false,
+            ]);
+
+            BotEscalationCreated::safeDispatch($escalation);
+
+            $replyText = $username !== ''
+                ? "Baik Bosku, data pengecekan {$transTitle} atas nama username **{$username}** telah kami terima. Percakapan ini sedang kami alihkan ke Admin Customer Service kami untuk pengecekan mutasi rekening & saldo. Mohon ditunggu sebentar ya Bosku 🙏"
+                : "Baik Bosku, data pengecekan {$transTitle} telah kami terima. Percakapan ini sedang kami alihkan ke Admin Customer Service kami untuk pengecekan mutasi rekening & saldo. Mohon ditunggu sebentar ya Bosku 🙏";
+
+            $assistantMessage = Message::create([
+                'conversation_id' => $conversation->id,
+                'role' => 'assistant',
+                'content' => $replyText,
+                'tokens_used' => 0,
+            ]);
+
+            MessageSent::safeDispatch($assistantMessage);
+
+            return response()->json([
+                'conversation_uuid' => $conversation->uuid,
+                'is_waiting_admin' => true,
+                'user_message' => [
+                    'id' => (string) $userMessage->id,
+                    'role' => 'user',
+                    'content' => $userMessage->content,
+                    'created_at' => $userMessage->created_at?->format('H:i') ?? '',
+                ],
+                'assistant_message' => [
+                    'id' => (string) $assistantMessage->id,
+                    'role' => 'assistant',
+                    'content' => $assistantMessage->content,
+                    'created_at' => $assistantMessage->created_at?->format('H:i') ?? '',
+                ],
+            ]);
+        }
+
+        // Cek jika pengguna eksplisit meminta dihubungkan ke admin/CS manusia
+        $isHumanCsRequest = (bool) preg_match('/(bicara|chat|hubungkan|alihkan|panggil|tanya|oper)\s+(ke\s+)?(admin|cs\s+manusia|operator|manusia)/i', $userText);
+        if ($isHumanCsRequest) {
+            $conversation->update([
+                'is_waiting_admin' => true,
+                'last_activity_at' => now(),
+            ]);
+
+            $escalation = BotEscalation::create([
+                'application_id' => $application->id,
+                'conversation_id' => $conversation->id,
+                'user_identifier' => (string) ($request->input('user_id') ?: $conversation->uuid),
+                'type' => 'human_cs_request',
+                'title' => 'Permintaan Chat CS / Admin',
+                'message' => $userText,
+                'is_read' => false,
+                'is_resolved' => false,
+            ]);
+
+            BotEscalationCreated::safeDispatch($escalation);
+
+            $assistantMessage = Message::create([
+                'conversation_id' => $conversation->id,
+                'role' => 'assistant',
+                'content' => 'Baik Bosku, percakapan Anda sedang kami hubungkan ke Admin Customer Service kami. Mohon ditunggu sebentar ya Bosku 🙏',
+                'tokens_used' => 0,
+            ]);
+
+            MessageSent::safeDispatch($assistantMessage);
+
+            return response()->json([
+                'conversation_uuid' => $conversation->uuid,
+                'is_waiting_admin' => true,
+                'user_message' => [
+                    'id' => (string) $userMessage->id,
+                    'role' => 'user',
+                    'content' => $userMessage->content,
+                    'created_at' => $userMessage->created_at?->format('H:i') ?? '',
+                ],
+                'assistant_message' => [
+                    'id' => (string) $assistantMessage->id,
+                    'role' => 'assistant',
+                    'content' => $assistantMessage->content,
+                    'created_at' => $assistantMessage->created_at?->format('H:i') ?? '',
+                ],
+            ]);
+        }
 
         // Jika pesan berasal dari pengiriman formulir awal, kirim balasan template dari CMS (bukan AI)
         if ($request->boolean('is_initial_form')) {

@@ -48,6 +48,7 @@ interface ConversationItem {
     ip_address: string | null;
     last_activity_at: string;
     is_taken_over: boolean;
+    is_waiting_admin?: boolean;
     is_archived: boolean;
     taken_over_at: string | null;
     messages_count: number;
@@ -296,6 +297,12 @@ export default function ConversationsIndex({
             label: 'Semua',
             icon: Inbox,
             count: counts.all ?? 0,
+        },
+        {
+            key: 'waiting',
+            label: 'Menunggu CS',
+            icon: Clock,
+            count: counts.waiting ?? 0,
         },
         {
             key: 'mine',
@@ -680,112 +687,101 @@ export default function ConversationsIndex({
                             </div>
 
                             {/* Reply Input Box & Takeover Controls */}
-                            <div className="border-t border-border bg-sidebar/30 p-3 sm:p-4 shrink-0 space-y-2.5">
+                            <div className="border-t border-border bg-sidebar/20 p-2.5 sm:p-3 shrink-0 space-y-2">
                                 {!activeConversation.is_taken_over ? (
-                                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-2xl bg-gradient-to-r from-amber-500/15 via-amber-500/8 to-transparent border border-amber-500/25 p-3 shadow-2xs">
-                                        <div className="flex items-center gap-2.5">
-                                            <div className="relative flex size-8 items-center justify-center rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 shrink-0">
-                                                <Bot className="size-4" />
-                                                <span className="absolute -top-0.5 -right-0.5 flex size-2">
+                                    <div className="flex items-center justify-between gap-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 px-3 py-1.5 shadow-2xs">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <div className="relative flex size-6 items-center justify-center rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400 shrink-0">
+                                                <Bot className="size-3.5" />
+                                                <span className="absolute -top-0.5 -right-0.5 flex size-1.5">
                                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-                                                    <span className="relative inline-flex rounded-full size-2 bg-amber-500" />
+                                                    <span className="relative inline-flex rounded-full size-1.5 bg-amber-500" />
                                                 </span>
                                             </div>
-                                            <div>
-                                                <p className="text-xs font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-1.5">
-                                                    Percakapan sedang dijawab otomatis oleh Bot AI
-                                                </p>
-                                                <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
-                                                    Klik tombol di samping untuk mengambil alih dan membalas pengunjung secara langsung.
-                                                </p>
-                                            </div>
+                                            <p className="text-xs text-neutral-800 dark:text-neutral-200 truncate">
+                                                {activeConversation.is_waiting_admin ? (
+                                                    <span className="font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                                                        <Clock className="size-3" />
+                                                        Pengunjung menunggu respon Admin CS (Pengecekan Formulir)
+                                                    </span>
+                                                ) : (
+                                                    <span>Percakapan dijawab otomatis oleh Bot AI</span>
+                                                )}
+                                            </p>
                                         </div>
                                         <Button
                                             type="button"
                                             size="sm"
                                             onClick={() => handleToggleTakeover(activeConversation)}
-                                            className="h-8 px-3.5 rounded-xl font-bold text-xs bg-amber-500 hover:bg-amber-600 text-neutral-950 shadow-xs transition-transform active:scale-95 cursor-pointer shrink-0 gap-1.5"
+                                            className="h-7 px-3 rounded-lg font-bold text-xs bg-amber-500 hover:bg-amber-600 text-neutral-950 shadow-2xs transition-transform active:scale-95 cursor-pointer shrink-0 gap-1.5"
                                         >
-                                            <UserCheck className="size-3.5" />
-                                            <span>Ambil Alih Sekarang</span>
+                                            <UserCheck className="size-3" />
+                                            <span>Ambil Alih Chat</span>
                                         </Button>
                                     </div>
                                 ) : (
-                                    <div className="flex items-center justify-between rounded-2xl bg-emerald-500/10 border border-emerald-500/25 px-3.5 py-2 text-xs shadow-2xs">
+                                    <div className="flex items-center justify-between rounded-xl bg-emerald-500/10 border border-emerald-500/25 px-3 py-1.5 text-xs shadow-2xs">
                                         <div className="flex items-center gap-2 font-bold text-emerald-800 dark:text-emerald-300">
                                             <span className="relative flex size-2 shrink-0">
                                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                                                 <span className="relative inline-flex rounded-full size-2 bg-emerald-500" />
                                             </span>
-                                            <UserCheck className="size-4 text-emerald-600 dark:text-emerald-400" />
-                                            <span>Mode Live Support Admin Aktif (AI dinonaktifkan)</span>
+                                            <UserCheck className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                                            <span className="text-[11px]">Mode Live Admin Aktif</span>
                                         </div>
                                         <Button
                                             type="button"
                                             variant="ghost"
                                             size="sm"
                                             onClick={() => handleToggleTakeover(activeConversation)}
-                                            className="h-7 text-xs font-semibold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/15 cursor-pointer gap-1"
+                                            className="h-6 px-2 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/15 cursor-pointer gap-1"
                                         >
                                             <RotateCcw className="size-3" />
-                                            <span>Kembalikan ke Bot AI</span>
+                                            <span>Kembalikan ke Bot</span>
                                         </Button>
                                     </div>
                                 )}
 
-                                <div className="relative">
-                                    <form onSubmit={handleSendReply} className="flex gap-2 items-end">
-                                        <div className="relative flex-1">
-                                            <Textarea
-                                                value={data.message}
-                                                onChange={(e) => setData('message', e.target.value)}
-                                                onKeyDown={handleKeyDown}
-                                                placeholder={
-                                                    activeConversation.is_taken_over
-                                                        ? 'Ketik balasan Anda langsung ke pengunjung... (Tekan Enter untuk kirim, Shift+Enter untuk baris baru)'
-                                                        : 'Ambil alih percakapan untuk membalas pengunjung...'
-                                                }
-                                                disabled={!activeConversation.is_taken_over || processing}
-                                                rows={2}
-                                                className={`resize-none text-xs rounded-2xl bg-background transition-all p-3 ${
-                                                    activeConversation.is_taken_over
-                                                        ? 'border-emerald-500/40 focus:ring-2 focus:ring-emerald-500/20'
-                                                        : 'opacity-60 bg-muted/40 cursor-pointer'
-                                                }`}
-                                            />
-                                            {!activeConversation.is_taken_over && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleToggleTakeover(activeConversation)}
-                                                    className="absolute inset-0 flex items-center justify-center rounded-2xl bg-background/50 backdrop-blur-[1px] hover:bg-background/30 transition-all cursor-pointer group"
-                                                >
-                                                    <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-500 text-neutral-950 font-bold text-xs shadow-xs group-hover:scale-105 transition-transform">
-                                                        <UserCheck className="size-3.5" />
-                                                        <span>Klik untuk Ambil Alih & Balas Chat</span>
-                                                    </span>
-                                                </button>
-                                            )}
-                                        </div>
-                                        <Button
-                                            type="submit"
-                                            disabled={!activeConversation.is_taken_over || !data.message.trim() || processing}
-                                            className={`h-14 px-5 rounded-2xl font-bold shadow-xs gap-2 transition-transform active:scale-95 cursor-pointer ${
+                                <form onSubmit={handleSendReply} className="flex gap-2 items-center">
+                                    <div className="relative flex-1">
+                                        <Input
+                                            value={data.message}
+                                            onChange={(e) => setData('message', e.target.value)}
+                                            onKeyDown={handleKeyDown}
+                                            placeholder={
                                                 activeConversation.is_taken_over
-                                                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
-                                                    : 'opacity-50'
+                                                    ? 'Ketik balasan Anda langsung ke pengunjung... (Tekan Enter untuk kirim)'
+                                                    : 'Klik "Ambil Alih Chat" di atas untuk membalas...'
+                                            }
+                                            disabled={!activeConversation.is_taken_over || processing}
+                                            className={`h-9 text-xs rounded-xl bg-background transition-all px-3 ${
+                                                activeConversation.is_taken_over
+                                                    ? 'border-emerald-500/40 focus:ring-1 focus:ring-emerald-500/30'
+                                                    : 'opacity-60 bg-muted/30 cursor-not-allowed'
                                             }`}
-                                        >
-                                            {processing ? (
-                                                <Spinner />
-                                            ) : (
-                                                <>
-                                                    <Send className="size-4" />
-                                                    <span className="hidden sm:inline">Kirim</span>
-                                                </>
-                                            )}
-                                        </Button>
-                                    </form>
-                                </div>
+                                        />
+                                    </div>
+                                    <Button
+                                        type="submit"
+                                        size="sm"
+                                        disabled={!activeConversation.is_taken_over || !data.message.trim() || processing}
+                                        className={`h-9 px-4 rounded-xl font-semibold text-xs shadow-2xs gap-1.5 transition-all cursor-pointer shrink-0 ${
+                                            activeConversation.is_taken_over
+                                                ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                                                : 'opacity-50'
+                                        }`}
+                                    >
+                                        {processing ? (
+                                            <Spinner className="size-3.5" />
+                                        ) : (
+                                            <>
+                                                <Send className="size-3.5" />
+                                                <span className="hidden sm:inline">Kirim</span>
+                                            </>
+                                        )}
+                                    </Button>
+                                </form>
+                            </div>
                             </div>
                         </>
                     ) : (

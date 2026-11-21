@@ -1,5 +1,6 @@
 import { usePage } from '@inertiajs/react';
 import { Bot, ExternalLink } from 'lucide-react';
+import { BotEscalationNotifications } from '@/components/bot-escalation-notifications';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { Button } from '@/components/ui/button';
 import { SidebarTrigger } from '@/components/ui/sidebar';
@@ -34,6 +35,7 @@ export function AppSidebarHeader({
             </div>
 
             <div className="flex items-center gap-2">
+                <BotEscalationNotifications />
                 <Button
                     variant="default"
                     size="sm"
