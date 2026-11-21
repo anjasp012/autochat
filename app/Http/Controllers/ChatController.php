@@ -68,6 +68,27 @@ class ChatController extends Controller
             ]);
         }
 
+        // Jika sudah diambil alih admin lalu dibalas admin, dan pengunjung tidak kunjung membalas (> 3 menit), kembalikan ke bot AI
+        if ($conversation->is_taken_over) {
+            $lastMsg = $conversation->messages()->latest('id')->first();
+            if ($lastMsg && $lastMsg->role === 'admin' && Carbon::parse($lastMsg->created_at)->diffInMinutes(now()) >= 3) {
+                $conversation->update([
+                    'is_taken_over' => false,
+                    'taken_over_by' => null,
+                    'is_waiting_admin' => false,
+                ]);
+
+                $systemMsg = Message::create([
+                    'conversation_id' => $conversation->id,
+                    'role' => 'system',
+                    'content' => 'Percakapan telah dikembalikan ke asisten AI.',
+                    'tokens_used' => 0,
+                ]);
+
+                MessageSent::safeDispatch($systemMsg);
+            }
+        }
+
         $messages = $conversation->messages()
             ->orderBy('created_at', 'asc')
             ->get(['id', 'role', 'content', 'created_at'])
@@ -417,19 +438,44 @@ class ChatController extends Controller
             ]);
         }
 
-        // If conversation is taken over by admin, do not invoke AI
+        // If conversation is taken over by admin:
         if ($conversation->is_taken_over) {
-            return response()->json([
-                'conversation_uuid' => $conversation->uuid,
-                'is_taken_over' => true,
-                'user_message' => [
-                    'id' => (string) $userMessage->id,
-                    'role' => 'user',
-                    'content' => $userMessage->content,
-                    'created_at' => $userMessage->created_at?->format('H:i') ?? '',
-                ],
-                'assistant_message' => null,
-            ]);
+            $lastPriorMsg = $conversation->messages()
+                ->where('id', '!=', $userMessage->id)
+                ->latest('id')
+                ->first();
+
+            // Jika pesan sebelumnya berasal dari admin (admin sudah sempat membalas),
+            // dan user baru membalas lagi, kembalikan percakapan otomatis ke asisten AI!
+            if ($lastPriorMsg && $lastPriorMsg->role === 'admin') {
+                $conversation->update([
+                    'is_taken_over' => false,
+                    'taken_over_by' => null,
+                    'is_waiting_admin' => false,
+                ]);
+
+                $systemMsg = Message::create([
+                    'conversation_id' => $conversation->id,
+                    'role' => 'system',
+                    'content' => 'Percakapan telah dikembalikan ke asisten AI.',
+                    'tokens_used' => 0,
+                ]);
+
+                MessageSent::safeDispatch($systemMsg);
+                // Lanjutkan eksekusi ke pemrosesan AI di bawah!
+            } else {
+                return response()->json([
+                    'conversation_uuid' => $conversation->uuid,
+                    'is_taken_over' => true,
+                    'user_message' => [
+                        'id' => (string) $userMessage->id,
+                        'role' => 'user',
+                        'content' => $userMessage->content,
+                        'created_at' => $userMessage->created_at?->format('H:i') ?? '',
+                    ],
+                    'assistant_message' => null,
+                ]);
+            }
         }
 
         // Load recent conversation history (last 10 messages in chronological order, user & assistant only)
