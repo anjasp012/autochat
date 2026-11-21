@@ -67,7 +67,7 @@ export default function ChatShow({
     const headerColor = cs.header_color || '#FFD200';
     const headerTextColor = cs.header_text_color || '#0a0a0a';
     const customIconUrl = cs.custom_icon_url || '';
-    const faviconUrl = cs.favicon_url || '';
+    const faviconUrl = cs.favicon_url || cs.custom_icon_url || '';
     const splashTitle = cs.splash_title || `Selamat Datang di Livechat ${application.name} 😊`;
     const splashSubtitle = cs.splash_subtitle || `CHAT DENGAN TIM ${application.name.toUpperCase()}`;
     const splashDescription = cs.splash_description || 'Ada yang Bisa Kami Bantu, Bosku?';
@@ -133,8 +133,7 @@ export default function ChatShow({
     const defaultWelcomeMessage =
         cs.welcome_opening ||
         application.welcome_message ||
-        `Selamat Datang di ${application.name} Link ANTI NAWALA ${application.name}
-️ [https://kiamkiam.site/cvtogel1](https://kiamkiam.site/cvtogel1) ️ [https://kiamkiam.site/cvtogel2](https://kiamkiam.site/cvtogel2) WHATSAPP ️ [https://kiamkiam.site/wacvtogel](https://kiamkiam.site/wacvtogel) TELEGRAM ️ [https://kiamkiam.site/telecvtogel](https://kiamkiam.site/telecvtogel) ( WAJIB DI SIMPAN )`;
+        `Selamat Datang di ${application.name} Link ANTI NAWALA ${application.name}\n[https://kiamkiam.site/cvtogel1](https://kiamkiam.site/cvtogel1)\n[https://kiamkiam.site/cvtogel2](https://kiamkiam.site/cvtogel2)\nWHATSAPP [https://kiamkiam.site/wacvtogel](https://kiamkiam.site/wacvtogel)\nTELEGRAM [https://kiamkiam.site/telecvtogel](https://kiamkiam.site/telecvtogel)\n( WAJIB DI SIMPAN )`;
 
     // Navigation tab: 'beranda' (Home) | 'pesan' (Messages) | 'bantuan' (Help)
     const [activeTab, setActiveTab] = useState<'beranda' | 'pesan' | 'bantuan'>('beranda');
@@ -187,13 +186,16 @@ export default function ChatShow({
     // Dynamically update browser tab favicon
     useEffect(() => {
         if (faviconUrl) {
-            let link = document.querySelector("link[rel*='icon']") as HTMLLinkElement;
-            if (!link) {
-                link = document.createElement('link');
-                link.rel = 'icon';
-                document.head.appendChild(link);
-            }
-            link.href = faviconUrl;
+            const rels = ['icon', 'shortcut icon', 'apple-touch-icon'];
+            rels.forEach((rel) => {
+                let link = document.querySelector(`link[rel='${rel}']`) as HTMLLinkElement;
+                if (!link) {
+                    link = document.createElement('link');
+                    link.rel = rel;
+                    document.head.appendChild(link);
+                }
+                link.href = faviconUrl;
+            });
         }
     }, [faviconUrl]);
 
@@ -393,12 +395,6 @@ export default function ChatShow({
         setHasSubmittedForm(true);
         setActiveTab('pesan');
         setErrorMessage(null);
-
-        // Send initial inquiry if topic was chosen
-        if (questionTopic && questionTopic !== 'Pilih...') {
-            const initialText = `Halo CS, User ID saya: ${formData.userId}. Saya ingin bantuan terkait: ${formData.questionTopic}.`;
-            handleSendMessage(initialText);
-        }
     };
 
     const handleSendMessage = async (textToSend?: string) => {
