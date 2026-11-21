@@ -4,6 +4,7 @@ export interface ApplicationSummary {
     name: string;
     is_active: boolean;
     model?: string;
+    chat_settings?: Record<string, any> | null;
 }
 
 export interface ApplicationDetail extends ApplicationSummary {

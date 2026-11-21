@@ -41,6 +41,10 @@ export function AppSwitcher() {
         (app: ApplicationSummary) => app.app_id === currentAppId
     ) || appList[0];
 
+    const currentIcon =
+        currentApp?.chat_settings?.custom_icon_url ||
+        currentApp?.chat_settings?.favicon_url;
+
     const handleSwitchApp = (appId: string) => {
         if (appId === currentAppId) return;
 
@@ -60,9 +64,19 @@ export function AppSwitcher() {
                             size="lg"
                             className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground cursor-pointer rounded-lg hover:bg-sidebar-accent/50 p-2 transition-colors border-0 shadow-none bg-transparent"
                         >
-                            <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-xs">
-                                <Bot className="size-4" />
-                            </div>
+                            {currentIcon ? (
+                                <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg overflow-hidden bg-white/10 p-0.5 shadow-xs">
+                                    <img
+                                        src={currentIcon}
+                                        alt={currentApp.name}
+                                        className="size-full object-contain"
+                                    />
+                                </div>
+                            ) : (
+                                <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-xs">
+                                    <Bot className="size-4" />
+                                </div>
+                            )}
                             <div className="grid flex-1 text-left text-sm leading-tight min-w-0">
                                 <div className="flex items-center gap-1.5 min-w-0">
                                     <span className="truncate font-semibold text-foreground text-sm tracking-tight">
@@ -100,39 +114,54 @@ export function AppSwitcher() {
                                     Belum ada aplikasi terdaftar.
                                 </div>
                             ) : (
-                                appList.map((app: ApplicationSummary) => (
-                                    <DropdownMenuItem
-                                        key={app.id}
-                                        onClick={() => handleSwitchApp(app.app_id)}
-                                        className="flex items-center justify-between cursor-pointer rounded-lg px-2 py-2 text-xs"
-                                    >
-                                        <div className="flex items-center gap-2.5 min-w-0">
-                                            <div
-                                                className={`flex size-6 shrink-0 items-center justify-center rounded-md text-[10px] font-medium ${
-                                                    app.app_id === currentApp?.app_id
-                                                        ? 'bg-primary text-primary-foreground'
-                                                        : 'bg-muted text-muted-foreground'
-                                                }`}
-                                            >
-                                                <Bot className="size-3.5" />
+                                appList.map((app: ApplicationSummary) => {
+                                    const appIcon =
+                                        app.chat_settings?.custom_icon_url ||
+                                        app.chat_settings?.favicon_url;
+                                    return (
+                                        <DropdownMenuItem
+                                            key={app.id}
+                                            onClick={() => handleSwitchApp(app.app_id)}
+                                            className="flex items-center justify-between cursor-pointer rounded-lg px-2 py-2 text-xs"
+                                        >
+                                            <div className="flex items-center gap-2.5 min-w-0">
+                                                {appIcon ? (
+                                                    <div className="flex size-6 shrink-0 items-center justify-center rounded-md overflow-hidden bg-white/10 p-0.5 shadow-2xs">
+                                                        <img
+                                                            src={appIcon}
+                                                            alt={app.name}
+                                                            className="size-full object-contain"
+                                                        />
+                                                    </div>
+                                                ) : (
+                                                    <div
+                                                        className={`flex size-6 shrink-0 items-center justify-center rounded-md text-[10px] font-medium ${
+                                                            app.app_id === currentApp?.app_id
+                                                                ? 'bg-primary text-primary-foreground'
+                                                                : 'bg-muted text-muted-foreground'
+                                                        }`}
+                                                    >
+                                                        <Bot className="size-3.5" />
+                                                    </div>
+                                                )}
+                                                <div className="flex flex-col min-w-0 text-left">
+                                                    <span className="truncate font-medium text-foreground">
+                                                        {app.name}
+                                                    </span>
+                                                    <span className="truncate text-[10px] text-muted-foreground">
+                                                        {app.app_id}
+                                                    </span>
+                                                </div>
                                             </div>
-                                            <div className="flex flex-col min-w-0 text-left">
-                                                <span className="truncate font-medium text-foreground">
-                                                    {app.name}
-                                                </span>
-                                                <span className="truncate text-[10px] text-muted-foreground">
-                                                    {app.app_id}
-                                                </span>
-                                            </div>
-                                        </div>
 
-                                        <div className="flex items-center gap-1.5 ml-2 shrink-0">
-                                            {app.app_id === currentApp?.app_id && (
-                                                <Check className="size-3.5 text-primary" />
-                                            )}
-                                        </div>
-                                    </DropdownMenuItem>
-                                ))
+                                            <div className="flex items-center gap-1.5 ml-2 shrink-0">
+                                                {app.app_id === currentApp?.app_id && (
+                                                    <Check className="size-3.5 text-primary" />
+                                                )}
+                                            </div>
+                                        </DropdownMenuItem>
+                                    );
+                                })
                             )}
                         </DropdownMenuGroup>
 
