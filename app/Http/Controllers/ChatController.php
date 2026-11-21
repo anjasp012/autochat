@@ -78,6 +78,7 @@ class ChatController extends Controller
         return response()->json([
             'exists' => true,
             'expired' => false,
+            'is_taken_over' => (bool) $conversation->is_taken_over,
             'messages' => $messages,
         ]);
     }

@@ -62,6 +62,7 @@ export default function ChatShow({
 
     const [sessionUuid, setSessionUuid] = useState<string>('');
     const [messages, setMessages] = useState<ChatMessage[]>([]);
+    const [isTakenOver, setIsTakenOver] = useState(false);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isSessionExpired, setIsSessionExpired] = useState(false);
@@ -186,7 +187,12 @@ export default function ChatShow({
 
         const channel = echo.channel(`conversation.${sessionUuid}`);
         const handleIncoming = (event: any) => {
+            if (event.is_taken_over !== undefined) {
+                setIsTakenOver(Boolean(event.is_taken_over));
+            }
+
             if (event.role !== 'user') {
+                setHasSubmittedForm(true);
                 setMessages((prev) => {
                     const alreadyExists = prev.some((m) => String(m.id) === String(event.id));
                     if (alreadyExists) return prev;
@@ -218,6 +224,9 @@ export default function ChatShow({
             const res = await fetch(`/chat/${application.app_id}/session/${uuid}`);
             if (res.ok) {
                 const data = await res.json();
+                if (data.is_taken_over !== undefined) {
+                    setIsTakenOver(Boolean(data.is_taken_over));
+                }
                 if (data.expired) {
                     setIsSessionExpired(true);
                 } else if (data.messages && data.messages.length > 0) {
@@ -366,10 +375,10 @@ export default function ChatShow({
             <Head title={`Livechat - ${application.name}`} />
 
             {/* ============================================================== */}
-            {/* LEFT SPLIT COLUMN: BRAND WELCOME SPLASH (Persis Screenshot 1, 2, 3) */}
+            {/* LEFT SPLIT COLUMN: BRAND WELCOME SPLASH (50% Layar Kiri) */}
             {/* ============================================================== */}
-            <div className="hidden lg:flex flex-1 flex-col justify-center px-12 xl:px-20 relative select-none">
-                <div className="max-w-xl space-y-6">
+            <div className="hidden lg:flex lg:w-1/2 h-full flex-col justify-center items-center px-10 xl:px-20 relative select-none">
+                <div className="w-full max-w-lg space-y-6">
                     {/* Brand Icon Circle */}
                     <div className="flex size-14 items-center justify-center rounded-full bg-[#FFD200] text-neutral-900 shadow-sm border border-amber-300">
                         <Sparkles className="size-7 fill-neutral-900 text-neutral-900" />
@@ -395,9 +404,9 @@ export default function ChatShow({
             </div>
 
             {/* ============================================================== */}
-            {/* RIGHT COLUMN: INTERACTIVE LIVE CHAT WIDGET */}
+            {/* RIGHT COLUMN: INTERACTIVE LIVE CHAT WIDGET (50% Layar Kanan) */}
             {/* ============================================================== */}
-            <div className="flex flex-col w-full lg:w-[460px] xl:w-[480px] h-full bg-white border-l border-amber-200/80 shadow-2xl overflow-hidden shrink-0">
+            <div className="flex flex-col w-full lg:w-1/2 h-full bg-white border-l border-amber-200/80 shadow-2xl overflow-hidden">
                 {/* TOP HEADER BAR (Kuning Emas Khas Screenshot) */}
                 <div className="bg-[#FFD200] text-neutral-900 px-5 py-4 shrink-0 shadow-sm border-b border-amber-300">
                     <div className="flex items-center justify-between">
