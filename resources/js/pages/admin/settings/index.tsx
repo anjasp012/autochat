@@ -14,6 +14,7 @@ import {
     Layout,
     MessageSquare,
     Palette,
+    Save,
     Sliders,
     Sparkles,
     Trash2,
@@ -54,27 +55,27 @@ const PRESET_AVATARS = [
     {
         id: 'cs4',
         url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
-        name: 'Maya',
+        name: 'Amanda',
     },
     {
         id: 'cs5',
-        url: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80',
-        name: 'Lisa',
+        url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+        name: 'Rian',
     },
     {
         id: 'cs6',
-        url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
-        name: 'Kevin',
+        url: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80',
+        name: 'Bella',
     },
     {
         id: 'cs7',
-        url: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&auto=format&fit=crop&q=80',
-        name: 'Ryan',
+        url: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80',
+        name: 'Kevin',
     },
     {
         id: 'cs8',
         url: 'https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?w=150&auto=format&fit=crop&q=80',
-        name: 'Dian',
+        name: 'Maya',
     },
     {
         id: 'cs9',
@@ -92,13 +93,14 @@ export default function AdminSettings({ application }: Props) {
     const currentSettings = application.chat_settings || {};
 
     // Inisialisasi 3 avatar yang dipilih
-    const initialAvatars: string[] = Array.isArray(currentSettings.selected_avatars) && currentSettings.selected_avatars.length === 3
-        ? currentSettings.selected_avatars
-        : [
-              currentSettings.avatar_1 || PRESET_AVATARS[0].url,
-              currentSettings.avatar_2 || PRESET_AVATARS[1].url,
-              currentSettings.avatar_3 || PRESET_AVATARS[2].url,
-          ];
+    const initialAvatars: string[] =
+        Array.isArray(currentSettings.selected_avatars) && currentSettings.selected_avatars.length === 3
+            ? currentSettings.selected_avatars
+            : [
+                  currentSettings.avatar_1 || PRESET_AVATARS[0].url,
+                  currentSettings.avatar_2 || PRESET_AVATARS[1].url,
+                  currentSettings.avatar_3 || PRESET_AVATARS[2].url,
+              ];
 
     const iconInputRef = useRef<HTMLInputElement>(null);
     const faviconInputRef = useRef<HTMLInputElement>(null);
@@ -111,7 +113,7 @@ export default function AdminSettings({ application }: Props) {
         welcome_message: application.welcome_message || '',
         system_prompt: application.system_prompt,
         model: application.model || 'openai/gpt-oss-120b',
-        temperature: application.temperature ?? 0.70,
+        temperature: application.temperature ?? 0.7,
         max_tokens: application.max_tokens ?? 2048,
         is_active: application.is_active,
 
@@ -120,6 +122,7 @@ export default function AdminSettings({ application }: Props) {
             bg_color: currentSettings.bg_color || '#FFF9E6',
             text_color: currentSettings.text_color || '#171717',
             header_color: currentSettings.header_color || '#FFD200',
+            header_text_color: currentSettings.header_text_color || '#0a0a0a',
             custom_icon_url: currentSettings.custom_icon_url || '',
             favicon_url: currentSettings.favicon_url || '',
             splash_title: currentSettings.splash_title || `Selamat Datang di Livechat ${application.name} 😊`,
@@ -218,24 +221,12 @@ export default function AdminSettings({ application }: Props) {
 
             <div className="flex h-full flex-1 flex-col gap-6 p-6 overflow-y-auto">
                 {/* Header Tanpa Tombol Kembali */}
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-border pb-4">
-                    <div>
-                        <h1 className="text-2xl font-bold tracking-tight">Pengaturan Bot</h1>
-                        <p className="text-sm text-muted-foreground mt-0.5">
-                            Konfigurasi lengkap tampilan livechat pengunjung dan pengaturan sistem AI untuk{' '}
-                            <strong>{application.name}</strong>.
-                        </p>
-                    </div>
-
-                    <Button
-                        type="button"
-                        onClick={handleSubmit}
-                        disabled={processing}
-                        className="gap-2 cursor-pointer shadow-xs min-w-40 bg-emerald-600 hover:bg-emerald-700 text-white font-bold self-start sm:self-auto"
-                    >
-                        {processing && <Spinner />}
-                        Simpan Perubahan
-                    </Button>
+                <div className="border-b border-border pb-4">
+                    <h1 className="text-2xl font-bold tracking-tight">Pengaturan Bot</h1>
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                        Konfigurasi lengkap tampilan livechat pengunjung dan pengaturan sistem AI untuk{' '}
+                        <strong>{application.name}</strong>.
+                    </p>
                 </div>
 
                 {/* FORM TAMPILAN DAN KONFIGURASI JADI SATU DENGAN LIVE PREVIEW */}
@@ -318,7 +309,7 @@ export default function AdminSettings({ application }: Props) {
                             </CardContent>
                         </Card>
 
-                        {/* 2. WARNA, TEKS & FILE IKON / FAVICON */}
+                        {/* 2. WARNA (KIRI & KANAN), FILE IKON & FAVICON */}
                         <Card>
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-sm font-bold flex items-center gap-2">
@@ -326,14 +317,14 @@ export default function AdminSettings({ application }: Props) {
                                     <span>Warna, Ikon & Favicon Brand</span>
                                 </CardTitle>
                                 <CardDescription className="text-xs">
-                                    Warna background, warna teks sambutan, warna bar header, serta file icon dan favicon.
+                                    Atur warna background kiri, teks kiri, bar header kanan, teks kanan, serta file ikon & favicon.
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                    {/* Warna Background */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                                    {/* Warna Background (Kiri) */}
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-semibold">Warna Background</Label>
+                                        <Label className="text-xs font-semibold">Warna Background (Kiri)</Label>
                                         <div className="flex items-center gap-2">
                                             <input
                                                 type="color"
@@ -349,9 +340,9 @@ export default function AdminSettings({ application }: Props) {
                                         </div>
                                     </div>
 
-                                    {/* Warna Teks Sebelah */}
+                                    {/* Warna Teks Kiri (Splash) */}
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-semibold">Warna Teks Sambutan</Label>
+                                        <Label className="text-xs font-semibold">Warna Teks Kiri (Splash)</Label>
                                         <div className="flex items-center gap-2">
                                             <input
                                                 type="color"
@@ -367,9 +358,9 @@ export default function AdminSettings({ application }: Props) {
                                         </div>
                                     </div>
 
-                                    {/* Warna Header */}
+                                    {/* Warna Bar Header (Kanan) */}
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-semibold">Warna Bar Header</Label>
+                                        <Label className="text-xs font-semibold">Warna Header (Kanan)</Label>
                                         <div className="flex items-center gap-2">
                                             <input
                                                 type="color"
@@ -380,6 +371,24 @@ export default function AdminSettings({ application }: Props) {
                                             <Input
                                                 value={data.chat_settings.header_color}
                                                 onChange={(e) => updateChatSetting('header_color', e.target.value)}
+                                                className="font-mono text-xs uppercase h-8"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Warna Teks Kanan (Header) */}
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs font-semibold">Warna Teks Kanan (Header)</Label>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="color"
+                                                value={data.chat_settings.header_text_color}
+                                                onChange={(e) => updateChatSetting('header_text_color', e.target.value)}
+                                                className="size-8 rounded-lg border border-border cursor-pointer p-0.5 bg-background shrink-0"
+                                            />
+                                            <Input
+                                                value={data.chat_settings.header_text_color}
+                                                onChange={(e) => updateChatSetting('header_text_color', e.target.value)}
                                                 className="font-mono text-xs uppercase h-8"
                                             />
                                         </div>
@@ -539,7 +548,7 @@ export default function AdminSettings({ application }: Props) {
                                     </span>
                                 </div>
                                 <CardDescription className="text-xs">
-                                    Cukup klik foto avatar di bawah untuk memilih 3 Customer Service yang akan ditampilkan di header livechat.
+                                    Cukup klik foto avatar di bawah untuk memilih 3 Customer Service yang akan ditampilkan rapi berjejer di header livechat.
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
@@ -715,33 +724,36 @@ export default function AdminSettings({ application }: Props) {
                                         defaultTitle: 'Promosi',
                                     },
                                 ].map((btn) => (
-                                    <div key={btn.num} className="p-3 rounded-xl border border-border/80 bg-muted/20 space-y-2">
+                                    <div
+                                        key={btn.num}
+                                        className="rounded-xl border border-border/80 bg-muted/10 p-3 space-y-2.5"
+                                    >
                                         <div className="flex items-center justify-between">
                                             <span className="text-xs font-bold text-foreground">
-                                                Tombol {btn.num}
-                                            </span>
-                                            <span className="text-[10px] text-muted-foreground font-mono">
-                                                Kolom {btn.num <= 2 ? 'Atas' : 'Bawah'}
+                                                Tombol #{btn.num}
                                             </span>
                                         </div>
-
-                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                            <div className="sm:col-span-1 space-y-1">
-                                                <Label className="text-[11px] font-medium">Judul Tombol</Label>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                            <div className="space-y-1">
+                                                <Label className="text-[11px] font-semibold text-muted-foreground">
+                                                    Judul Tombol
+                                                </Label>
                                                 <Input
                                                     value={(data.chat_settings as any)[btn.titleKey]}
                                                     onChange={(e) => updateChatSetting(btn.titleKey, e.target.value)}
                                                     placeholder={btn.defaultTitle}
-                                                    className="text-xs font-semibold h-8"
+                                                    className="text-xs"
                                                 />
                                             </div>
-                                            <div className="sm:col-span-2 space-y-1">
-                                                <Label className="text-[11px] font-medium">Pesan Otomatis Dikirim</Label>
+                                            <div className="space-y-1">
+                                                <Label className="text-[11px] font-semibold text-muted-foreground">
+                                                    Pertanyaan Otomatis (Saat Diklik)
+                                                </Label>
                                                 <Input
                                                     value={(data.chat_settings as any)[btn.queryKey]}
                                                     onChange={(e) => updateChatSetting(btn.queryKey, e.target.value)}
-                                                    placeholder="Pertanyaan yang diajukan ke bot..."
-                                                    className="text-xs h-8"
+                                                    placeholder="Pesan yang otomatis dikirim..."
+                                                    className="text-xs"
                                                 />
                                             </div>
                                         </div>
@@ -750,55 +762,106 @@ export default function AdminSettings({ application }: Props) {
                             </CardContent>
                         </Card>
 
-                        {/* 7. OPENING / PESAN PEMBUKA */}
+                        {/* 7. PESAN PEMBUKA & LINK ANTI NAWALA */}
                         <Card>
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-sm font-bold flex items-center gap-2">
                                     <MessageSquare className="size-4 text-amber-500" />
-                                    <span>Pesan Pembuka (Opening / Anti-Nawala)</span>
+                                    <span>Pesan Pembuka & Link Resmi Anti Nawala</span>
                                 </CardTitle>
                                 <CardDescription className="text-xs">
-                                    Pesan awal yang langsung ditampilkan di formulir dan di ruang chat. Mendukung format Markdown link.
+                                    Pesan selamat datang yang muncul pertama kali di kartu informasi livechat.
                                 </CardDescription>
                             </CardHeader>
-                            <CardContent className="space-y-2">
+                            <CardContent className="space-y-3">
                                 <Textarea
                                     value={data.chat_settings.welcome_opening}
-                                    onChange={(e) => {
-                                        updateChatSetting('welcome_opening', e.target.value);
-                                        setData('welcome_message', e.target.value);
-                                    }}
+                                    onChange={(e) => updateChatSetting('welcome_opening', e.target.value)}
                                     rows={5}
-                                    placeholder="Selamat Datang di CVTOGEL Link ANTI NAWALA..."
                                     className="font-mono text-xs leading-relaxed"
+                                    placeholder="Selamat Datang di Link Alternatif Resmi..."
                                 />
-                                <span className="text-[10px] text-muted-foreground block">
-                                    Gunakan format <code>[Judul Link](https://link-anda.com)</code> untuk membuat link yang dapat langsung diklik oleh pengguna.
+                                <span className="text-[11px] text-muted-foreground block">
+                                    Format Markdown didukung: <code className="font-mono text-emerald-600">[Link Teks](https://url)</code>.
                                 </span>
                             </CardContent>
                         </Card>
 
-                        {/* 8. SYSTEM PROMPT AI */}
+                        {/* 8. PENGATURAN MODEL AI & SYSTEM PROMPT */}
                         <Card>
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-sm font-bold flex items-center gap-2">
                                     <Bot className="size-4 text-emerald-600" />
-                                    <span>System Prompt Bot AI</span>
+                                    <span>Instruksi AI (System Prompt) & Model</span>
                                 </CardTitle>
                                 <CardDescription className="text-xs">
-                                    Instruksi inti yang memandu kepribadian, basis pengetahuan, dan cara AI menjawab pertanyaan.
+                                    Atur perilaku, nada bicara, serta model AI untuk menjawab chat secara otomatis.
                                 </CardDescription>
                             </CardHeader>
-                            <CardContent className="space-y-2">
-                                <Textarea
-                                    id="system_prompt"
-                                    value={data.system_prompt}
-                                    onChange={(e) => setData('system_prompt', e.target.value)}
-                                    rows={10}
-                                    required
-                                    className="font-mono text-xs leading-relaxed min-h-60"
-                                />
-                                <InputError message={errors.system_prompt} />
+                            <CardContent className="space-y-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    <div className="space-y-1">
+                                        <Label htmlFor="model" className="text-xs font-semibold">Model AI</Label>
+                                        <Input
+                                            id="model"
+                                            value={data.model}
+                                            onChange={(e) => setData('model', e.target.value)}
+                                            required
+                                            className="font-mono text-xs"
+                                        />
+                                        <InputError message={errors.model} />
+                                    </div>
+
+                                    <div className="space-y-1">
+                                        <Label htmlFor="temperature" className="text-xs font-semibold">
+                                            Temperature ({data.temperature})
+                                        </Label>
+                                        <Input
+                                            id="temperature"
+                                            type="number"
+                                            step="0.05"
+                                            min="0"
+                                            max="2"
+                                            value={data.temperature}
+                                            onChange={(e) => setData('temperature', parseFloat(e.target.value))}
+                                            className="text-xs"
+                                        />
+                                        <InputError message={errors.temperature} />
+                                    </div>
+
+                                    <div className="space-y-1">
+                                        <Label htmlFor="max_tokens" className="text-xs font-semibold">
+                                            Max Tokens
+                                        </Label>
+                                        <Input
+                                            id="max_tokens"
+                                            type="number"
+                                            step="128"
+                                            min="128"
+                                            max="8192"
+                                            value={data.max_tokens}
+                                            onChange={(e) => setData('max_tokens', parseInt(e.target.value))}
+                                            className="text-xs"
+                                        />
+                                        <InputError message={errors.max_tokens} />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="system_prompt" className="text-xs font-semibold">
+                                        System Prompt (Karakter & Instruksi Bot)
+                                    </Label>
+                                    <Textarea
+                                        id="system_prompt"
+                                        value={data.system_prompt}
+                                        onChange={(e) => setData('system_prompt', e.target.value)}
+                                        rows={10}
+                                        required
+                                        className="font-mono text-xs leading-relaxed"
+                                        placeholder="Kamu adalah asisten customer support profesional..."
+                                    />
+                                    <InputError message={errors.system_prompt} />
+                                </div>
                             </CardContent>
                         </Card>
                     </div>
@@ -828,8 +891,11 @@ export default function AdminSettings({ application }: Props) {
                                     style={{ color: data.chat_settings.text_color }}
                                 >
                                     <div
-                                        className="flex size-10 items-center justify-center rounded-full text-neutral-950 shadow-xs"
-                                        style={{ backgroundColor: data.chat_settings.header_color }}
+                                        className="flex size-10 items-center justify-center rounded-full shadow-xs"
+                                        style={{
+                                            backgroundColor: data.chat_settings.header_color,
+                                            color: data.chat_settings.header_text_color || '#0a0a0a',
+                                        }}
                                     >
                                         {data.chat_settings.custom_icon_url ? (
                                             <img
@@ -859,8 +925,11 @@ export default function AdminSettings({ application }: Props) {
                                 <div className="w-1/2 bg-white flex flex-col h-full overflow-hidden shadow-md">
                                     {/* HEADER ATAS */}
                                     <div
-                                        className="px-3 py-2.5 text-neutral-950 shrink-0 border-b border-black/10"
-                                        style={{ backgroundColor: data.chat_settings.header_color }}
+                                        className="px-3 py-2.5 shrink-0 border-b border-black/10 transition-colors"
+                                        style={{
+                                            backgroundColor: data.chat_settings.header_color,
+                                            color: data.chat_settings.header_text_color || '#0a0a0a',
+                                        }}
                                     >
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-1.5 min-w-0">
@@ -875,29 +944,43 @@ export default function AdminSettings({ application }: Props) {
                                                         <Sparkles className="size-3" />
                                                     )}
                                                 </div>
-                                                <span className="font-extrabold text-[11px] truncate uppercase">
+                                                <span
+                                                    className="font-extrabold text-[11px] truncate uppercase"
+                                                    style={{ color: data.chat_settings.header_text_color || '#0a0a0a' }}
+                                                >
                                                     {data.chat_settings.header_title}
                                                 </span>
                                             </div>
 
-                                            {/* 3 FOTO AVATAR CS YANG TERPILIH */}
-                                            <div className="flex -space-x-1.5 overflow-hidden shrink-0">
+                                            {/* 3 FOTO AVATAR CS YANG TERPILIH (RAPI BERJEJER) */}
+                                            <div className="flex items-center -space-x-1.5 overflow-visible pl-0.5 shrink-0">
                                                 {currentAvatars.slice(0, 3).map((url, idx) => (
-                                                    <img
+                                                    <div
                                                         key={idx}
-                                                        className="inline-block size-5 rounded-full ring-1.5 ring-white object-cover"
-                                                        src={url}
-                                                        alt={`CS ${idx + 1}`}
-                                                    />
+                                                        className="relative size-6 rounded-full ring-1.5 ring-white shadow-2xs overflow-hidden shrink-0 bg-neutral-200"
+                                                        style={{ zIndex: 10 - idx }}
+                                                    >
+                                                        <img
+                                                            src={url}
+                                                            alt={`CS ${idx + 1}`}
+                                                            className="size-full object-cover"
+                                                        />
+                                                    </div>
                                                 ))}
                                             </div>
                                         </div>
 
                                         <div className="mt-1.5">
-                                            <p className="text-[8px] font-medium text-neutral-800 line-clamp-1">
+                                            <p
+                                                className="text-[8px] font-medium line-clamp-1 opacity-80"
+                                                style={{ color: data.chat_settings.header_text_color || '#0a0a0a' }}
+                                            >
                                                 {data.chat_settings.splash_title}
                                             </p>
-                                            <p className="text-[9px] font-bold text-neutral-950 line-clamp-1">
+                                            <p
+                                                className="text-[9px] font-bold line-clamp-1"
+                                                style={{ color: data.chat_settings.header_text_color || '#0a0a0a' }}
+                                            >
                                                 {data.chat_settings.splash_description}
                                             </p>
                                         </div>
@@ -951,8 +1034,11 @@ export default function AdminSettings({ application }: Props) {
 
                                         {/* TOMBOL KIRIM PESAN */}
                                         <div
-                                            className="w-full flex items-center justify-center gap-1.5 rounded-lg text-neutral-950 font-bold py-1.5 text-[10px] shadow-2xs"
-                                            style={{ backgroundColor: data.chat_settings.header_color }}
+                                            className="w-full flex items-center justify-center gap-1.5 rounded-lg font-bold py-1.5 text-[10px] shadow-2xs"
+                                            style={{
+                                                backgroundColor: data.chat_settings.header_color,
+                                                color: data.chat_settings.header_text_color || '#0a0a0a',
+                                            }}
                                         >
                                             <span>Kirim Pesan</span>
                                             <ArrowRight className="size-3" />
@@ -978,8 +1064,20 @@ export default function AdminSettings({ application }: Props) {
                             </div>
                         </div>
 
+                        {/* TOMBOL SIMPAN PERUBAHAN DI BAWAH PREVIEW (SESUAI REQUEST USER) */}
+                        <Button
+                            type="button"
+                            onClick={handleSubmit}
+                            disabled={processing}
+                            className="w-full py-5 text-sm font-bold gap-2 cursor-pointer shadow-md bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-all"
+                        >
+                            {processing && <Spinner />}
+                            <Save className="size-4" />
+                            Simpan Perubahan
+                        </Button>
+
                         <p className="text-[11px] text-muted-foreground text-center">
-                            Setiap perubahan warna, teks, foto CS, banner, dan tombol langsung tampil pada preview di atas secara real-time.
+                            Setiap perubahan warna, teks kiri/kanan, foto CS, banner, dan tombol langsung tampil pada preview di atas secara real-time.
                         </p>
                     </div>
                 </form>
