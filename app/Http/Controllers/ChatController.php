@@ -161,6 +161,9 @@ class ChatController extends Controller
                 default => strtolower(trim($topicRaw)),
             };
 
+            $isDeposit = in_array(strtolower(trim($topicRaw)), ['deposit & withdraw', 'deposit', 'withdraw']);
+            $isWithdraw = in_array(strtolower(trim($topicRaw)), ['withdraw', 'penarikan']);
+
             $customTemplate = $application->chat_settings['first_reply_template'] ?? null;
             if ($customTemplate) {
                 $replyText = str_replace(
@@ -168,6 +171,10 @@ class ChatController extends Controller
                     [$timeGreeting, $topicFormatted, (string) $request->input('user_id', ''), $application->name],
                     $customTemplate
                 );
+            } elseif ($isDeposit) {
+                $replyText = "[FORM:deposit_status]\nSilakan isi data di form yang muncul ya Bosku, biar saya cek status depositnya.";
+            } elseif ($isWithdraw) {
+                $replyText = "[FORM:withdraw_status]\nSilakan isi data di form yang muncul ya Bosku, biar saya cek status withdraw-nya.";
             } else {
                 $replyText = "Hallo bosku 👋 {$timeGreeting}, ada yang bisa dibantu terkait {$topicFormatted}, Bosku?";
             }

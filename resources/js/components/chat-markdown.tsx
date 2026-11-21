@@ -15,15 +15,23 @@ export default function ChatMarkdown({ content, className = '' }: Props) {
         if (!content) return '';
         let text = content.replace(/\r\n/g, '\n');
 
-        // Jika teks berisi beberapa link atau kata kunci (WHATSAPP, TELEGRAM, dll.) yang menumpuk di 1 baris,
-        // rapikan otomatis dengan memisahkannya ke baris baru agar rapi menurun
-        text = text.replace(/([^\n])\s*(?:️|\uFE0F)?\s*(https?:\/\/[^\s]+)/gi, '$1\n👉 $2');
-        text = text.replace(/([^\n])\s+(WHATSAPP|TELEGRAM|LIVECHAT|LINK ANTI NAWALA|LINK ALTERNATIF)/gi, '$1\n\n**$2**');
+        // Pisahkan jika ada emoji/bullet/variasi (seperti \uFE0F, ️) sebelum link [label](url) atau URL biasa
+        text = text.replace(/([^\n])\s*(?:️|\uFE0F)?\s*(\[[^\]]+\]\([^\)]+\))/gi, '$1\n$2');
+        text = text.replace(/([^\n])\s*(?:️|\uFE0F)?\s*(https?:\/\/[^\s\)\>\]]+)/gi, '$1\n$2');
 
-        // Tambahkan dua trailing spasi pada setiap baris berteks agar diinterpretasikan sebagai hard line break (<br />) oleh Markdown
+        // Pisahkan jika ada kata kunci WHATSAPP / TELEGRAM / LINK ANTI NAWALA yang menempel di baris yang sama
+        text = text.replace(/([^\n])\s+(WHATSAPP|TELEGRAM|LIVECHAT|LINK ANTI NAWALA|LINK ALTERNATIF|\( WAJIB|\(WAJIB)/gi, '$1\n\n$2');
+
+        // Pastikan setiap baris teks diakhiri dua spasi (aturan standar Markdown agar selalu ganti baris <br>)
         return text
             .split('\n')
-            .map((line) => (line.trim() === '' ? '' : `${line}  `))
+            .map((line) => {
+                const trimmed = line.trim();
+                if (!trimmed) return '';
+                // Bersihkan karakter variasi emoji \uFE0F / bullet yang berdiri sendiri di awal baris
+                const cleaned = trimmed.replace(/^[️\uFE0F\s]+/, '');
+                return `${cleaned}  `;
+            })
             .join('\n');
     }, [content]);
 
@@ -55,17 +63,39 @@ export default function ChatMarkdown({ content, className = '' }: Props) {
                     th: ({ children }) => <th className="px-2.5 py-1.5 text-left font-semibold text-[11px]">{children}</th>,
                     td: ({ children }) => <td className="px-2.5 py-1.5 text-[11px] align-top">{children}</td>,
                     strong: ({ children }) => <strong className="font-bold">{children}</strong>,
-                    a: ({ href, children }) => (
-                        <a
-                            href={href}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400 underline underline-offset-2 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors break-all"
-                        >
-                            <span>{children}</span>
-                            <ExternalLink className="size-3 shrink-0 inline opacity-70" />
-                        </a>
-                    ),
+                    a: ({ href, children }) => {
+                        let label = typeof children === 'string' ? children : String(children || '');
+                        // Jika teks link berupa URL mentah panjang, buat labelnya jadi rapi dan enak dibaca
+                        if (label.startsWith('http://') || label.startsWith('https://')) {
+                            try {
+                                const urlObj = new URL(label);
+                                const path = urlObj.pathname.replace(/^\//, '');
+                                if (label.toLowerCase().includes('wa') || label.toLowerCase().includes('whatsapp')) {
+                                    label = 'WhatsApp CS Resmi';
+                                } else if (label.toLowerCase().includes('tele') || label.toLowerCase().includes('t.me')) {
+                                    label = 'Telegram CS Resmi';
+                                } else if (path) {
+                                    label = `Link Alternatif (${path})`;
+                                } else {
+                                    label = urlObj.hostname;
+                                }
+                            } catch (e) {
+                                // fallback
+                            }
+                        }
+
+                        return (
+                            <a
+                                href={href}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 font-bold text-xs text-amber-950 dark:text-amber-100 bg-amber-400/90 hover:bg-amber-300 dark:bg-amber-500 dark:hover:bg-amber-400 px-3 py-1.5 rounded-xl shadow-xs transition-transform active:scale-95 my-1 mr-1.5 no-underline cursor-pointer border border-amber-500/40"
+                            >
+                                <span>{label}</span>
+                                <ExternalLink className="size-3.5 shrink-0 opacity-80" />
+                            </a>
+                        );
+                    },
                     code: ({ children }) => (
                         <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[11px]">{children}</code>
                     ),
