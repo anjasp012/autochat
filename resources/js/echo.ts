@@ -10,43 +10,38 @@ declare global {
 
 window.Pusher = Pusher;
 
-// Deteksi otomatis apakah berjalan di localhost/Laragon (.to, .test) atau di domain VPS publik
+// Deteksi otomatis apakah berjalan di localhost atau di domain/IP VPS publik
 const isBrowser = typeof window !== 'undefined';
 const isHttps = isBrowser && window.location.protocol === 'https:';
 const hostname = isBrowser ? window.location.hostname : 'localhost';
-const isLocal =
-    hostname === 'localhost' ||
-    hostname === '127.0.0.1' ||
-    hostname.endsWith('.to') ||
-    hostname.endsWith('.test');
+const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
 
-// Pusher-js secara bawaan memaksa wss:// jika window.location.protocol === 'https:'.
-// Di lingkungan lokal Laragon, Reverb berjalan pada plain HTTP port 8085 (ws://).
-// Override runtime getProtocol agar Pusher tidak memaksakan handshake TLS (wss://) ke port plain Reverb.
-if (isLocal && (Pusher as any).Runtime) {
+// Prioritaskan domain/IP tempat aplikasi diakses di browser pengguna,
+// kecuali VITE_REVERB_HOST didefinisikan secara eksplisit ke domain eksternal khusus.
+const reverbHost =
+    import.meta.env.VITE_REVERB_HOST &&
+    import.meta.env.VITE_REVERB_HOST !== 'localhost' &&
+    import.meta.env.VITE_REVERB_HOST !== '127.0.0.1' &&
+    import.meta.env.VITE_REVERB_HOST !== '0.0.0.0'
+        ? import.meta.env.VITE_REVERB_HOST
+        : hostname;
+
+// Port logic:
+// Pada HTTPS (VPS / Production dengan SSL):
+// Jika menggunakan reverse proxy Nginx pada port 443 (standar Laravel Reverb),
+// browser menghubungkan wss://domain:443/app.
+// Jika port disetel manual selain 8085 (misal 443), gunakan nilai tersebut.
+const envPort = import.meta.env.VITE_REVERB_PORT ? Number(import.meta.env.VITE_REVERB_PORT) : undefined;
+const reverbPort = isHttps
+    ? (envPort && envPort !== 8085 ? envPort : 443)
+    : (envPort ?? 8085);
+
+const forceTLS = isHttps || import.meta.env.VITE_REVERB_SCHEME === 'https';
+
+// Di lokal HTTP development murni (http://localhost:8000), cegah Pusher memaksa wss:
+if (isLocalhost && !isHttps && (Pusher as any).Runtime) {
     (Pusher as any).Runtime.getProtocol = () => 'http:';
 }
-
-// Pada lingkungan lokal / Laragon, Reverb berjalan di HTTP port 8085 (plain ws).
-// Browser mengizinkan koneksi ws://127.0.0.1:8085 meskipun diakses via https://autochat.to karena 127.0.0.1 adalah trustworthy origin.
-const reverbHost = isLocal
-    ? '127.0.0.1'
-    : import.meta.env.VITE_REVERB_HOST &&
-        import.meta.env.VITE_REVERB_HOST !== 'localhost' &&
-        import.meta.env.VITE_REVERB_HOST !== '127.0.0.1'
-      ? import.meta.env.VITE_REVERB_HOST
-      : hostname;
-
-const reverbPort = isLocal
-    ? Number(import.meta.env.VITE_REVERB_PORT ?? 8085)
-    : isHttps
-      ? Number(import.meta.env.VITE_REVERB_PORT ?? 443)
-      : Number(import.meta.env.VITE_REVERB_PORT ?? 8085);
-
-// On local / Laragon, Reverb runs on plain HTTP (ws://127.0.0.1:8085).
-// We must restrict enabledTransports to ['ws'] on local so Pusher does not attempt TLS (wss://) on a plain port.
-const enabledTransports = isLocal ? ['ws'] : isHttps ? ['wss'] : ['ws', 'wss'];
-const forceTLS = !isLocal && isHttps;
 
 export const echo = new Echo({
     broadcaster: 'reverb',
@@ -55,5 +50,5 @@ export const echo = new Echo({
     wsPort: reverbPort,
     wssPort: reverbPort,
     forceTLS: forceTLS,
-    enabledTransports: enabledTransports,
+    enabledTransports: ['ws', 'wss'],
 });
