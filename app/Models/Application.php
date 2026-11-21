@@ -33,6 +33,7 @@ use Illuminate\Support\Carbon;
     'name',
     'description',
     'welcome_message',
+    'chat_settings',
     'system_prompt',
     'model',
     'temperature',
@@ -55,6 +56,7 @@ class Application extends Model
             'temperature' => 'float',
             'max_tokens' => 'integer',
             'is_active' => 'boolean',
+            'chat_settings' => 'array',
         ];
     }
 

@@ -418,6 +418,12 @@ export default function ChatShow({
                             <span className="font-extrabold text-sm tracking-wide text-neutral-950 uppercase">
                                 {application.name}
                             </span>
+                            {isTakenOver && (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-neutral-950/10 px-2 py-0.5 text-[10px] font-bold text-neutral-950 border border-neutral-950/15">
+                                    <UserCheck className="size-3 text-amber-800" />
+                                    Admin CS
+                                </span>
+                            )}
                         </div>
 
                         {/* Customer Service Agent Avatars (Overlapping circle photos) */}
@@ -686,13 +692,18 @@ export default function ChatShow({
 
                                     {/* Message History Stream */}
                                     {messages.map((message) => {
-                                        // Takeover / System message as clean center badge
-                                        if (message.role === 'system') {
+                                        // Takeover / System message as clean center badge (muncul sebagai badge di sisi user)
+                                        const isSystemBadge =
+                                            message.role === 'system' ||
+                                            message.content.includes('Percakapan telah diambil alih') ||
+                                            message.content.includes('Percakapan telah dikembalikan');
+
+                                        if (isSystemBadge) {
                                             return (
-                                                <div key={message.id} className="flex justify-center my-3">
-                                                    <span className="inline-flex items-center gap-1.5 rounded-full bg-muted/80 border border-neutral-200 px-3.5 py-1 text-[11px] font-medium text-muted-foreground shadow-2xs">
-                                                        <UserCheck className="size-3 text-amber-500" />
-                                                        {message.content}
+                                                <div key={message.id} className="flex justify-center my-3.5 w-full">
+                                                    <span className="inline-flex items-center gap-2 rounded-full bg-amber-50 border border-amber-300 px-4 py-1.5 text-xs font-semibold text-amber-900 shadow-2xs text-center leading-normal">
+                                                        <UserCheck className="size-3.5 text-amber-600 shrink-0" />
+                                                        <span>{message.content}</span>
                                                     </span>
                                                 </div>
                                             );
