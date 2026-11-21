@@ -151,10 +151,11 @@ export default function ChatShow({
             ];
 
     // Default welcome promo message if none set in CMS
+    const appCleanName = application.name.replace(/^CS\s+/i, '');
     const defaultWelcomeMessage =
         cs.welcome_opening ||
         application.welcome_message ||
-        `Selamat Datang di ${application.name} Link ANTI NAWALA ${application.name}\n[https://kiamkiam.site/cvtogel1](https://kiamkiam.site/cvtogel1)\n[https://kiamkiam.site/cvtogel2](https://kiamkiam.site/cvtogel2)\nWHATSAPP [https://kiamkiam.site/wacvtogel](https://kiamkiam.site/wacvtogel)\nTELEGRAM [https://kiamkiam.site/telecvtogel](https://kiamkiam.site/telecvtogel)\n( WAJIB DI SIMPAN )`;
+        `Selamat Datang di ${appCleanName} Link ANTI NAWALA ${appCleanName}\n⭐ https://kiamkiam.site/cvtogel1\n⭐ https://kiamkiam.site/cvtogel2\n\nWHATSAPP\n⭐ https://kiamkiam.site/wacvtogel\nTELEGRAM\n⭐ https://kiamkiam.site/telecvtogel ( WAJIB DI SIMPAN )`;
 
     // Navigation tab: 'beranda' (Home) | 'pesan' (Messages) | 'bantuan' (Help)
     const [activeTab, setActiveTab] = useState<'beranda' | 'pesan' | 'bantuan'>('beranda');
@@ -808,19 +809,15 @@ export default function ChatShow({
                     {/* TAB 2: PESAN (MESSAGES) */}
                     {activeTab === 'pesan' && (
                         <>
-                            {/* IF HAS NOT SUBMITTED PRE-CHAT FORM: SHOW FORM VIEW (Screenshot 2) */}
+                            {/* IF HAS NOT SUBMITTED PRE-CHAT FORM: SHOW FORM VIEW */}
                             {!hasSubmittedForm && messages.length === 0 ? (
                                 <div className="space-y-4">
-                                    {/* Welcome & Promotional Card */}
-                                    <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-2xs space-y-3 text-xs leading-relaxed text-neutral-800">
-                                        <div className="flex items-center gap-2 font-bold text-neutral-900 border-b border-neutral-100 pb-2">
-                                            <Sparkles className="size-4 text-amber-500" />
-                                            <span>Selamat Datang di {application.name}</span>
-                                        </div>
+                                    {/* Welcome & Promotional Card (Tanpa Header Judul Ganda) */}
+                                    <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-2xs text-xs leading-relaxed text-neutral-800">
                                         <ChatMarkdown content={defaultWelcomeMessage} />
                                     </div>
 
-                                    {/* Pre-Chat Formulir Card (Persis Screenshot 2) */}
+                                    {/* Pre-Chat Formulir Card */}
                                     <form
                                         onSubmit={handleStartChatFromForm}
                                         className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-2xs space-y-3.5"
@@ -850,15 +847,15 @@ export default function ChatShow({
                                             <select
                                                 value={questionTopic}
                                                 onChange={(e) => setQuestionTopic(e.target.value)}
-                                                className="w-full h-10 px-3 text-xs rounded-xl bg-slate-50 border border-neutral-200 text-neutral-900 font-medium focus:outline-none focus:ring-1 focus:ring-amber-400 focus:bg-white"
+                                                required
+                                                className="w-full h-10 px-3 text-xs rounded-xl bg-slate-50 border border-neutral-200 text-neutral-900 font-medium focus:outline-none focus:ring-1 focus:ring-amber-400 focus:bg-white cursor-pointer"
                                             >
                                                 <option value="">Pilih...</option>
-                                                <option value="Deposit & Withdraw">Deposit & Withdraw</option>
-                                                <option value="Klaim Bonus & Promo">Klaim Bonus & Promo</option>
-                                                <option value="Kendala Login & Password">Kendala Login & Password</option>
-                                                <option value="Prediksi & Pasaran Togel">Prediksi & Pasaran Togel</option>
-                                                <option value="Bocoran Slot Gacor">Bocoran Slot Gacor</option>
-                                                <option value="Lainnya">Lainnya</option>
+                                                {chatTemplates.map((t) => (
+                                                    <option key={t.id || t.topic} value={t.topic}>
+                                                        {t.topic}
+                                                    </option>
+                                                ))}
                                             </select>
                                         </div>
 
@@ -872,18 +869,14 @@ export default function ChatShow({
                                     </form>
                                 </div>
                             ) : (
-                                /* IF ACTIVE CHAT: SHOW CHAT STREAM (Screenshot 3) */
+                                /* IF ACTIVE CHAT: SHOW CHAT STREAM */
                                 <div className="space-y-4">
-                                    {/* Welcome Announcement Card */}
-                                    <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-2xs space-y-2 text-xs leading-relaxed text-neutral-800">
-                                        <div className="flex items-center gap-2 font-bold text-neutral-900 border-b border-neutral-100 pb-2">
-                                            <Sparkles className="size-4 text-amber-500" />
-                                            <span>Informasi Resmi & Link Alternatif</span>
-                                        </div>
+                                    {/* Welcome Announcement Card (Tanpa Header Judul Ganda) */}
+                                    <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-2xs text-xs leading-relaxed text-neutral-800">
                                         <ChatMarkdown content={defaultWelcomeMessage} />
                                     </div>
 
-                                    {/* Formulir Card (Persis Screenshot 3) */}
+                                    {/* Formulir Card Ringkasan */}
                                     {userId && (
                                         <div className="rounded-2xl border border-amber-300 bg-white shadow-2xs overflow-hidden">
                                             <div
@@ -908,59 +901,94 @@ export default function ChatShow({
                                         </div>
                                     )}
 
-                                    {/* Render Messages (Sembunyikan auto-inquiry formulir karena sudah ditampilkan di kartu formulir atas) */}
+                                    {/* Render Messages */}
                                     {messages
-                                        .filter((msg) => !(msg.role === 'user' && msg.content.startsWith('Halo CS, User ID saya:')))
+                                        .filter(
+                                            (msg) =>
+                                                !(
+                                                    msg.role === 'user' &&
+                                                    (msg.content.startsWith('Halo CS, User ID saya:') ||
+                                                        msg.content.startsWith('Formulir Bantuan:'))
+                                                )
+                                        )
                                         .map((msg) => {
                                             const isUser = msg.role === 'user';
+                                            const formMatch =
+                                                !isUser &&
+                                                msg.content.match(/\[FORM:(deposit_status|withdraw_status)\]/i);
+                                            const formType = formMatch ? formMatch[1] : null;
+                                            const cleanContent = formMatch
+                                                ? msg.content
+                                                      .replace(/\[FORM:(deposit_status|withdraw_status)\]\n?/i, '')
+                                                      .trim()
+                                                : msg.content;
+
                                             return (
                                                 <div
                                                     key={msg.id}
-                                                    className={`flex items-start gap-2.5 ${isUser ? 'flex-row-reverse' : 'flex-row'
-                                                        }`}
+                                                    className={`flex items-start gap-2.5 ${
+                                                        isUser ? 'flex-row-reverse' : 'flex-row'
+                                                    }`}
                                                 >
                                                     {/* Avatar Icon */}
-                                                    <div
-                                                        className={`flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold shadow-2xs ${isUser
-                                                            ? 'bg-neutral-900 text-white'
-                                                            : 'text-neutral-950'
-                                                            }`}
-                                                        style={!isUser ? { backgroundColor: headerColor, color: headerTextColor } : {}}
-                                                    >
-                                                        {isUser ? (
+                                                    {isUser ? (
+                                                        <div className="flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold shadow-2xs bg-neutral-900 text-white">
                                                             <UserIcon className="size-3.5" />
-                                                        ) : isTakenOver ? (
-                                                            <UserCheck className="size-3.5" />
-                                                        ) : (
-                                                            <Bot className="size-3.5" />
-                                                        )}
-                                                    </div>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="relative size-8 shrink-0 rounded-full overflow-hidden border border-neutral-200 shadow-2xs bg-amber-100 flex items-center justify-center">
+                                                            <img
+                                                                src={csAvatarUrl}
+                                                                alt={csAgentName}
+                                                                className="size-full object-cover"
+                                                                onError={(e) => {
+                                                                    (e.target as any).src = '/images/avatars/cs-1.png';
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    )}
 
-                                                    {/* Chat Bubble */}
+                                                    {/* Chat Bubble & In-Chat Form */}
                                                     <div
-                                                        className={`flex flex-col space-y-1 max-w-[85%] ${isUser ? 'items-end' : 'items-start'
-                                                            }`}
+                                                        className={`flex flex-col space-y-1.5 max-w-[85%] ${
+                                                            isUser ? 'items-end' : 'items-start'
+                                                        }`}
                                                     >
-                                                        <span className="text-[10px] font-bold text-neutral-500 px-1">
+                                                        <span className="text-[11px] font-bold text-neutral-600 px-1">
                                                             {isUser
                                                                 ? 'Anda'
                                                                 : isTakenOver
                                                                     ? 'Admin CS'
-                                                                    : application.name}
+                                                                    : csAgentName}
                                                         </span>
 
-                                                        <div
-                                                            className={`rounded-2xl px-3.5 py-2.5 text-xs shadow-2xs leading-relaxed ${isUser
-                                                                ? 'rounded-tr-xs bg-neutral-900 text-white'
-                                                                : 'rounded-tl-xs bg-white border border-neutral-200/90 text-neutral-900'
+                                                        {formType && (
+                                                            <InChatForm
+                                                                type={formType}
+                                                                headerColor={headerColor}
+                                                                headerTextColor={headerTextColor}
+                                                                defaultUsername={userId}
+                                                                onSubmit={(summaryText) => handleSendMessage(summaryText)}
+                                                            />
+                                                        )}
+
+                                                        {(!formType || cleanContent) && (
+                                                            <div
+                                                                className={`rounded-2xl px-3.5 py-2.5 text-xs shadow-2xs leading-relaxed ${
+                                                                    isUser
+                                                                        ? 'rounded-tr-xs bg-neutral-900 text-white'
+                                                                        : 'rounded-tl-xs bg-white border border-neutral-200/90 text-neutral-900'
                                                                 }`}
-                                                        >
-                                                            {isUser ? (
-                                                                <p className="whitespace-pre-wrap break-words">{msg.content}</p>
-                                                            ) : (
-                                                                <ChatMarkdown content={msg.content} />
-                                                            )}
-                                                        </div>
+                                                            >
+                                                                {isUser ? (
+                                                                    <p className="whitespace-pre-wrap break-words">
+                                                                        {msg.content}
+                                                                    </p>
+                                                                ) : (
+                                                                    <ChatMarkdown content={cleanContent} />
+                                                                )}
+                                                            </div>
+                                                        )}
 
                                                         {msg.created_at && (
                                                             <span className="text-[9px] text-neutral-400 px-1">

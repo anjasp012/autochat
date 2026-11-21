@@ -140,8 +140,8 @@ class ChatController extends Controller
 
         MessageSent::safeDispatch($userMessage);
 
-        // Jika pesan berasal dari pengiriman formulir awal, kirim balasan template singkat otomatis
-        if ($request->boolean('is_initial_form')) {
+        // Jika pesan berasal dari pengiriman formulir awal, kirim balasan template dari CMS (bukan AI)
+        if ($request->boolean('is_initial_form') || $request->filled('topic')) {
             $nowHour = (int) now()->timezone('Asia/Jakarta')->format('H');
             $timeGreeting = match (true) {
                 $nowHour >= 5 && $nowHour < 11 => 'Selamat Pagi',
@@ -154,7 +154,7 @@ class ChatController extends Controller
             $topicFormatted = match (strtolower(trim($topicRaw))) {
                 'deposit & withdraw', 'deposit', 'withdraw' => 'depositnya',
                 'klaim bonus & promo', 'klaim bonus', 'promo' => 'klaim bonusnya',
-                'kendala login & password', 'login', 'password' => 'kendala loginnya',
+                'kendala login & password', 'login', 'password', 'kendala login & akun' => 'kendala loginnya',
                 'prediksi & pasaran togel', 'togel' => 'prediksi togelnya',
                 'bocoran slot gacor', 'slot' => 'bocoran slotnya',
                 'lainnya' => 'pertanyaan bosku',
@@ -162,15 +162,58 @@ class ChatController extends Controller
             };
 
             $chatSettings = $application->chat_settings ?? [];
-            $chatTemplates = $chatSettings['chat_templates'] ?? null;
-            $matchedTemplate = null;
+            $chatTemplates = (isset($chatSettings['chat_templates']) && is_array($chatSettings['chat_templates']) && count($chatSettings['chat_templates']) > 0)
+                ? $chatSettings['chat_templates']
+                : [
+                    [
+                        'id' => 'tpl-1',
+                        'topic' => 'Deposit',
+                        'bot_reply' => 'Silakan isi data di form yang muncul ya Bosku, biar saya cek status depositnya.',
+                        'form_type' => 'deposit_status',
+                    ],
+                    [
+                        'id' => 'tpl-2',
+                        'topic' => 'Withdraw',
+                        'bot_reply' => 'Silakan isi data di form yang muncul ya Bosku, biar saya cek status withdraw-nya.',
+                        'form_type' => 'withdraw_status',
+                    ],
+                    [
+                        'id' => 'tpl-3',
+                        'topic' => 'Klaim Bonus & Promo',
+                        'bot_reply' => 'Hallo bosku 👋 {waktu}, ada yang bisa dibantu terkait klaim bonus atau promonya, Bosku?',
+                        'form_type' => 'none',
+                    ],
+                    [
+                        'id' => 'tpl-4',
+                        'topic' => 'Kendala Login & Akun',
+                        'bot_reply' => 'Hallo bosku 👋 {waktu}, ada kendala saat login atau lupa password akunnya, Bosku? Mohon infokan kendalanya ya.',
+                        'form_type' => 'none',
+                    ],
+                    [
+                        'id' => 'tpl-5',
+                        'topic' => 'Prediksi & Pasaran Togel',
+                        'bot_reply' => 'Hallo bosku 👋 {waktu}, ingin info prediksi pasaran togel apa hari ini, Bosku?',
+                        'form_type' => 'none',
+                    ],
+                    [
+                        'id' => 'tpl-6',
+                        'topic' => 'Bocoran Slot Gacor',
+                        'bot_reply' => 'Hallo bosku 👋 {waktu}, sedang mencari bocoran slot gacor provider apa hari ini, Bosku?',
+                        'form_type' => 'none',
+                    ],
+                    [
+                        'id' => 'tpl-7',
+                        'topic' => 'Lainnya',
+                        'bot_reply' => 'Hallo bosku 👋 {waktu}, ada yang bisa kami bantu hari ini, Bosku?',
+                        'form_type' => 'none',
+                    ],
+                ];
 
-            if (is_array($chatTemplates)) {
-                foreach ($chatTemplates as $tpl) {
-                    if (strtolower(trim($tpl['topic'] ?? '')) === strtolower(trim($topicRaw))) {
-                        $matchedTemplate = $tpl;
-                        break;
-                    }
+            $matchedTemplate = null;
+            foreach ($chatTemplates as $tpl) {
+                if (strtolower(trim($tpl['topic'] ?? '')) === strtolower(trim($topicRaw))) {
+                    $matchedTemplate = $tpl;
+                    break;
                 }
             }
 
