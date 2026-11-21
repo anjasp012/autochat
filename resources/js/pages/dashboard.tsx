@@ -94,40 +94,49 @@ export default function Dashboard({
         return <Headphones className="size-4 text-indigo-500" />;
     };
 
+    const cleanEscalationMessage = (text: string) => {
+        if (!text) return '';
+        return text
+            .replace(/\*\*/g, '')
+            .replace(/^[📋\s]*/g, '')
+            .replace(/Formulir\s+(Deposit|Withdraw)\s+Status:?/gi, '')
+            .replace(/\n+/g, ' · ')
+            .replace(/·\s*·/g, '·')
+            .trim();
+    };
+
     return (
         <>
             <Head title="Dashboard - Admin Console" />
 
             <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-4 sm:p-6 bg-background">
-                {/* HERO BANNER */}
-                <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-background p-5 sm:p-6 shadow-xs">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                        <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                                <div className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-xs font-bold text-amber-700 dark:text-amber-400">
-                                    <Bot className="size-3.5" />
-                                    <span>{activeApp?.name || 'Customer Support AI'}</span>
-                                </div>
-                            </div>
-                            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">
+                {/* TOP HEADER */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-3 border-b border-border/60">
+                    <div className="space-y-1">
+                        <div className="flex items-center gap-2.5">
+                            <h1 className="text-2xl font-black tracking-tight text-foreground">
                                 Dashboard Livechat
                             </h1>
-                            <p className="text-xs sm:text-sm text-muted-foreground max-w-2xl leading-relaxed">
-                                Kelola percakapan pengunjung, antrean pengecekan deposit/withdraw, dan pemantauan bot secara terpusat.
-                            </p>
+                            <div className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-xs font-bold text-amber-700 dark:text-amber-400">
+                                <Bot className="size-3.5" />
+                                <span>{activeApp?.name || 'Customer Support AI'}</span>
+                            </div>
                         </div>
+                        <p className="text-xs text-muted-foreground">
+                            Kelola percakapan pengunjung, antrean pengecekan deposit/withdraw, dan pemantauan bot secara terpusat.
+                        </p>
+                    </div>
 
-                        <div className="flex items-center gap-2.5 shrink-0">
-                            <Button asChild size="sm" className="h-9 px-4 rounded-xl font-bold text-xs bg-amber-500 hover:bg-amber-600 text-neutral-950 cursor-pointer shadow-xs gap-1.5">
-                                <Link href="/conversations">
-                                    <MessageSquare className="size-4" />
-                                    <span>Buka Live Chat</span>
-                                    <ArrowRight className="size-3.5" />
-                                </Link>
-                            </Button>
+                    <div className="flex items-center gap-2 shrink-0">
+                        <Button asChild size="sm" className="h-8.5 px-3.5 rounded-xl font-bold text-xs bg-amber-500 hover:bg-amber-600 text-neutral-950 cursor-pointer shadow-xs gap-1.5">
+                            <Link href="/conversations">
+                                <MessageSquare className="size-3.5" />
+                                <span>Buka Live Chat</span>
+                                <ArrowRight className="size-3" />
+                            </Link>
+                        </Button>
 
-                            <WidgetScriptDialog appId={appId} appName={activeApp?.name} />
-                        </div>
+                        <WidgetScriptDialog appId={appId} appName={activeApp?.name} />
                     </div>
                 </div>
 
@@ -256,11 +265,16 @@ export default function Dashboard({
                                                         </span>
                                                     </div>
                                                     <p className="text-xs text-muted-foreground line-clamp-1 leading-snug">
-                                                        {item.message}
+                                                        {cleanEscalationMessage(item.message)}
                                                     </p>
-                                                    <p className="text-[11px] font-mono text-muted-foreground">
-                                                        User: <strong className="text-foreground">{item.user_identifier}</strong>
-                                                    </p>
+                                                    <div className="flex items-center gap-2 pt-0.5">
+                                                        <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-[10px] font-mono text-foreground font-semibold">
+                                                            User: {item.user_identifier}
+                                                        </span>
+                                                        <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">
+                                                            • Menunggu Respon CS
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             </div>
 

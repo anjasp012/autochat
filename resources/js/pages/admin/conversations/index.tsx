@@ -3,6 +3,7 @@ import { Head, router, useForm } from '@inertiajs/react';
 import {
     Archive,
     ArchiveRestore,
+    ArrowLeft,
     Bot,
     Clock,
     HandMetal,
@@ -32,15 +33,10 @@ import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import { echo } from '@/echo';
-import {
-    DEFAULT_CANNED_RESPONSES,
-    type CannedResponse,
-} from '@/types/canned-response';
 
 interface Message {
     id: number;
     conversation_id?: number;
-    role: 'user' | 'assistant' | 'system';
     role: 'user' | 'assistant' | 'admin' | 'system';
     content: string;
     tokens_used?: number;
@@ -107,7 +103,6 @@ interface Props {
         app_id: string;
         name: string;
         is_active: boolean;
-        canned_responses?: CannedResponse[];
     } | null;
 }
 
@@ -125,12 +120,6 @@ export default function ConversationsIndex({
             ? rawConversations.data
             : [];
 
-    const [showCannedMenu, setShowCannedMenu] = useState(false);
-    const cannedList: CannedResponse[] =
-        Array.isArray(selectedApp?.canned_responses) && selectedApp.canned_responses.length > 0
-            ? selectedApp.canned_responses
-            : DEFAULT_CANNED_RESPONSES;
-
     const [search, setSearch] = useState(filters?.search || '');
     const [currentStatus, setCurrentStatus] = useState(filters?.status || 'all');
     const [convToDelete, setConvToDelete] = useState<ConversationItem | null>(null);
@@ -143,19 +132,28 @@ export default function ConversationsIndex({
         setLocalMessages(Array.isArray(activeConversation?.messages) ? activeConversation.messages : []);
     }, [activeConversation?.id, activeConversation?.uuid, activeConversation?.messages]);
 
-    const messagesEndRef = useRef<HTMLDivElement>(null);
+    const messagesContainerRef = useRef<HTMLDivElement>(null);
 
     const { data, setData, post, processing, reset } = useForm({
         message: '',
     });
 
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const scrollToBottom = (smooth = true) => {
+        if (messagesContainerRef.current) {
+            messagesContainerRef.current.scrollTo({
+                top: messagesContainerRef.current.scrollHeight,
+                behavior: smooth ? 'smooth' : 'auto',
+            });
+        }
     };
 
     useEffect(() => {
-        scrollToBottom();
-    }, [localMessages.length, activeConversation?.uuid]);
+        scrollToBottom(false);
+    }, [activeConversation?.uuid]);
+
+    useEffect(() => {
+        scrollToBottom(true);
+    }, [localMessages.length]);
 
     // WebSocket realtime listener via Laravel Reverb Echo (Application Level & Global)
     useEffect(() => {
@@ -407,7 +405,7 @@ export default function ConversationsIndex({
                 </div>
 
                 {/* PANEL 2: Thread List Percakapan */}
-                <div className="flex w-full sm:w-80 lg:w-96 shrink-0 flex-col border-r border-border bg-sidebar/10 h-full overflow-hidden min-h-0">
+                <div className={`${activeConversation ? 'hidden sm:flex' : 'flex'} w-full sm:w-80 lg:w-96 shrink-0 flex-col border-r border-border bg-sidebar/10 h-full overflow-hidden min-h-0`}>
                     {/* Header Thread List */}
                     <div className="p-3 border-b border-border bg-sidebar/20 space-y-2.5 shrink-0">
                         <div className="flex items-center justify-between">
@@ -462,7 +460,7 @@ export default function ConversationsIndex({
                     </div>
 
                     {/* Scrollable Conversation List */}
-                    <div className="flex-1 overflow-y-auto divide-y divide-border/40">
+                    <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain divide-y divide-border/40">
                         {convList.length === 0 ? (
                             <div className="flex flex-col items-center justify-center p-8 text-center text-muted-foreground">
                                 <MessageSquare className="size-8 opacity-30 mb-2" />
@@ -586,12 +584,20 @@ export default function ConversationsIndex({
                 </div>
 
                 {/* PANEL 3: Chat Thread Aktif */}
-                <div className="hidden sm:flex flex-1 flex-col h-full bg-background overflow-hidden min-h-0">
+                <div className={`${activeConversation ? 'flex' : 'hidden sm:flex'} flex-1 flex-col h-full bg-background overflow-hidden min-h-0`}>
                     {activeConversation ? (
                         <>
                             {/* Header Chat Thread */}
-                            <div className="flex h-16 items-center justify-between border-b border-border bg-sidebar/20 px-6 shrink-0 shadow-2xs">
-                                <div className="flex items-center gap-3 min-w-0">
+                            <div className="flex h-16 items-center justify-between border-b border-border bg-sidebar/20 px-3 sm:px-6 shrink-0 shadow-2xs">
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                    <button
+                                        type="button"
+                                        onClick={() => router.get('/conversations', { status: currentStatus !== 'all' ? currentStatus : undefined }, { preserveState: true })}
+                                        className="sm:hidden flex size-8 shrink-0 items-center justify-center rounded-xl border border-border bg-background text-muted-foreground hover:text-foreground cursor-pointer shadow-2xs"
+                                        title="Kembali ke Daftar Chat"
+                                    >
+                                        <ArrowLeft className="size-4" />
+                                    </button>
                                     <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary shadow-xs">
                                         <User className="size-4.5" />
                                     </div>
@@ -685,7 +691,10 @@ export default function ConversationsIndex({
                             </div>
 
                             {/* Chat Messages Stream */}
-                            <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 space-y-3.5 bg-sidebar/5">
+                            <div
+                                ref={messagesContainerRef}
+                                className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-3.5 bg-sidebar/5"
+                            >
                                 {localMessages.length === 0 ? (
                                     <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground py-16">
                                         <Bot className="size-8 opacity-40 mb-2" />
@@ -778,7 +787,6 @@ export default function ConversationsIndex({
                                         );
                                     })
                                 )}
-                                <div ref={messagesEndRef} />
                             </div>
 
                             {/* Reply Input Box & Takeover Controls */}
@@ -854,48 +862,6 @@ export default function ConversationsIndex({
                                                 : 'opacity-60 bg-muted/30 cursor-not-allowed'
                                                 }`}
                                         />
-                                    </div>
-
-                                    {/* Tombol Automate (Canned Response) */}
-                                    <div className="relative shrink-0">
-                                        <Button
-                                            type="button"
-                                            size="sm"
-                                            variant="outline"
-                                            onClick={() => setShowCannedMenu(!showCannedMenu)}
-                                            className="h-9 px-2.5 rounded-xl text-xs gap-1 font-semibold text-amber-700 dark:text-amber-300 border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 cursor-pointer shadow-2xs"
-                                            title="Pilih Automate (#hashtag shortcut)"
-                                        >
-                                            <Zap className="size-3.5 text-amber-500" />
-                                            <span className="hidden sm:inline">Automate</span>
-                                        </Button>
-
-                                        {showCannedMenu && (
-                                            <div className="absolute bottom-11 right-0 w-80 max-h-72 overflow-y-auto rounded-xl border border-border bg-popover p-2 shadow-xl z-50 space-y-1.5">
-                                                <div className="px-2 py-1 text-[11px] font-bold text-muted-foreground flex items-center justify-between border-b border-border/50">
-                                                    <span>Pilih Automate</span>
-                                                    <span className="text-[10px] font-normal">{cannedList.length} template</span>
-                                                </div>
-                                                {cannedList.map((cr) => (
-                                                    <button
-                                                        key={cr.id}
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setData('message', cr.content);
-                                                            setShowCannedMenu(false);
-                                                        }}
-                                                        className="w-full text-left p-2 rounded-lg hover:bg-muted/70 transition-colors cursor-pointer space-y-1"
-                                                    >
-                                                        <span className="text-xs font-mono font-bold text-amber-600 dark:text-amber-400 block">
-                                                            #{cr.shortcut}
-                                                        </span>
-                                                        <p className="text-[11px] text-muted-foreground line-clamp-2 leading-snug">
-                                                            {cr.content}
-                                                        </p>
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        )}
                                     </div>
 
                                     <Button
