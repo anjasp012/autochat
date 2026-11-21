@@ -141,7 +141,7 @@ class ChatController extends Controller
         MessageSent::safeDispatch($userMessage);
 
         // Jika pesan berasal dari pengiriman formulir awal, kirim balasan template dari CMS (bukan AI)
-        if ($request->boolean('is_initial_form') || $request->filled('topic')) {
+        if ($request->boolean('is_initial_form')) {
             $nowHour = (int) now()->timezone('Asia/Jakarta')->format('H');
             $timeGreeting = match (true) {
                 $nowHour >= 5 && $nowHour < 11 => 'Selamat Pagi',

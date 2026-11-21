@@ -473,7 +473,7 @@ export default function ChatShow({
                     message: text,
                     is_initial_form: isFormInquiry,
                     user_id: userId,
-                    topic: questionTopic,
+                    topic: isFormInquiry ? questionTopic : null,
                 }),
             });
 
