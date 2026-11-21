@@ -68,37 +68,37 @@ export default function AdminSettings({ application }: Props) {
         Array.isArray(currentSettings.quick_buttons) && currentSettings.quick_buttons.length > 0
             ? currentSettings.quick_buttons
             : [
-                  {
-                      id: 'btn-1',
-                      title: currentSettings.btn_1_title || 'Prediksi Togel',
-                      type: 'query',
-                      value:
-                          currentSettings.btn_1_query ||
-                          'Halo CS, bisa berikan bocoran prediksi togel dan pasaran hari ini?',
-                  },
-                  {
-                      id: 'btn-2',
-                      title: currentSettings.btn_2_title || 'Rtp Slot Gacor',
-                      type: 'query',
-                      value:
-                          currentSettings.btn_2_query ||
-                          'Halo CS, apa saja daftar RTP slot yang lagi gacor hari ini?',
-                  },
-                  {
-                      id: 'btn-3',
-                      title: currentSettings.btn_3_title || 'Download APK',
-                      type: 'link',
-                      value: currentSettings.btn_3_query || 'https://kiamkiam.site/cvtogel1',
-                  },
-                  {
-                      id: 'btn-4',
-                      title: currentSettings.btn_4_title || 'Promosi',
-                      type: 'query',
-                      value:
-                          currentSettings.btn_4_query ||
-                          'Bisa jelaskan promo dan bonus deposit / new member terbaru yang sedang aktif?',
-                  },
-              ];
+                {
+                    id: 'btn-1',
+                    title: currentSettings.btn_1_title || 'Prediksi Togel',
+                    type: 'query',
+                    value:
+                        currentSettings.btn_1_query ||
+                        'Halo CS, bisa berikan bocoran prediksi togel dan pasaran hari ini?',
+                },
+                {
+                    id: 'btn-2',
+                    title: currentSettings.btn_2_title || 'Rtp Slot Gacor',
+                    type: 'query',
+                    value:
+                        currentSettings.btn_2_query ||
+                        'Halo CS, apa saja daftar RTP slot yang lagi gacor hari ini?',
+                },
+                {
+                    id: 'btn-3',
+                    title: currentSettings.btn_3_title || 'Download APK',
+                    type: 'link',
+                    value: currentSettings.btn_3_query || 'https://kiamkiam.site/cvtogel1',
+                },
+                {
+                    id: 'btn-4',
+                    title: currentSettings.btn_4_title || 'Promosi',
+                    type: 'query',
+                    value:
+                        currentSettings.btn_4_query ||
+                        'Bisa jelaskan promo dan bonus deposit / new member terbaru yang sedang aktif?',
+                },
+            ];
 
     const iconInputRef = useRef<HTMLInputElement>(null);
     const faviconInputRef = useRef<HTMLInputElement>(null);
@@ -684,11 +684,10 @@ export default function AdminSettings({ application }: Props) {
                                                     key={av.id}
                                                     type="button"
                                                     onClick={() => handleToggleAvatar(av.url)}
-                                                    className={`group relative flex flex-col items-center gap-2 p-3 rounded-2xl border-2 transition-all cursor-pointer ${
-                                                        isSelected
-                                                            ? 'border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/40 shadow-sm scale-102'
-                                                            : 'border-border/70 hover:border-amber-400 bg-card opacity-70 hover:opacity-100'
-                                                    }`}
+                                                    className={`group relative flex flex-col items-center gap-2 p-3 rounded-2xl border-2 transition-all cursor-pointer ${isSelected
+                                                        ? 'border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/40 shadow-sm scale-102'
+                                                        : 'border-border/70 hover:border-amber-400 bg-card opacity-70 hover:opacity-100'
+                                                        }`}
                                                 >
                                                     <div className="relative size-16 rounded-full overflow-hidden ring-2 ring-background shadow-xs">
                                                         <img
@@ -849,11 +848,10 @@ export default function AdminSettings({ application }: Props) {
                                     <button
                                         type="button"
                                         onClick={() => updateChatSetting('banner_type', 'image')}
-                                        className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                                            data.chat_settings.banner_type === 'image' || (!data.chat_settings.banner_type && data.chat_settings.banner_image_url)
-                                                ? 'bg-background text-foreground shadow-xs'
-                                                : 'text-muted-foreground hover:text-foreground'
-                                        }`}
+                                        className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center justify-center gap-1.5 cursor-pointer ${data.chat_settings.banner_type === 'image' || (!data.chat_settings.banner_type && data.chat_settings.banner_image_url)
+                                            ? 'bg-background text-foreground shadow-xs'
+                                            : 'text-muted-foreground hover:text-foreground'
+                                            }`}
                                     >
                                         <ImageIcon className="size-3.5" />
                                         <span>Gunakan Foto / Gambar Banner</span>
@@ -861,11 +859,10 @@ export default function AdminSettings({ application }: Props) {
                                     <button
                                         type="button"
                                         onClick={() => updateChatSetting('banner_type', 'text')}
-                                        className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                                            data.chat_settings.banner_type === 'text' || (!data.chat_settings.banner_type && !data.chat_settings.banner_image_url)
-                                                ? 'bg-background text-foreground shadow-xs'
-                                                : 'text-muted-foreground hover:text-foreground'
-                                        }`}
+                                        className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center justify-center gap-1.5 cursor-pointer ${data.chat_settings.banner_type === 'text' || (!data.chat_settings.banner_type && !data.chat_settings.banner_image_url)
+                                            ? 'bg-background text-foreground shadow-xs'
+                                            : 'text-muted-foreground hover:text-foreground'
+                                            }`}
                                     >
                                         <Layout className="size-3.5" />
                                         <span>Gunakan Teks & Badge Promosi</span>
@@ -1047,11 +1044,10 @@ export default function AdminSettings({ application }: Props) {
                                                         <button
                                                             type="button"
                                                             onClick={() => handleUpdateButton(idx, 'type', 'query')}
-                                                            className={`flex-1 text-[11px] font-semibold rounded-md transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                                                                btn.type === 'query'
-                                                                    ? 'bg-background text-foreground shadow-xs'
-                                                                    : 'text-muted-foreground hover:text-foreground'
-                                                            }`}
+                                                            className={`flex-1 text-[11px] font-semibold rounded-md transition-all flex items-center justify-center gap-1.5 cursor-pointer ${btn.type === 'query'
+                                                                ? 'bg-background text-foreground shadow-xs'
+                                                                : 'text-muted-foreground hover:text-foreground'
+                                                                }`}
                                                         >
                                                             <MessageSquare className="size-3" />
                                                             <span>Pertanyaan</span>
@@ -1059,11 +1055,10 @@ export default function AdminSettings({ application }: Props) {
                                                         <button
                                                             type="button"
                                                             onClick={() => handleUpdateButton(idx, 'type', 'link')}
-                                                            className={`flex-1 text-[11px] font-semibold rounded-md transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                                                                btn.type === 'link'
-                                                                    ? 'bg-background text-foreground shadow-xs'
-                                                                    : 'text-muted-foreground hover:text-foreground'
-                                                            }`}
+                                                            className={`flex-1 text-[11px] font-semibold rounded-md transition-all flex items-center justify-center gap-1.5 cursor-pointer ${btn.type === 'link'
+                                                                ? 'bg-background text-foreground shadow-xs'
+                                                                : 'text-muted-foreground hover:text-foreground'
+                                                                }`}
                                                         >
                                                             <Globe className="size-3" />
                                                             <span>Link URL</span>
@@ -1134,22 +1129,20 @@ export default function AdminSettings({ application }: Props) {
                                         <button
                                             type="button"
                                             onClick={() => setOpeningTab('editor')}
-                                            className={`px-3 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
-                                                openingTab === 'editor'
-                                                    ? 'bg-background text-foreground shadow-xs'
-                                                    : 'text-muted-foreground hover:text-foreground'
-                                            }`}
+                                            className={`px-3 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${openingTab === 'editor'
+                                                ? 'bg-background text-foreground shadow-xs'
+                                                : 'text-muted-foreground hover:text-foreground'
+                                                }`}
                                         >
                                             Editor Teks (Markdown)
                                         </button>
                                         <button
                                             type="button"
                                             onClick={() => setOpeningTab('preview')}
-                                            className={`px-3 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer flex items-center gap-1.5 ${
-                                                openingTab === 'preview'
-                                                    ? 'bg-background text-foreground shadow-xs'
-                                                    : 'text-muted-foreground hover:text-foreground'
-                                            }`}
+                                            className={`px-3 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer flex items-center gap-1.5 ${openingTab === 'preview'
+                                                ? 'bg-background text-foreground shadow-xs'
+                                                : 'text-muted-foreground hover:text-foreground'
+                                                }`}
                                         >
                                             <Eye className="size-3 text-emerald-500" />
                                             <span>Pratinjau Hasil</span>
@@ -1454,9 +1447,8 @@ export default function AdminSettings({ application }: Props) {
                                         {/* TOMBOL CEPAT DINAMIS (PREVIEW) */}
                                         {currentQuickButtons.length > 0 && (
                                             <div
-                                                className={`grid gap-1.5 ${
-                                                    currentQuickButtons.length === 1 ? 'grid-cols-1' : 'grid-cols-2'
-                                                }`}
+                                                className={`grid gap-1.5 ${currentQuickButtons.length === 1 ? 'grid-cols-1' : 'grid-cols-2'
+                                                    }`}
                                             >
                                                 {currentQuickButtons.map((btn: any, idx: number) => (
                                                     <div

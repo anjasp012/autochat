@@ -307,10 +307,26 @@ class ChatController extends Controller
             ])
             ->toArray();
 
+        // Prepare system prompt with interactive form capabilities
+        $systemPrompt = ($application->system_prompt ? $application->system_prompt."\n\n" : '').<<<'PROMPT'
+PANDUAN FORMULIR INTERAKTIF:
+Kamu memiliki kemampuan untuk memunculkan formulir interaktif di layar livechat jika pengguna membutuhkan pengecekan deposit atau withdraw:
+1. Jika pengguna bertanya tentang status deposit, ingin cek deposit, komplain deposit belum masuk, atau butuh bantuan terkait depositnya:
+Sertakan tag [FORM:deposit_status] di awal balasanmu, lalu berikan balasan ramah:
+"Silakan isi data di form yang muncul ya Bosku, biar saya cek status depositnya."
+
+2. Jika pengguna bertanya tentang status withdraw, ingin cek penarikan dana/withdraw, komplain withdraw belum masuk, atau butuh bantuan terkait withdraw-nya:
+Sertakan tag [FORM:withdraw_status] di awal balasanmu, lalu berikan balasan ramah:
+"Silakan isi data di form yang muncul ya Bosku, biar saya cek status withdraw-nya."
+
+3. Jika pengguna SUDAH mengirimkan data formulir (ada Username dan Tanggal) atau pertanyaannya TIDAK membutuhkan formulir status (misalnya tanya cara deposit, nomor rekening, bonus, prediksi togel, atau slot gacor):
+JANGAN sertakan tag [FORM:...], jawablah langsung secara informatif, sopan, dan ramah seperti Customer Service profesional.
+PROMPT;
+
         // Query LLM Service
         $llmResult = $this->llmService->chat(
             messages: $history,
-            systemPrompt: $application->system_prompt,
+            systemPrompt: $systemPrompt,
             model: $application->model,
             temperature: $application->temperature,
             maxTokens: $application->max_tokens

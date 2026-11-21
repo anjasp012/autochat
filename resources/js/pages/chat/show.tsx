@@ -90,8 +90,8 @@ export default function ChatShow({
     const activeAvatars: string[] =
         Array.isArray(cs.selected_avatars) && cs.selected_avatars.length > 0
             ? cs.selected_avatars
-                  .filter((url: string) => typeof url === 'string' && !url.includes('unsplash.com'))
-                  .slice(0, 3)
+                .filter((url: string) => typeof url === 'string' && !url.includes('unsplash.com'))
+                .slice(0, 3)
             : [];
 
     if (activeAvatars.length === 0) {
@@ -916,19 +916,18 @@ export default function ChatShow({
                                             const formMatch =
                                                 !isUser &&
                                                 msg.content.match(/\[FORM:(deposit_status|withdraw_status)\]/i);
-                                            const formType = formMatch ? formMatch[1] : null;
+                                            const formType = formMatch ? formMatch[1].toLowerCase() : null;
                                             const cleanContent = formMatch
                                                 ? msg.content
-                                                      .replace(/\[FORM:(deposit_status|withdraw_status)\]\n?/i, '')
-                                                      .trim()
+                                                    .replace(/\[FORM:(deposit_status|withdraw_status)\]\s*/gi, '')
+                                                    .trim()
                                                 : msg.content;
 
                                             return (
                                                 <div
                                                     key={msg.id}
-                                                    className={`flex items-start gap-2.5 ${
-                                                        isUser ? 'flex-row-reverse' : 'flex-row'
-                                                    }`}
+                                                    className={`flex items-start gap-2.5 ${isUser ? 'flex-row-reverse' : 'flex-row'
+                                                        }`}
                                                 >
                                                     {/* Avatar Icon */}
                                                     {isUser ? (
@@ -950,9 +949,8 @@ export default function ChatShow({
 
                                                     {/* Chat Bubble & In-Chat Form */}
                                                     <div
-                                                        className={`flex flex-col space-y-1.5 max-w-[85%] ${
-                                                            isUser ? 'items-end' : 'items-start'
-                                                        }`}
+                                                        className={`flex flex-col space-y-1.5 max-w-[85%] ${isUser ? 'items-end' : 'items-start'
+                                                            }`}
                                                     >
                                                         <span className="text-[11px] font-bold text-neutral-600 px-1">
                                                             {isUser
@@ -974,11 +972,10 @@ export default function ChatShow({
 
                                                         {(!formType || cleanContent) && (
                                                             <div
-                                                                className={`rounded-2xl px-3.5 py-2.5 text-xs shadow-2xs leading-relaxed ${
-                                                                    isUser
-                                                                        ? 'rounded-tr-xs bg-neutral-900 text-white'
-                                                                        : 'rounded-tl-xs bg-white border border-neutral-200/90 text-neutral-900'
-                                                                }`}
+                                                                className={`rounded-2xl px-3.5 py-2.5 text-xs shadow-2xs leading-relaxed ${isUser
+                                                                    ? 'rounded-tr-xs bg-neutral-900 text-white'
+                                                                    : 'rounded-tl-xs bg-white border border-neutral-200/90 text-neutral-900'
+                                                                    }`}
                                                             >
                                                                 {isUser ? (
                                                                     <p className="whitespace-pre-wrap break-words">
