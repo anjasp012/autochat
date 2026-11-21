@@ -449,7 +449,6 @@ export default function ConversationsIndex({
                         ) : (
                             convList.map((conv) => {
                                 const isSelected = activeConversation?.uuid === conv.uuid;
-                                const latestMsg = conv.messages && conv.messages[0] ? conv.messages[0].content : '';
                                 const latestMessageObj = conv.messages && conv.messages[0] ? conv.messages[0] : null;
                                 const latestMsg = latestMessageObj ? latestMessageObj.content : '';
                                 const isLatestFromUser = latestMessageObj?.role === 'user';
