@@ -13,6 +13,7 @@ import {
     MessageSquare,
     RotateCcw,
     Send,
+    Shield,
     Sparkles,
     User as UserIcon,
     UserCheck,
@@ -168,6 +169,8 @@ export default function ChatShow({
     const [sessionUuid, setSessionUuid] = useState<string>('');
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [isTakenOver, setIsTakenOver] = useState(false);
+    const [isWaitingAdmin, setIsWaitingAdmin] = useState(false);
+    const isEmbed = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('embed') === '1';
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isSessionExpired, setIsSessionExpired] = useState(false);
@@ -345,10 +348,20 @@ export default function ChatShow({
         const handleIncoming = (event: any) => {
             if (event.is_taken_over !== undefined) {
                 setIsTakenOver(Boolean(event.is_taken_over));
+                if (event.is_taken_over) {
+                    setIsWaitingAdmin(false);
+                }
+            }
+            if (event.is_waiting_admin !== undefined) {
+                setIsWaitingAdmin(Boolean(event.is_waiting_admin));
             }
 
             if (event.role !== 'user') {
                 setHasSubmittedForm(true);
+                // If an admin or assistant reply arrives, clear waiting state
+                if (event.role === 'assistant' && event.is_taken_over) {
+                    setIsWaitingAdmin(false);
+                }
                 setMessages((prev) => {
                     const alreadyExists = prev.some((m) => String(m.id) === String(event.id));
                     if (alreadyExists) return prev;
@@ -382,6 +395,9 @@ export default function ChatShow({
                 const data = await res.json();
                 if (data.is_taken_over !== undefined) {
                     setIsTakenOver(Boolean(data.is_taken_over));
+                }
+                if (data.is_waiting_admin !== undefined) {
+                    setIsWaitingAdmin(Boolean(data.is_waiting_admin));
                 }
                 if (data.expired) {
                     setIsSessionExpired(true);
@@ -489,9 +505,19 @@ export default function ChatShow({
 
             const data = await response.json();
 
+            if (data.is_waiting_admin !== undefined) {
+                setIsWaitingAdmin(Boolean(data.is_waiting_admin));
+            }
+
             if (response.status === 422 && data.expired) {
                 setIsSessionExpired(true);
                 setErrorMessage(data.error || 'Sesi telah kedaluwarsa.');
+                setIsLoading(false);
+                return;
+            }
+
+            if (response.status === 422 && data.is_waiting_admin) {
+                setErrorMessage(data.error || 'Percakapan sedang menunggu respon Admin CS.');
                 setIsLoading(false);
                 return;
             }
@@ -523,6 +549,9 @@ export default function ChatShow({
             ]);
         } finally {
             setIsLoading(false);
+            setTimeout(() => {
+                textareaRef.current?.focus();
+            }, 60);
         }
     };
 
@@ -543,47 +572,49 @@ export default function ChatShow({
             {/* ============================================================== */}
             {/* LEFT SPLIT COLUMN: BRAND WELCOME SPLASH (PERSIS 50% LAYAR KIRI) */}
             {/* ============================================================== */}
-            <div
-                className="hidden md:flex md:w-1/2 h-full flex-col justify-center items-center px-8 lg:px-16 xl:px-24 relative select-none transition-colors"
-                style={{ color: textColor }}
-            >
-                <div className="w-full max-w-lg space-y-6">
-                    {/* Brand Logo / Icon (Tanpa background & tanpa border rounded) */}
-                    <div className="flex items-center">
-                        {customIconUrl ? (
-                            <img
-                                src={customIconUrl}
-                                alt="Logo"
-                                className="h-16 w-auto max-w-[240px] object-contain drop-shadow-xs"
-                            />
-                        ) : (
-                            <Sparkles className="size-10" style={{ color: headerColor }} />
-                        )}
-                    </div>
+            {!isEmbed && (
+                <div
+                    className="hidden md:flex md:w-1/2 h-full flex-col justify-center items-center px-8 lg:px-16 xl:px-24 relative select-none transition-colors"
+                    style={{ color: textColor }}
+                >
+                    <div className="w-full max-w-lg space-y-6">
+                        {/* Brand Logo / Icon (Tanpa background & tanpa border rounded) */}
+                        <div className="flex items-center">
+                            {customIconUrl ? (
+                                <img
+                                    src={customIconUrl}
+                                    alt="Logo"
+                                    className="h-16 w-auto max-w-[240px] object-contain drop-shadow-xs"
+                                />
+                            ) : (
+                                <Sparkles className="size-10" style={{ color: headerColor }} />
+                            )}
+                        </div>
 
-                    <div className="space-y-2">
-                        <span className="text-xs font-bold uppercase tracking-widest opacity-80 block">
-                            {splashSubtitle}
-                        </span>
-                        <h1 className="text-3xl lg:text-4xl xl:text-5xl font-extrabold tracking-tight leading-tight">
-                            {splashTitle}
-                        </h1>
-                        <p className="text-base font-medium pt-1 opacity-90">
-                            {splashDescription}
+                        <div className="space-y-2">
+                            <span className="text-xs font-bold uppercase tracking-widest opacity-80 block">
+                                {splashSubtitle}
+                            </span>
+                            <h1 className="text-3xl lg:text-4xl xl:text-5xl font-extrabold tracking-tight leading-tight">
+                                {splashTitle}
+                            </h1>
+                            <p className="text-base font-medium pt-1 opacity-90">
+                                {splashDescription}
+                            </p>
+                        </div>
+
+                        <p className="text-xs leading-relaxed max-w-md pt-2 opacity-75">
+                            {application.description ||
+                                'Layanan customer support resmi dan interaktif 24 jam nonstop untuk membantu semua kebutuhan dan kendala Anda.'}
                         </p>
                     </div>
-
-                    <p className="text-xs leading-relaxed max-w-md pt-2 opacity-75">
-                        {application.description ||
-                            'Layanan customer support resmi dan interaktif 24 jam nonstop untuk membantu semua kebutuhan dan kendala Anda.'}
-                    </p>
                 </div>
-            </div>
+            )}
 
             {/* ============================================================== */}
             {/* RIGHT COLUMN: INTERACTIVE LIVE CHAT WIDGET (PERSIS 50% LAYAR KANAN) */}
             {/* ============================================================== */}
-            <div className="flex flex-col w-full md:w-1/2 h-full bg-white border-l border-amber-200/80 shadow-2xl overflow-hidden">
+            <div className={`flex flex-col w-full ${isEmbed ? 'h-full' : 'md:w-1/2 h-full'} bg-white border-l border-amber-200/80 shadow-2xl overflow-hidden`}>
                 {/* TOP HEADER BAR */}
                 <div
                     className="px-5 py-4 shrink-0 shadow-sm border-b border-black/10 transition-colors"
@@ -922,6 +953,28 @@ export default function ChatShow({
                                                 )
                                         )
                                         .map((msg) => {
+                                            if (msg.role === 'system') {
+                                                const isTakeover = msg.content.includes('diambil alih');
+                                                return (
+                                                    <div key={msg.id} className="flex justify-center my-3">
+                                                        <span
+                                                            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[11px] font-semibold border shadow-2xs text-center max-w-sm ${
+                                                                isTakeover
+                                                                    ? 'bg-amber-100 border-amber-300 text-amber-900'
+                                                                    : 'bg-slate-100 border-slate-200 text-slate-700'
+                                                            }`}
+                                                        >
+                                                            {isTakeover ? (
+                                                                <UserCheck className="size-3.5 text-amber-700 shrink-0" />
+                                                            ) : (
+                                                                <Bot className="size-3.5 text-slate-600 shrink-0" />
+                                                            )}
+                                                            <span>{msg.content}</span>
+                                                        </span>
+                                                    </div>
+                                                );
+                                            }
+
                                             const isUser = msg.role === 'user';
                                             const formMatch =
                                                 !isUser &&
@@ -988,9 +1041,9 @@ export default function ChatShow({
                                                                     }`}
                                                             >
                                                                 {isUser ? (
-                                                                    <p className="whitespace-pre-wrap break-words">
-                                                                        {msg.content}
-                                                                    </p>
+                                                                    <div className="text-white [&_*]:text-white">
+                                                                        <ChatMarkdown content={msg.content} />
+                                                                    </div>
                                                                 ) : (
                                                                     <ChatMarkdown content={cleanContent} />
                                                                 )}
@@ -1022,16 +1075,6 @@ export default function ChatShow({
                                                     <span className="size-1.5 animate-bounce rounded-full bg-amber-500 [animation-delay:-0.15s]" />
                                                     <span className="size-1.5 animate-bounce rounded-full bg-amber-500" />
                                                 </div>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Admin takeover status banner (Badge di tengah) */}
-                                    {isTakenOver && (
-                                        <div className="flex justify-center my-2">
-                                            <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 border border-amber-300 px-3 py-1 text-[11px] font-semibold text-amber-900 shadow-2xs">
-                                                <UserCheck className="size-3.5 text-amber-700" />
-                                                <span>Admin CS bergabung dan mengambil alih percakapan.</span>
                                             </div>
                                         </div>
                                     )}
@@ -1095,43 +1138,59 @@ export default function ChatShow({
                 {/* BOTTOM CHAT INPUT BAR (TANPA TOMBOL +) */}
                 {/* ============================================================== */}
                 {!isSessionExpired && activeTab === 'pesan' && (hasSubmittedForm || messages.length > 0) && (
-                    <div className="border-t border-neutral-200 bg-white p-3 shrink-0">
-                        <form
-                            onSubmit={(e) => {
-                                e.preventDefault();
-                                handleSendMessage();
-                            }}
-                            className="flex items-center gap-2"
-                        >
-                            <input
-                                ref={textareaRef}
-                                value={input}
-                                disabled={isLoading || !application.is_active}
-                                onChange={(e) => setInput(e.target.value)}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                        e.preventDefault();
-                                        handleSendMessage();
-                                    }
+                    isWaitingAdmin ? (
+                        <div className="border-t border-neutral-200 bg-amber-50/60 p-3 shrink-0">
+                            <div className="flex items-center gap-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 p-3 text-amber-950 shadow-2xs">
+                                <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-amber-700">
+                                    <Clock className="size-4 animate-spin-slow" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-bold text-amber-950">Menunggu Respon Admin CS</p>
+                                    <p className="text-[11px] text-amber-800 leading-snug">
+                                        Percakapan Anda telah dialihkan ke Customer Service. Mohon menunggu sebentar ya Bosku 🙏
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="border-t border-neutral-200 bg-white p-3 shrink-0">
+                            <form
+                                onSubmit={(e) => {
+                                    e.preventDefault();
+                                    handleSendMessage();
                                 }}
-                                placeholder={
-                                    !application.is_active
-                                        ? 'Chatbot sedang offline...'
-                                        : 'Tulis pesan...'
-                                }
-                                className="flex-1 h-9 px-3.5 text-xs rounded-full bg-slate-100 border-none text-neutral-900 focus:outline-none focus:ring-1 focus:ring-amber-400 placeholder:text-neutral-400"
-                            />
-
-                            <button
-                                type="submit"
-                                disabled={!input.trim() || isLoading || !application.is_active}
-                                className="flex size-9 items-center justify-center rounded-full font-bold disabled:opacity-40 transition-colors cursor-pointer shrink-0 shadow-2xs"
-                                style={{ backgroundColor: headerColor, color: headerTextColor }}
+                                className="flex items-center gap-2"
                             >
-                                <Send className="size-3.5" />
-                            </button>
-                        </form>
-                    </div>
+                                <input
+                                    ref={textareaRef}
+                                    value={input}
+                                    disabled={!application.is_active}
+                                    onChange={(e) => setInput(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            handleSendMessage();
+                                        }
+                                    }}
+                                    placeholder={
+                                        !application.is_active
+                                            ? 'Chatbot sedang offline...'
+                                            : 'Tulis pesan...'
+                                    }
+                                    className="flex-1 h-9 px-3.5 text-xs rounded-full bg-slate-100 border-none text-neutral-900 focus:outline-none focus:ring-1 focus:ring-amber-400 placeholder:text-neutral-400"
+                                />
+
+                                <button
+                                    type="submit"
+                                    disabled={!input.trim() || isLoading || !application.is_active}
+                                    className="flex size-9 items-center justify-center rounded-full font-bold disabled:opacity-40 transition-colors cursor-pointer shrink-0 shadow-2xs"
+                                    style={{ backgroundColor: headerColor, color: headerTextColor }}
+                                >
+                                    <Send className="size-3.5" />
+                                </button>
+                            </form>
+                        </div>
+                    )
                 )}
 
                 {/* ============================================================== */}

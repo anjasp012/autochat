@@ -4,6 +4,7 @@ import { BotEscalationNotifications } from '@/components/bot-escalation-notifica
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { Button } from '@/components/ui/button';
 import { SidebarTrigger } from '@/components/ui/sidebar';
+import { WidgetScriptDialog } from '@/components/widget-script-dialog';
 import type { ApplicationSummary } from '@/types/application';
 import type { BreadcrumbItem as BreadcrumbItemType } from '@/types';
 
