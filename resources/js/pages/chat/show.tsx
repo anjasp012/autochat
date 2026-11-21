@@ -151,6 +151,10 @@ export default function ChatShow({
     const [isSessionExpired, setIsSessionExpired] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+    // Hover state untuk tombol dan chip
+    const [hoveredBtn, setHoveredBtn] = useState<number | null>(null);
+    const [hoveredChip, setHoveredChip] = useState<number | null>(null);
+
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLInputElement>(null);
 
@@ -162,11 +166,17 @@ export default function ChatShow({
         scrollToBottom();
     }, [messages, isLoading, activeTab]);
 
-    // Set page title cleanly (tanpa suffix - AutoChat)
+    // Set browser title bersih tanpa '- AutoChat'
     useEffect(() => {
         const cleanTitle = headerTitle || application.name;
         if (cleanTitle) {
             document.title = cleanTitle;
+            const interval = setInterval(() => {
+                if (document.title !== cleanTitle) {
+                    document.title = cleanTitle;
+                }
+            }, 250);
+            return () => clearInterval(interval);
         }
     }, [headerTitle, application.name]);
 
@@ -475,7 +485,8 @@ export default function ChatShow({
             className="flex h-screen w-full overflow-hidden transition-colors"
             style={{ backgroundColor: bgColor }}
         >
-            <Head title={headerTitle || application.name}>
+            <Head>
+                <title>{headerTitle || application.name}</title>
                 {faviconUrl && <link rel="icon" href={faviconUrl} />}
             </Head>
 
@@ -672,6 +683,14 @@ export default function ChatShow({
                                     }`}
                                 >
                                     {quickButtons.map((item, idx) => {
+                                        const isHovered = hoveredBtn === idx;
+                                        const hoverStyle = isHovered
+                                            ? {
+                                                  borderColor: headerColor,
+                                                  backgroundColor: `${headerColor}1f`,
+                                              }
+                                            : {};
+
                                         if (item.type === 'link') {
                                             return (
                                                 <a
@@ -679,12 +698,18 @@ export default function ChatShow({
                                                     href={item.value || '#'}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="flex items-center justify-between rounded-xl border border-neutral-200 bg-white p-3.5 text-left shadow-2xs hover:border-amber-400 hover:bg-amber-50/50 transition-all cursor-pointer group"
+                                                    onMouseEnter={() => setHoveredBtn(idx)}
+                                                    onMouseLeave={() => setHoveredBtn(null)}
+                                                    style={hoverStyle}
+                                                    className="flex items-center justify-between rounded-xl border border-neutral-200 bg-white p-3.5 text-left shadow-2xs transition-all cursor-pointer group"
                                                 >
-                                                    <span className="text-xs font-semibold text-neutral-800 group-hover:text-amber-950 truncate">
+                                                    <span className="text-xs font-semibold text-neutral-800 truncate">
                                                         {item.title || `Tombol ${idx + 1}`}
                                                     </span>
-                                                    <ExternalLink className="size-3.5 text-neutral-400 group-hover:text-amber-600 transition-colors shrink-0" />
+                                                    <ExternalLink
+                                                        className="size-3.5 text-neutral-400 transition-colors shrink-0"
+                                                        style={isHovered ? { color: headerColor } : {}}
+                                                    />
                                                 </a>
                                             );
                                         }
@@ -693,6 +718,9 @@ export default function ChatShow({
                                             <button
                                                 key={idx}
                                                 type="button"
+                                                onMouseEnter={() => setHoveredBtn(idx)}
+                                                onMouseLeave={() => setHoveredBtn(null)}
+                                                style={hoverStyle}
                                                 onClick={() => {
                                                     if (isSessionExpired) {
                                                         handleStartNewChat();
@@ -703,12 +731,15 @@ export default function ChatShow({
                                                         }
                                                     }
                                                 }}
-                                                className="flex items-center justify-between rounded-xl border border-neutral-200 bg-white p-3.5 text-left shadow-2xs hover:border-amber-400 hover:bg-amber-50/50 transition-all cursor-pointer group"
+                                                className="flex items-center justify-between rounded-xl border border-neutral-200 bg-white p-3.5 text-left shadow-2xs transition-all cursor-pointer group"
                                             >
-                                                <span className="text-xs font-semibold text-neutral-800 group-hover:text-amber-950 truncate">
+                                                <span className="text-xs font-semibold text-neutral-800 truncate">
                                                     {item.title || `Tombol ${idx + 1}`}
                                                 </span>
-                                                <ArrowUpRight className="size-3.5 text-neutral-400 group-hover:text-amber-600 transition-colors shrink-0" />
+                                                <ArrowUpRight
+                                                    className="size-3.5 text-neutral-400 transition-colors shrink-0"
+                                                    style={isHovered ? { color: headerColor } : {}}
+                                                />
                                             </button>
                                         );
                                     })}
@@ -840,6 +871,14 @@ export default function ChatShow({
                                             {/* Quick Action Chips Dinamis */}
                                             <div className="flex flex-wrap gap-1.5 pt-1">
                                                 {quickButtons.map((chip, idx) => {
+                                                    const isChipHovered = hoveredChip === idx;
+                                                    const chipHoverStyle = isChipHovered
+                                                        ? {
+                                                              borderColor: headerColor,
+                                                              backgroundColor: `${headerColor}1f`,
+                                                          }
+                                                        : {};
+
                                                     if (chip.type === 'link') {
                                                         return (
                                                             <a
@@ -847,10 +886,16 @@ export default function ChatShow({
                                                                 href={chip.value || '#'}
                                                                 target="_blank"
                                                                 rel="noopener noreferrer"
-                                                                className="inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-white px-2.5 py-1 text-[10px] font-medium text-neutral-700 hover:border-amber-400 hover:bg-amber-50 transition-colors shadow-2xs cursor-pointer"
+                                                                onMouseEnter={() => setHoveredChip(idx)}
+                                                                onMouseLeave={() => setHoveredChip(null)}
+                                                                style={chipHoverStyle}
+                                                                className="inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-white px-2.5 py-1 text-[10px] font-medium text-neutral-700 transition-colors shadow-2xs cursor-pointer"
                                                             >
                                                                 <span>{chip.title}</span>
-                                                                <ExternalLink className="size-2.5 text-neutral-400" />
+                                                                <ExternalLink
+                                                                    className="size-2.5 text-neutral-400"
+                                                                    style={isChipHovered ? { color: headerColor } : {}}
+                                                                />
                                                             </a>
                                                         );
                                                     }
@@ -859,8 +904,11 @@ export default function ChatShow({
                                                             key={idx}
                                                             type="button"
                                                             disabled={isLoading || isSessionExpired || !application.is_active}
+                                                            onMouseEnter={() => setHoveredChip(idx)}
+                                                            onMouseLeave={() => setHoveredChip(null)}
+                                                            style={chipHoverStyle}
                                                             onClick={() => handleSendMessage(chip.value)}
-                                                            className="rounded-full border border-neutral-200 bg-white px-2.5 py-1 text-[10px] font-medium text-neutral-700 hover:border-amber-400 hover:bg-amber-50 transition-colors shadow-2xs cursor-pointer"
+                                                            className="rounded-full border border-neutral-200 bg-white px-2.5 py-1 text-[10px] font-medium text-neutral-700 transition-colors shadow-2xs cursor-pointer"
                                                         >
                                                             {chip.title}
                                                         </button>
