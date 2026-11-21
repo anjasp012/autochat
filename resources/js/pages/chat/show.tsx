@@ -59,23 +59,23 @@ export default function ChatShow({
     const cs = application.chat_settings || {};
 
     const bgColor = cs.bg_color || '#FFF9E6';
+    const textColor = cs.text_color || '#171717';
     const headerColor = cs.header_color || '#FFD200';
-    const iconType = cs.icon_type || 'sparkles';
+    const customIconUrl = cs.custom_icon_url || '';
     const faviconUrl = cs.favicon_url || '';
     const splashTitle = cs.splash_title || `Selamat Datang di Livechat ${application.name} 😊`;
     const splashSubtitle = cs.splash_subtitle || `CHAT DENGAN TIM ${application.name.toUpperCase()}`;
     const splashDescription = cs.splash_description || 'Ada yang Bisa Kami Bantu, Bosku?';
     const headerTitle = cs.header_title || application.name;
 
-    const avatar1 =
-        cs.avatar_1 ||
-        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80';
-    const avatar2 =
-        cs.avatar_2 ||
-        'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&auto=format&fit=crop&q=80';
-    const avatar3 =
-        cs.avatar_3 ||
-        'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80';
+    // Ambil 3 avatar terpilih dari galeri
+    const activeAvatars: string[] = Array.isArray(cs.selected_avatars) && cs.selected_avatars.length > 0
+        ? cs.selected_avatars.slice(0, 3)
+        : [
+              cs.avatar_1 || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
+              cs.avatar_2 || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&auto=format&fit=crop&q=80',
+              cs.avatar_3 || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80',
+          ];
 
     const bannerBadge = cs.banner_badge || 'OFFICIAL 24/7 SUPPORT';
     const bannerTitle = cs.banner_title || application.name;
