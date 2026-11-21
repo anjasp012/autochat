@@ -1233,7 +1233,10 @@ export default function ChatShow({
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-150">
                     <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl space-y-4 border border-neutral-100">
                         <div className="flex items-center gap-3">
-                            <div className="flex size-10 items-center justify-center rounded-full bg-amber-100 text-amber-700 shrink-0">
+                            <div
+                                className="flex size-10 items-center justify-center rounded-full shrink-0 transition-colors"
+                                style={{ backgroundColor: `${headerColor}25`, color: headerColor }}
+                            >
                                 <RotateCcw className="size-5" />
                             </div>
                             <div>
@@ -1255,7 +1258,8 @@ export default function ChatShow({
                             <button
                                 type="button"
                                 onClick={handleConfirmClose}
-                                className="px-4 py-2 text-xs font-bold text-white bg-destructive hover:bg-destructive/90 rounded-xl transition-colors cursor-pointer shadow-xs"
+                                className="px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs hover:opacity-90 active:scale-95"
+                                style={{ backgroundColor: headerColor, color: headerTextColor }}
                             >
                                 Ya, Tutup Chat
                             </button>
