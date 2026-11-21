@@ -476,73 +476,42 @@ export default function ConversationsIndex({
                                             }`}
                                     >
                                         {/* Avatar */}
-                                        {/* Avatar with unread indicator */}
                                         <div className="relative flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary shadow-2xs">
                                             <User className="size-5" />
-                                            {conv.is_taken_over ? (
-                                                {
-                                                    hasUnreadAdminMessage?(
-                                                <span className = "absolute -top-1 -right-1 flex size-3.5" title = "Pesan baru belum dibalas admin" >
+                                            {hasUnreadAdminMessage && (
+                                                <span className="absolute -top-1 -right-1 flex size-3.5" title="Pesan baru belum dibalas admin">
                                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-75" />
                                                     <span className="relative inline-flex rounded-full size-3.5 bg-rose-500 border-2 border-background" />
                                                 </span>
-                                        ) : conv.is_taken_over ? (
-                                        <span
-                                            className="absolute -top-0.5 -right-0.5 size-3 rounded-full bg-amber-500 border-2 border-background"
-                                            title="Diambil Alih oleh Admin"
-                                        />
-                                        ) : (
-                                        <span
-                                            className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full bg-emerald-500 border-2 border-background"
-                                            title="Aktif"
-                                        />
                                             )}
-                                    </div>
-
-                                        {/* Content Preview */ }
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center justify-between gap-1 mb-0.5">
-                                        <span className="text-xs font-bold truncate text-foreground flex items-center gap-1.5">
-                                            <span>{displayName}</span>
-                                            <span className="font-mono text-[10px] text-muted-foreground font-normal opacity-70">
-                                                ({conv.uuid.substring(0, 6)})
-                                            </span>
-                                        </span>
-                                        <span className="text-[10px] text-muted-foreground shrink-0 font-mono">
-                                            {(() => {
-                                                if (!conv.last_activity_at) return '';
-                                                try {
-                                                    const d = new Date(conv.last_activity_at);
-                                                    if (isNaN(d.getTime())) return conv.last_activity_at;
-                                                    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                                                } catch {
-                                                    return conv.last_activity_at;
-                                                }
-                                            })()}
-                                        </span>
-                                        <div className="flex items-center gap-1.5 shrink-0">
-                                            {hasUnreadAdminMessage && (
-                                                <span className="flex size-2 rounded-full bg-rose-500" title="Pesan baru belum dibalas" />
-                                            )}
-                                            <span className="text-[10px] text-muted-foreground font-mono">
-                                                {(() => {
-                                                    if (!conv.last_activity_at) return '';
-                                                    try {
-                                                        const d = new Date(conv.last_activity_at);
-                                                        if (isNaN(d.getTime())) return conv.last_activity_at;
-                                                        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                                                    } catch {
-                                                        return conv.last_activity_at;
-                                                    }
-                                                })()}
-                                            </span>
                                         </div>
-                                    </div>
 
-                                    <p className="text-xs text-muted-foreground line-clamp-1 mb-1.5 leading-snug">
-                                        <p className={`text-xs line-clamp-1 mb-1.5 leading-snug ${hasUnreadAdminMessage ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
-                                            {latestMsg || '(Sesi percakapan baru)'}
-                                        </p>
+                                        {/* Content Preview */}
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center justify-between gap-1 mb-0.5">
+                                                <span className="text-xs font-bold truncate text-foreground flex items-center gap-1.5">
+                                                    <span>{displayName}</span>
+                                                    <span className="font-mono text-[10px] text-muted-foreground font-normal opacity-70">
+                                                        ({conv.uuid.substring(0, 6)})
+                                                    </span>
+                                                </span>
+                                                <span className="text-[10px] text-muted-foreground shrink-0 font-mono">
+                                                    {(() => {
+                                                        if (!conv.last_activity_at) return '';
+                                                        try {
+                                                            const d = new Date(conv.last_activity_at);
+                                                            if (isNaN(d.getTime())) return conv.last_activity_at;
+                                                            return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                                                        } catch {
+                                                            return conv.last_activity_at;
+                                                        }
+                                                    })()}
+                                                </span>
+                                            </div>
+
+                                            <p className={`text-xs line-clamp-1 mb-1.5 leading-snug ${hasUnreadAdminMessage ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
+                                                {latestMsg || '(Sesi percakapan baru)'}
+                                            </p>
 
                                         <div className="flex items-center justify-between gap-1">
                                             {conv.is_archived ? (
