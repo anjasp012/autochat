@@ -90,16 +90,14 @@ export default function ChatShow({
 
     const activeAvatars: string[] =
         Array.isArray(cs.selected_avatars) && cs.selected_avatars.length > 0
-            ? cs.selected_avatars
-                .filter((url: string) => typeof url === 'string' && !url.includes('unsplash.com'))
-                .slice(0, 3)
+            ? cs.selected_avatars.filter((url: string) => typeof url === 'string' && !url.includes('unsplash.com'))
             : [];
 
     if (activeAvatars.length === 0) {
-        activeAvatars.push(defaultAvatars[0], defaultAvatars[1], defaultAvatars[2]);
+        activeAvatars.push(...defaultAvatars);
     }
 
-    // CS Aktif diacak per percakapan baru dan dikunci untuk seluruh percakapan tersebut
+    // CS Aktif diacak per percakapan baru dari avatar yang aktif dan dikunci untuk seluruh percakapan tersebut
     const [assignedCs, setAssignedCs] = useState<PresetAvatar>(() => {
         if (typeof window !== 'undefined') {
             try {
@@ -112,7 +110,9 @@ export default function ChatShow({
                 }
             } catch (e) { }
         }
-        return PRESET_AVATARS[Math.floor(Math.random() * PRESET_AVATARS.length)];
+        const pool = PRESET_AVATARS.filter((p) => activeAvatars.includes(p.url));
+        const finalPool = pool.length > 0 ? pool : PRESET_AVATARS;
+        return finalPool[Math.floor(Math.random() * finalPool.length)];
     });
 
     const csAgentName = assignedCs.name;
@@ -358,7 +358,9 @@ export default function ChatShow({
 
         // New visitor: create initial UUID
         const newUuid = generateUuid();
-        const nextCs = PRESET_AVATARS[Math.floor(Math.random() * PRESET_AVATARS.length)];
+        const pool = PRESET_AVATARS.filter((p) => activeAvatars.includes(p.url));
+        const finalPool = pool.length > 0 ? pool : PRESET_AVATARS;
+        const nextCs = finalPool[Math.floor(Math.random() * finalPool.length)];
         setAssignedCs(nextCs);
         setSessionUuid(newUuid);
         persistSession(newUuid, nextCs);
@@ -708,10 +710,10 @@ export default function ChatShow({
                                 <X className="size-4.5 stroke-2.5" />
                             </button>
                         ) : (
-                            /* Customer Service Agent Avatars (3 Foto Profil Terpilih dari Galeri - TAMPIL DI BERANDA) */
+                            /* Customer Service Agent Avatars (Foto Profil Terpilih dari Galeri - TAMPIL DI BERANDA) */
                             <div className="flex items-center gap-2 shrink-0">
                                 <div className="flex items-center -space-x-2.5 overflow-visible pl-1 py-0.5">
-                                    {activeAvatars.slice(0, 3).map((url, idx) => (
+                                    {activeAvatars.map((url, idx) => (
                                         <div
                                             key={idx}
                                             className="relative size-8 rounded-full ring-2 ring-white/95 shadow-xs overflow-hidden shrink-0 bg-neutral-200 transition-transform hover:scale-110 hover:z-20 cursor-default"

@@ -539,21 +539,116 @@ PROMPT;
             }
         }
 
-        // Injeksi Automate / Canned Responses ke Prompt AI Bot
-        $cannedResponses = $application->chat_settings['canned_responses'] ?? [];
-        if (is_array($cannedResponses) && count($cannedResponses) > 0) {
-            $crLines = [];
-            foreach ($cannedResponses as $cr) {
-                $shortcut = $cr['shortcut'] ?? '';
-                $content = trim($cr['content'] ?? '');
-                if ($shortcut && $content) {
-                    $crLines[] = "- Topik/Shortcut #{$shortcut}:\n\"{$content}\"";
+        // Injeksi Automate / Canned Responses ke Prompt AI Bot dengan Deteksi Kata Kunci
+        $configuredCanned = $application->chat_settings['canned_responses'] ?? [];
+        $cannedResponses = (is_array($configuredCanned) && count($configuredCanned) > 0)
+            ? $configuredCanned
+            : [
+                [
+                    'id' => 'cr-1',
+                    'shortcut' => 'marketing',
+                    'content' => "Untuk Segala bentuk penawaran IKLAN / YOUTUBE / FB UNTUK SITUS CV TOGEL\nSilakan add WA marketing kami di bawah ini :\nWA : +62 819-7426-404\n\nTerima kasih.",
+                ],
+                [
+                    'id' => 'cr-2',
+                    'shortcut' => 'telegram',
+                    'content' => "Informasi kepada seluruh Membersetia CVTOGEL\n📢 TELEGRAM RESMI CS CVTOGEL\nhttps://kiamkiam.site/telecvtogel\n\nTerima kasih atas perhatian dan kepercayaannya.",
+                ],
+                [
+                    'id' => 'cr-3',
+                    'shortcut' => 'rekening',
+                    'content' => 'Halo Bosku, untuk tujuan rekening deposit aktif silakan selalu cek di menu Deposit pada website resmi sebelum melakukan transfer ya Bosku. Terima kasih.',
+                ],
+                [
+                    'id' => 'cr-4',
+                    'shortcut' => 'deposit-kendala',
+                    'content' => 'Mohon maaf atas ketidaknyamanannya Bosku. Boleh dibantu kirimkan bukti transfer yang jelas (struk/mutasi) agar segera kami bantu koordinasikan dengan bagian keuangan kami ya Bosku.',
+                ],
+                [
+                    'id' => 'cr-5',
+                    'shortcut' => 'terima-kasih',
+                    'content' => 'Sama-sama Bosku. Senang bisa membantu Bosku hari ini. Jika ada hal lain yang ingin ditanyakan, jangan ragu untuk menghubungi kami kembali ya. Semoga beruntung dan salam jackpot selalu! 🍀',
+                ],
+                [
+                    'id' => 'cr-6',
+                    'shortcut' => 'akunlimit',
+                    'content' => 'Halo Bosku, terkait kendala akun limit, silakan infokan User ID Bosku terlebih dahulu ya. Batas limit taruhan atau limit akun dapat ditinjau kembali oleh tim terkait setelah pengecekan data akun. Mohon ditunggu sebentar ya Bosku 🙏',
+                ],
+            ];
+
+        $userLower = strtolower($userText);
+        $matchedAutomates = [];
+        $crLines = [];
+
+        foreach ($cannedResponses as $cr) {
+            $rawShortcut = $cr['shortcut'] ?? '';
+            $shortcut = strtolower(ltrim(trim($rawShortcut), '#'));
+            $content = trim($cr['content'] ?? '');
+            if (! $shortcut || ! $content) {
+                continue;
+            }
+
+            $crLines[] = "- Tag #{$shortcut}:\n\"{$content}\"";
+
+            // Cek apakah pesan user cocok dengan tag / kata kunci Automate
+            $isMatch = false;
+            if (str_contains($userLower, '#'.$shortcut) || str_contains($userLower, $shortcut)) {
+                $isMatch = true;
+            } else {
+                $keywords = $this->extractShortcutKeywords($shortcut);
+                if (count($keywords) >= 2) {
+                    $allFound = true;
+                    foreach ($keywords as $kw) {
+                        if (! str_contains($userLower, $kw)) {
+                            $allFound = false;
+                            break;
+                        }
+                    }
+                    if ($allFound) {
+                        $isMatch = true;
+                    }
+                } elseif (count($keywords) === 1 && strlen($keywords[0]) >= 4) {
+                    if (str_contains($userLower, $keywords[0])) {
+                        $isMatch = true;
+                    }
                 }
             }
 
-            if (count($crLines) > 0) {
-                $systemPrompt .= "\n\nPANDUAN AUTOMATE & CANNED RESPONSES RESMI:\nBerikut adalah daftar informasi & jawaban resmi dari Automate/Canned Responses. Jika pengguna bertanya hal yang berkaitan dengan topik ini (seperti kontak WhatsApp marketing, channel Telegram resmi, nomor rekening deposit, kendala depo/wd, dll), kamu WAJIB menjawab sesuai fakta dan isi informasi resmi berikut:\n".implode("\n\n", $crLines);
+            if ($isMatch) {
+                $matchedAutomates[] = [
+                    'shortcut' => $shortcut,
+                    'content' => $content,
+                ];
             }
+        }
+
+        // Jika ditemukan Automate yang cocok langsung dengan pertanyaan user, pasang sebagai PRIORITAS UTAMA
+        if (count($matchedAutomates) > 0) {
+            $matchHighlights = [];
+            foreach ($matchedAutomates as $ma) {
+                $matchHighlights[] = "TAG / SHORTCUT: #{$ma['shortcut']}\nINFORMASI RESMI DARI SISTEM AUTOMATE:\n\"{$ma['content']}\"";
+            }
+            $priorityBlock = "======================================================================\n".
+                "🚨 PRIORITAS UTAMA: DITEMUKAN PANDUAN AUTOMATE RESMI UNTUK PERTANYAAN USER! 🚨\n".
+                "Pertanyaan pengguna terdeteksi cocok dengan kata kunci dari tag Automate berikut:\n\n".
+                implode("\n\n", $matchHighlights)."\n\n".
+                "INSTRUKSI MUTLAK & WAJIB DIPATUHI:\n".
+                "1. Kamu WAJIB mengambil dan menggunakan fakta, arahan, atau isi dari Automate resmi di atas sebagai dasar utama jawabanmu!\n".
+                "2. DILARANG KERAS menjawab asal-asalan, membuat perkiraan sendiri, atau memberikan jawaban generik di luar informasi resmi ini.\n".
+                "3. Rangkai jawabanmu dengan bahasa Customer Service yang ramah, santun, dan komunikatif kepada pengguna.\n".
+                "======================================================================\n\n";
+
+            $systemPrompt = $priorityBlock.$systemPrompt;
+        }
+
+        if (count($crLines) > 0) {
+            $systemPrompt .= "\n\nPANDUAN UTAMA: DAFTAR AUTOMATE / CANNED RESPONSES RESMI:\n".
+                "Setiap tag/shortcut (misal: #akunlimit, #marketing, #telegram, #rekening, #deposit-kendala) adalah KATA KUNCI UTAMA topik pertanyaan member.\n".
+                "Sebelum memberikan jawaban, kamu WAJIB selalu mengecek apakah pertanyaan user berkaitan dengan salah satu tag di bawah:\n".
+                "- Jika pertanyaan user mengandung kata kunci atau bermaksud menanyakan topik yang cocok dengan salah satu tag (contoh: user bertanya soal akun limit/dibatasi -> cocok dengan #akunlimit), kamu WAJIB mengambil dan menggunakan data dari tag Automate tersebut!\n".
+                "- DILARANG KERAS menjawab asal-asalan jika sudah tersedia panduan Automate untuk topik tersebut.\n\n".
+                "Daftar Lengkap Automate:\n".
+                implode("\n\n", $crLines);
         }
 
         // Query LLM Service
@@ -620,5 +715,40 @@ PROMPT;
                 'created_at' => $assistantMessage->created_at?->format('H:i') ?? '',
             ],
         ]);
+    }
+
+    /**
+     * Extract searchable keywords from a shortcut tag.
+     * E.g. "akunlimit" -> ["akun", "limit"]
+     *      "deposit-kendala" -> ["deposit", "kendala"]
+     *
+     * @return array<int, string>
+     */
+    protected function extractShortcutKeywords(string $shortcut): array
+    {
+        $clean = strtolower(ltrim(trim($shortcut), '#'));
+        $words = preg_split('/[\s\-_.]+/', $clean, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+
+        if (count($words) === 1) {
+            $single = $words[0];
+            $knownParts = [
+                'akun', 'limit', 'depo', 'deposit', 'wd', 'withdraw',
+                'slot', 'gacor', 'togel', 'pasaran', 'rekening',
+                'tele', 'telegram', 'marketing', 'promo', 'bonus',
+                'daftar', 'login', 'kendala', 'saldo', 'mutasi',
+            ];
+
+            foreach ($knownParts as $part) {
+                if (str_contains($single, $part) && $single !== $part) {
+                    $other = str_replace($part, '', $single);
+                    $words[] = $part;
+                    if (strlen($other) >= 3) {
+                        $words[] = $other;
+                    }
+                }
+            }
+        }
+
+        return array_values(array_unique(array_filter($words, fn ($w) => strlen($w) >= 3)));
     }
 }

@@ -77,8 +77,8 @@ export default function AdminSettings({ application }: Props) {
 
     const initialAvatars: string[] =
         sanitizedAvatars.length >= 1
-            ? sanitizedAvatars.slice(0, 3)
-            : [PRESET_AVATARS[0].url, PRESET_AVATARS[1].url, PRESET_AVATARS[2].url];
+            ? sanitizedAvatars
+            : PRESET_AVATARS.map((a) => a.url);
 
     // Inisialisasi tombol cepat dinamis
     const initialQuickButtons: QuickButton[] =
@@ -185,7 +185,7 @@ export default function AdminSettings({ application }: Props) {
         });
     };
 
-    // Toggle pilihan avatar (maksimal 3 avatar)
+    // Toggle pilihan avatar (bisa aktif semua avatar, minimal 1)
     const handleToggleAvatar = (url: string) => {
         const currentList: string[] = [...(data.chat_settings.selected_avatars || [])];
         const index = currentList.indexOf(url);
@@ -194,9 +194,6 @@ export default function AdminSettings({ application }: Props) {
             if (currentList.length <= 1) return;
             currentList.splice(index, 1);
         } else {
-            if (currentList.length >= 3) {
-                currentList.shift();
-            }
             currentList.push(url);
         }
 
@@ -756,24 +753,24 @@ export default function AdminSettings({ application }: Props) {
                                         <span>Foto Profil Customer Service (CS)</span>
                                     </CardTitle>
                                     <span className="text-xs font-bold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/60 px-2.5 py-0.5 rounded-full">
-                                        Terpilih di Header: {currentAvatars.length} / 3 Foto
+                                        Terpilih di Header: {currentAvatars.length} / {PRESET_AVATARS.length} Foto
                                     </span>
                                 </div>
                                 <CardDescription className="text-xs">
-                                    Pilih avatar untuk Customer Service (Rahma, Nindy, Rosa, Intan). Foto yang dicentang akan ditampilkan rapi berjejer di header livechat.
+                                    Pilih avatar untuk Customer Service (Rahma, Nindy, Rosa, Intan). Foto yang dicentang akan ditampilkan rapi berjejer di header livechat (bisa pilih semua).
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="rounded-xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40 p-3 text-xs text-amber-900 dark:text-amber-200 flex items-center gap-2">
                                     <Sparkles className="size-4 text-amber-600 shrink-0" />
                                     <span>
-                                        <strong>CS Aktif Otomatis:</strong> Nama & avatar CS yang membalas chat akan diacak secara otomatis dari 4 pilihan CS (Rahma, Nindy, Rosa, Intan) pada setiap percakapan baru dan dikunci selama percakapan berlangsung.
+                                        <strong>CS Aktif Otomatis:</strong> Nama & avatar CS yang membalas chat akan diacak secara otomatis dari avatar yang aktif pada setiap percakapan baru dan dikunci selama percakapan berlangsung.
                                     </span>
                                 </div>
 
                                 <div className="space-y-2 pt-1">
                                     <Label className="text-xs font-semibold text-muted-foreground block">
-                                        Klik foto di bawah untuk memilih 3 Avatar yang tampil di Header Beranda:
+                                        Klik foto di bawah untuk memilih Avatar yang tampil di Header Beranda (bisa pilih semua atau sebagian):
                                     </Label>
                                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                         {PRESET_AVATARS.map((av) => {
@@ -1686,9 +1683,9 @@ export default function AdminSettings({ application }: Props) {
                                                 </span>
                                             </div>
 
-                                            {/* 3 FOTO AVATAR CS YANG TERPILIH (RAPI BERJEJER) */}
+                                            {/* FOTO AVATAR CS YANG TERPILIH (RAPI BERJEJER) */}
                                             <div className="flex items-center -space-x-1.5 overflow-visible pl-0.5 shrink-0">
-                                                {currentAvatars.slice(0, 3).map((url, idx) => (
+                                                {currentAvatars.map((url, idx) => (
                                                     <div
                                                         key={idx}
                                                         className="relative size-6 rounded-full ring-1.5 ring-white shadow-2xs overflow-hidden shrink-0 bg-neutral-200"

@@ -56,4 +56,12 @@ Terima kasih atas perhatian dan kepercayaannya.`,
         created_by: 'Admin CVTOGEL',
         updated_at: '18 November 2026',
     },
+    {
+        id: 'cr-6',
+        shortcut: 'akunlimit',
+        content: `Halo Bosku, terkait kendala akun limit, silakan infokan User ID Bosku terlebih dahulu ya. Batas limit taruhan atau limit akun dapat ditinjau kembali oleh tim terkait setelah pengecekan data akun. Mohon ditunggu sebentar ya Bosku 🙏`,
+        scope: 'shared',
+        created_by: 'Admin CVTOGEL',
+        updated_at: '21 November 2026',
+    },
 ];
