@@ -216,32 +216,35 @@ export default function ConversationsShow({ conversation }: Props) {
                                     );
                                 }
 
-                                const isAdmin = msg.role === 'admin';
                                 const isUser = msg.role === 'user';
+                                const isAdmin = msg.role === 'admin';
+                                const isAssistant = msg.role === 'assistant';
+                                // Di CMS Admin: Pengunjung di KIRI, Admin & AI di KANAN!
+                                const isRight = isAdmin || isAssistant;
 
                                 return (
                                     <div
                                         key={msg.id}
                                         className={`flex gap-3 max-w-3xl ${
-                                            isAdmin ? 'ml-auto flex-row-reverse' : 'mr-auto'
+                                            isRight ? 'ml-auto flex-row-reverse' : 'mr-auto'
                                         }`}
                                     >
                                         <div
                                             className={`flex size-8 shrink-0 items-center justify-center rounded-xl shadow-xs text-xs font-semibold ${
-                                                isAdmin
-                                                    ? 'bg-emerald-600 text-white'
-                                                    : isUser
-                                                      ? 'bg-neutral-800 text-white dark:bg-neutral-700'
-                                                      : 'bg-secondary text-secondary-foreground border border-border'
+                                                isRight
+                                                    ? isAdmin
+                                                        ? 'bg-emerald-600 text-white'
+                                                        : 'bg-emerald-700 text-white dark:bg-emerald-800'
+                                                    : 'bg-neutral-800 text-white dark:bg-neutral-700'
                                             }`}
                                         >
-                                            {isAdmin ? <UserCheck className="size-4" /> : isUser ? <User className="size-4" /> : <Bot className="size-4" />}
+                                            {isAdmin ? <UserCheck className="size-4" /> : isAssistant ? <Bot className="size-4" /> : <User className="size-4" />}
                                         </div>
 
-                                        <div className={`flex flex-col gap-1 min-w-0 ${isAdmin ? 'items-end' : 'items-start'}`}>
+                                        <div className={`flex flex-col gap-1 min-w-0 ${isRight ? 'items-end' : 'items-start'}`}>
                                             <div className="flex items-center gap-2 text-[11px] text-muted-foreground px-1">
-                                                <span className="font-semibold text-foreground">
-                                                    {isAdmin ? 'Anda (Admin CS)' : isUser ? 'Pengunjung' : 'Asisten AI'}
+                                                <span className="font-semibold text-foreground flex items-center gap-1">
+                                                    {isAdmin ? 'Anda (Admin CS)' : isAssistant ? 'Asisten AI' : 'Pengunjung'}
                                                 </span>
                                                 <span className="flex items-center gap-1 font-mono text-[10px]">
                                                     <Clock className="size-2.5" />
@@ -251,11 +254,11 @@ export default function ConversationsShow({ conversation }: Props) {
 
                                             <div
                                                 className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap break-words shadow-2xs ${
-                                                    isAdmin
-                                                        ? 'bg-emerald-600 text-white rounded-tr-xs'
-                                                        : isUser
-                                                          ? 'bg-card text-foreground border border-border rounded-tl-xs'
-                                                          : 'bg-muted/70 text-foreground border border-border/80 rounded-tl-xs'
+                                                    isRight
+                                                        ? isAdmin
+                                                            ? 'bg-emerald-600 text-white rounded-tr-xs'
+                                                            : 'bg-emerald-700 text-white rounded-tr-xs dark:bg-emerald-800'
+                                                        : 'bg-card text-foreground border border-border rounded-tl-xs'
                                                 }`}
                                             >
                                                 {msg.content}
