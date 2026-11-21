@@ -236,6 +236,12 @@ export default function AdminSettings({ application }: Props) {
         updateChatSetting('chat_templates', DEFAULT_CHAT_TEMPLATES);
     };
 
+    // Tab Aktif Pengaturan (Merapikan halaman agar tidak scroll ke bawah terlalu panjang)
+    const [activeSettingsTab, setActiveSettingsTab] = useState<'identity' | 'branding' | 'welcome' | 'automate'>('identity');
+    const hasIdentityError = Boolean(
+        errors.name || errors.app_id || errors.description || errors.model || errors.temperature || errors.max_tokens || errors.system_prompt
+    );
+
     // State Filter & Form untuk Automate / Canned Responses
     const [cannedTab, setCannedTab] = useState<'all' | 'shared' | 'private'>('all');
     const [cannedSearch, setCannedSearch] = useState('');
@@ -1818,16 +1824,16 @@ export default function AdminSettings({ application }: Props) {
                 </form>
             </div>
 
-            {/* Modal Dialog Tambah / Edit Canned Response */}
+            {/* Modal Dialog Tambah / Edit Automate */}
             <Dialog open={isCannedDialogOpen} onOpenChange={setIsCannedDialogOpen}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle className="text-sm font-bold flex items-center gap-2">
                             <Zap className="size-4 text-amber-500" />
-                            <span>{editingCannedId ? 'Edit Balasan Cepat' : 'Tambah Balasan Cepat Baru'}</span>
+                            <span>{editingCannedId ? 'Edit Automate' : 'Tambah Automate Baru'}</span>
                         </DialogTitle>
                         <DialogDescription className="text-xs">
-                            Atur tag shortcut hashtag dan teks isi balasan resmi. Bot AI akan otomatis mempelajari teks ini.
+                            Atur tag shortcut hashtag dan teks isi automate resmi. Bot AI akan otomatis menjawab berdasarkan informasi ini.
                         </DialogDescription>
                     </DialogHeader>
 
@@ -1865,12 +1871,12 @@ export default function AdminSettings({ application }: Props) {
                         </div>
 
                         <div className="space-y-1.5">
-                            <Label className="text-xs font-semibold">Isi Pesan Balasan Cepat</Label>
+                            <Label className="text-xs font-semibold">Isi Pesan Automate</Label>
                             <Textarea
                                 rows={5}
                                 value={cannedForm.content}
                                 onChange={(e) => setCannedForm((prev) => ({ ...prev, content: e.target.value }))}
-                                placeholder="Tuliskan teks informasi atau template balasan resmi..."
+                                placeholder="Tuliskan teks informasi atau template automate resmi..."
                                 className="text-xs leading-relaxed"
                                 required
                             />
@@ -1891,7 +1897,7 @@ export default function AdminSettings({ application }: Props) {
                                 size="sm"
                                 className="text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer"
                             >
-                                {editingCannedId ? 'Perbarui' : 'Simpan Balasan'}
+                                {editingCannedId ? 'Perbarui Automate' : 'Simpan Automate'}
                             </Button>
                         </DialogFooter>
                     </form>

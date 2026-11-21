@@ -59,6 +59,12 @@ interface ConversationItem {
     is_archived: boolean;
     taken_over_at: string | null;
     messages_count: number;
+    latest_message?: {
+        id: number;
+        content: string;
+        role: string;
+        created_at: string;
+    } | null;
     messages?: {
         id: number;
         content: string;
@@ -470,19 +476,22 @@ export default function ConversationsIndex({
                         ) : (
                             convList.map((conv) => {
                                 const isSelected = activeConversation?.uuid === conv.uuid;
-                                const latestMessageObj = conv.messages && conv.messages[0] ? conv.messages[0] : null;
+
+                                // Dapatkan pesan PALING TERBARU:
+                                // Jika percakapan aktif di layar, ambil pesan paling akhir dari localMessages
+                                // Jika tidak, ambil dari conv.latest_message (atau fallback ke conv.messages)
+                                const latestMessageObj = (isSelected && localMessages.length > 0)
+                                    ? localMessages[localMessages.length - 1]
+                                    : (conv.latest_message || (conv.messages && conv.messages.length > 0 ? conv.messages[0] : null));
+
                                 const latestMsg = latestMessageObj ? latestMessageObj.content : '';
+
+                                // Belum dijawab (Unanswered): HANYA jika pesan paling akhir adalah dari user/pengunjung!
+                                // Begitu dibalas oleh bot atau admin, isLatestFromUser bernilai false sehingga TIDAK MERAH.
                                 const isLatestFromUser = latestMessageObj?.role === 'user';
-                                // Indikator belum dibalas: saat chat diambil alih atau menunggu CS dan pesan terakhir adalah dari user
-                                const hasUnreadAdminMessage = (conv.is_taken_over || conv.is_waiting_admin) && isLatestFromUser;
+                                const hasUnreadAdminMessage = isLatestFromUser;
 
                                 let displayName = conv.user_identifier;
-                                if (!displayName || displayName === conv.uuid) {
-                                    const m = latestMsg.match(/User ID saya:\s*([^.\n]+)/i) || latestMsg.match(/Username:\*{0,2}\s*([^\n\r*]+)/i);
-                                    if (m && m[1]) {
-                                        displayName = m[1].trim();
-                                    }
-                                }
                                 if (!displayName || displayName === conv.uuid) {
                                     displayName = `User_${conv.uuid.substring(0, 6)}`;
                                 }
@@ -531,7 +540,9 @@ export default function ConversationsIndex({
                                             </div>
 
                                             <p className={`text-xs line-clamp-1 mb-1.5 leading-snug ${hasUnreadAdminMessage ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
-                                                {latestMsg || '(Sesi percakapan baru)'}
+                                                {latestMessageObj?.role === 'admin'
+                                                    ? `Anda: ${latestMsg}`
+                                                    : latestMsg || '(Sesi percakapan baru)'}
                                             </p>
 
                                         <div className="flex items-center justify-between gap-1">
@@ -845,7 +856,7 @@ export default function ConversationsIndex({
                                     />
                                 </div>
 
-                                {/* Tombol Balasan Cepat (Automate / Canned Response) */}
+                                {/* Tombol Automate (Canned Response) */}
                                 <div className="relative shrink-0">
                                     <Button
                                         type="button"
@@ -853,16 +864,16 @@ export default function ConversationsIndex({
                                         variant="outline"
                                         onClick={() => setShowCannedMenu(!showCannedMenu)}
                                         className="h-9 px-2.5 rounded-xl text-xs gap-1 font-semibold text-amber-700 dark:text-amber-300 border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 cursor-pointer shadow-2xs"
-                                        title="Pilih Balasan Cepat (#canned response)"
+                                        title="Pilih Automate (#hashtag shortcut)"
                                     >
                                         <Zap className="size-3.5 text-amber-500" />
-                                        <span className="hidden sm:inline">Balasan Cepat</span>
+                                        <span className="hidden sm:inline">Automate</span>
                                     </Button>
 
                                     {showCannedMenu && (
                                         <div className="absolute bottom-11 right-0 w-80 max-h-72 overflow-y-auto rounded-xl border border-border bg-popover p-2 shadow-xl z-50 space-y-1.5">
                                             <div className="px-2 py-1 text-[11px] font-bold text-muted-foreground flex items-center justify-between border-b border-border/50">
-                                                <span>Pilih Balasan Cepat</span>
+                                                <span>Pilih Automate</span>
                                                 <span className="text-[10px] font-normal">{cannedList.length} template</span>
                                             </div>
                                             {cannedList.map((cr) => (

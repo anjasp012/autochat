@@ -69,7 +69,7 @@ class ConversationController extends Controller
             ->with([
                 'application:id,app_id,name',
                 'takenOverBy:id,name',
-                'messages' => fn ($q) => $q->orderBy('created_at', 'desc')->limit(1),
+                'latestMessage',
             ])
             ->withCount('messages')
             ->when($search, function ($query, $search) {
@@ -82,7 +82,6 @@ class ConversationController extends Controller
             })
             ->when($status === 'waiting', fn ($q) => $q->where('is_archived', false)->where('is_waiting_admin', true))
             ->when($status === 'mine', fn ($q) => $q->where('is_archived', false)->where('is_taken_over', true)->where('taken_over_by', $request->user()?->id))
-            ->when($status === 'unassigned', fn ($q) => $q->where('is_archived', false)->where('is_taken_over', false)->whereNull('taken_over_by'))
             ->when($status === 'bot' || $status === 'ai', fn ($q) => $q->where('is_archived', false)->where('is_taken_over', false))
             ->when($status === 'archived', fn ($q) => $q->where('is_archived', true))
             ->when($status === 'taken_over', fn ($q) => $q->where('is_archived', false)->where('is_taken_over', true))
