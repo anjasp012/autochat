@@ -11,7 +11,12 @@ const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 void createInertiaApp({
     title: (title) => {
         if (!title) return appName;
-        if (typeof window !== 'undefined' && window.location.pathname.startsWith('/chat')) {
+        if (
+            typeof window !== 'undefined' &&
+            (window.location.pathname.includes('/chat') ||
+             window.location.href.includes('/chat') ||
+             window.location.pathname.includes('chat'))
+        ) {
             return title;
         }
         return `${title} - ${appName}`;
