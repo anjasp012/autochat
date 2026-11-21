@@ -63,9 +63,17 @@
         #autochat-widget-btn:active {
             transform: scale(0.95);
         }
+        #autochat-widget-btn img {
+            width: 34px;
+            height: 34px;
+            object-fit: contain;
+            border-radius: 6px;
+            pointer-events: none;
+            transition: transform 0.2s ease;
+        }
         #autochat-widget-btn svg {
-            width: 28px;
-            height: 28px;
+            width: 24px;
+            height: 24px;
             transition: transform 0.2s ease, opacity 0.2s ease;
         }
         #autochat-widget-frame-container {

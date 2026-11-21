@@ -378,18 +378,6 @@ export default function ConversationsIndex({
                             );
                         })}
                     </nav>
-
-                    {selectedApp && (
-                        <div className="mt-auto p-2.5 rounded-xl border border-border/60 bg-background/50 text-xs space-y-1">
-                            <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
-                                Bot Aktif
-                            </span>
-                            <div className="flex items-center gap-1.5 font-semibold text-foreground truncate">
-                                <Bot className="size-3.5 text-primary shrink-0" />
-                                <span className="truncate">{selectedApp.name}</span>
-                            </div>
-                        </div>
-                    )}
                 </div>
 
                 {/* PANEL 2: Thread List Percakapan */}
@@ -464,6 +452,17 @@ export default function ConversationsIndex({
                                 const isSelected = activeConversation?.uuid === conv.uuid;
                                 const latestMsg = conv.messages && conv.messages[0] ? conv.messages[0].content : '';
 
+                                let displayName = conv.user_identifier;
+                                if (!displayName || displayName === conv.uuid) {
+                                    const m = latestMsg.match(/User ID saya:\s*([^.\n]+)/i) || latestMsg.match(/Username:\*{0,2}\s*([^\n\r*]+)/i);
+                                    if (m && m[1]) {
+                                        displayName = m[1].trim();
+                                    }
+                                }
+                                if (!displayName || displayName === conv.uuid) {
+                                    displayName = `User_${conv.uuid.substring(0, 6)}`;
+                                }
+
                                 return (
                                     <div
                                         key={conv.uuid}
@@ -493,12 +492,11 @@ export default function ConversationsIndex({
                                         {/* Content Preview */}
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center justify-between gap-1 mb-0.5">
-                                                <span className="text-xs font-bold truncate text-foreground">
-                                                    {conv.user_identifier ? (
-                                                        <span>{conv.user_identifier}</span>
-                                                    ) : (
-                                                        <span className="font-mono text-[11px] opacity-80">{conv.uuid.substring(0, 14)}...</span>
-                                                    )}
+                                                <span className="text-xs font-bold truncate text-foreground flex items-center gap-1.5">
+                                                    <span>{displayName}</span>
+                                                    <span className="font-mono text-[10px] text-muted-foreground font-normal opacity-70">
+                                                        ({conv.uuid.substring(0, 6)})
+                                                    </span>
                                                 </span>
                                                 <span className="text-[10px] text-muted-foreground shrink-0 font-mono">
                                                     {(() => {
@@ -565,16 +563,26 @@ export default function ConversationsIndex({
                                     </div>
                                     <div className="flex flex-col min-w-0">
                                         <div className="flex items-center gap-2">
-                                            <span className="text-sm font-bold truncate text-foreground flex items-center gap-1.5">
-                                                {activeConversation.user_identifier ? (
-                                                    <>
-                                                        <span>{activeConversation.user_identifier}</span>
+                                            {(() => {
+                                                let activeDisplayName = activeConversation.user_identifier;
+                                                if (!activeDisplayName || activeDisplayName === activeConversation.uuid) {
+                                                    const firstMsg = localMessages.find((m) => m.role === 'user')?.content || '';
+                                                    const m = firstMsg.match(/User ID saya:\s*([^.\n]+)/i) || firstMsg.match(/Username:\*{0,2}\s*([^\n\r*]+)/i);
+                                                    if (m && m[1]) {
+                                                        activeDisplayName = m[1].trim();
+                                                    }
+                                                }
+                                                if (!activeDisplayName || activeDisplayName === activeConversation.uuid) {
+                                                    activeDisplayName = `User_${activeConversation.uuid.substring(0, 6)}`;
+                                                }
+
+                                                return (
+                                                    <span className="text-sm font-bold truncate text-foreground flex items-center gap-1.5">
+                                                        <span>{activeDisplayName}</span>
                                                         <span className="text-xs font-mono font-normal text-muted-foreground">({activeConversation.uuid.substring(0, 8)}...)</span>
-                                                    </>
-                                                ) : (
-                                                    <span className="font-mono">{activeConversation.uuid}</span>
-                                                )}
-                                            </span>
+                                                    </span>
+                                                );
+                                            })()}
                                             {activeConversation.is_archived ? (
                                                 <Badge variant="outline" className="text-[10px] gap-1 px-1.5 py-0 h-4.5">
                                                     <Archive className="size-2.5" />

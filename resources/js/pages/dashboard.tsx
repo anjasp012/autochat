@@ -103,15 +103,6 @@ export default function Dashboard({
                 <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-background p-5 sm:p-6 shadow-xs">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                         <div className="space-y-1.5">
-                            <div className="flex items-center gap-2">
-                                <span className="relative flex size-2.5">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                                    <span className="relative inline-flex rounded-full size-2.5 bg-emerald-500" />
-                                </span>
-                                <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                                    Sistem Live & Reverb Realtime Aktif
-                                </span>
-                            </div>
                             <h1 className="text-xl sm:text-2xl font-black tracking-tight text-foreground">
                                 Command Center {activeApp?.name || 'Customer Support'}
                             </h1>
