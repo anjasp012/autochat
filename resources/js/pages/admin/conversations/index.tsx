@@ -333,6 +333,22 @@ export default function ConversationsIndex({
         },
     ];
 
+    const activeDisplayName = (() => {
+        if (!activeConversation) return '';
+        let name = activeConversation.user_identifier;
+        if (!name || name === activeConversation.uuid) {
+            const firstMsg = localMessages.find((m) => m.role === 'user')?.content || '';
+            const m = firstMsg.match(/User ID saya:\s*([^.\n]+)/i) || firstMsg.match(/Username:\*{0,2}\s*([^\n\r*]+)/i);
+            if (m && m[1]) {
+                name = m[1].trim();
+            }
+        }
+        if (!name || name === activeConversation.uuid) {
+            name = `User_${activeConversation.uuid.substring(0, 6)}`;
+        }
+        return name;
+    })();
+
     return (
         <>
             <Head title="Conversations - Admin" />
