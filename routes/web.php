@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\ApplicationController;
 use App\Http\Controllers\Admin\ConversationController;
+use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\ChatController;
 use App\Models\Application;
@@ -44,7 +45,7 @@ Route::get('chat/{application:app_id}/session/{uuid}', [ChatController::class, '
 
 // Authenticated Panel Routes (Direct Menu URLs without /admin)
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::inertia('dashboard', 'dashboard')->name('dashboard');
+    Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // Knowledge Base
     Route::inertia('knowledge-base', 'admin/knowledge-base/index')->name('knowledge-base.index');

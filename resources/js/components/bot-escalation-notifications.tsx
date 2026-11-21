@@ -159,8 +159,8 @@ export function BotEscalationNotifications() {
     const handleTakeover = (notif: EscalationItem) => {
         handleMarkAsRead(notif);
         setIsOpen(false);
-        // Navigate to conversations page and highlight or search for this conversation
-        router.visit(`/conversations?status=waiting&search=${notif.conversation_uuid}`);
+        // Navigate directly to the conversation show page without filtering the list
+        router.visit(`/conversations/${notif.conversation_uuid}`);
     };
 
     const getIcon = (type: string) => {

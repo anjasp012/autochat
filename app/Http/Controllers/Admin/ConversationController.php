@@ -141,7 +141,7 @@ class ConversationController extends Controller
         $systemMessage = Message::create([
             'conversation_id' => $conversation->id,
             'role' => 'system',
-            'content' => 'Percakapan telah diambil alih oleh administrator. AI dihentikan sementara.',
+            'content' => 'Percakapan telah diambil alih oleh administrator.',
         ]);
 
         MessageSent::safeDispatch($systemMessage);

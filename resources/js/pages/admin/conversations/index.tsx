@@ -15,6 +15,7 @@ import {
     User,
     UserCheck,
     UserX,
+    X,
 } from 'lucide-react';
 import ChatMarkdown from '@/components/chat-markdown';
 import { Badge } from '@/components/ui/badge';
@@ -428,8 +429,21 @@ export default function ConversationsIndex({
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                                 placeholder="Cari ID, pesan, atau IP..."
-                                className="pl-8 h-8 text-xs bg-background/80 rounded-lg"
+                                className="pl-8 pr-7 h-8 text-xs bg-background/80 rounded-lg"
                             />
+                            {search && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setSearch('');
+                                        router.get('/conversations', { status: currentStatus !== 'all' ? currentStatus : undefined }, { preserveState: true });
+                                    }}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+                                    title="Bersihkan Pencarian"
+                                >
+                                    <X className="size-3.5" />
+                                </button>
+                            )}
                         </form>
                     </div>
 
