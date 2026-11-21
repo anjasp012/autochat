@@ -102,16 +102,22 @@ export default function Dashboard({
                 {/* HERO BANNER */}
                 <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-background p-5 sm:p-6 shadow-xs">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                        <div className="space-y-1.5">
-                            <h1 className="text-xl sm:text-2xl font-black tracking-tight text-foreground">
-                                Command Center {activeApp?.name || 'Customer Support'}
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                                <div className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-xs font-bold text-amber-700 dark:text-amber-400">
+                                    <Bot className="size-3.5" />
+                                    <span>{activeApp?.name || 'Customer Support AI'}</span>
+                                </div>
+                            </div>
+                            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">
+                                Dashboard Livechat
                             </h1>
-                            <p className="text-xs sm:text-sm text-muted-foreground">
-                                Kelola percakapan pengunjung, antrean pengecekan deposit/withdraw, dan integrasi bot secara terpusat.
+                            <p className="text-xs sm:text-sm text-muted-foreground max-w-2xl leading-relaxed">
+                                Kelola percakapan pengunjung, antrean pengecekan deposit/withdraw, dan pemantauan bot secara terpusat.
                             </p>
                         </div>
 
-                        <div className="flex items-center gap-2 shrink-0">
+                        <div className="flex items-center gap-2.5 shrink-0">
                             <Button asChild size="sm" className="h-9 px-4 rounded-xl font-bold text-xs bg-amber-500 hover:bg-amber-600 text-neutral-950 cursor-pointer shadow-xs gap-1.5">
                                 <Link href="/conversations">
                                     <MessageSquare className="size-4" />

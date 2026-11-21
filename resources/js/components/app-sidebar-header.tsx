@@ -26,7 +26,7 @@ export function AppSidebarHeader({
         (app: ApplicationSummary) => app.app_id === currentAppId
     ) || appList[0];
 
-    const chatUrl = currentApp ? `/${currentApp.app_id}` : '/chat';
+    const chatUrl = currentApp ? `/chat/${currentApp.app_id}` : '/chat';
 
     return (
         <header className="flex h-16 shrink-0 items-center justify-between border-b border-sidebar-border/50 px-6 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 md:px-4">

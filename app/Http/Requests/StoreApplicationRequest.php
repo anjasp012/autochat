@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Models\SystemSetting;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Str;
 
 class StoreApplicationRequest extends FormRequest
 {
@@ -42,7 +43,10 @@ class StoreApplicationRequest extends FormRequest
      */
     protected function prepareForValidation(): void
     {
+        $appId = $this->input('app_id') ?: Str::slug((string) $this->input('name'));
+
         $this->merge([
+            'app_id' => Str::slug((string) $appId),
             'model' => $this->input('model') ?: (SystemSetting::get('ai_model') ?: config('ai.model', 'openai/gpt-oss-120b')),
             'temperature' => (float) ($this->input('temperature') ?? 0.70),
             'max_tokens' => (int) ($this->input('max_tokens') ?? 2048),

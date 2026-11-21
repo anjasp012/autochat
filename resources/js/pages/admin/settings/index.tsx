@@ -189,6 +189,8 @@ export default function AdminSettings({ application }: Props) {
         current.push({
             id: `tpl-${Date.now()}`,
             topic: '',
+            trigger_keywords: '',
+            show_in_select: true,
             bot_reply: 'Hallo bosku 👋 {waktu}, ada yang bisa dibantu, Bosku?',
             form_type: 'none',
         });
@@ -811,6 +813,35 @@ export default function AdminSettings({ application }: Props) {
                                                 >
                                                     <Trash2 className="size-3.5" />
                                                 </Button>
+                                            </div>
+
+                                            {/* Kata Kunci Pemicu & Pilihan Tampil di Form Select */}
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-border/40">
+                                                <div>
+                                                    <Label className="text-[10px] font-semibold text-muted-foreground mb-1 block">
+                                                        Kata Kunci Pemicu Otomatis (misal: terimakasih, makasih)
+                                                    </Label>
+                                                    <Input
+                                                        value={tpl.trigger_keywords || ''}
+                                                        onChange={(e) => handleUpdateTemplate(tpl.id, 'trigger_keywords', e.target.value)}
+                                                        placeholder="Contoh: terimakasih, makasih, thank you"
+                                                        className="h-8 text-xs font-mono"
+                                                    />
+                                                </div>
+                                                <div className="flex items-center justify-between border border-border/60 rounded-lg px-3 py-1.5 bg-background/50">
+                                                    <div className="space-y-0.5">
+                                                        <span className="text-xs font-semibold block text-foreground">
+                                                            Tampil di Dropdown Select
+                                                        </span>
+                                                        <span className="text-[10px] text-muted-foreground block">
+                                                            {tpl.show_in_select !== false ? 'Muncul di form awal' : 'Disembunyikan (Hanya via Chat/AI)'}
+                                                        </span>
+                                                    </div>
+                                                    <Switch
+                                                        checked={tpl.show_in_select !== false}
+                                                        onCheckedChange={(checked) => handleUpdateTemplate(tpl.id, 'show_in_select', checked)}
+                                                    />
+                                                </div>
                                             </div>
 
                                             <div>

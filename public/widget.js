@@ -141,11 +141,10 @@
     btn.setAttribute('aria-label', 'Buka Chat Customer Support');
     btn.title = 'Livechat Customer Support';
 
-    // Icons: Chat & Close
+    // Icons: Logo Favicon PNG & Close
+    var iconUrl = (currentScript && currentScript.getAttribute('data-icon')) || (baseUrl + '/favicon.png');
     var chatIcon = `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-        </svg>
+        <img src="${iconUrl}" alt="Livechat" onerror="this.onerror=null;this.src='${baseUrl}/apple-touch-icon.png';" />
     `;
 
     var closeIcon = `

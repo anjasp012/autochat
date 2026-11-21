@@ -892,11 +892,13 @@ export default function ChatShow({
                                                 className="w-full h-10 px-3 text-xs rounded-xl bg-slate-50 border border-neutral-200 text-neutral-900 font-medium focus:outline-none focus:ring-1 focus:ring-amber-400 focus:bg-white cursor-pointer"
                                             >
                                                 <option value="">Pilih...</option>
-                                                {chatTemplates.map((t) => (
-                                                    <option key={t.id || t.topic} value={t.topic}>
-                                                        {t.topic}
-                                                    </option>
-                                                ))}
+                                                {chatTemplates
+                                                    .filter((t) => t.show_in_select !== false)
+                                                    .map((t) => (
+                                                        <option key={t.id || t.topic} value={t.topic}>
+                                                            {t.topic}
+                                                        </option>
+                                                    ))}
                                             </select>
                                         </div>
 

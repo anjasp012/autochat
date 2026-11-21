@@ -141,6 +141,21 @@ class ChatController extends Controller
             ]);
         }
 
+        // Auto-extract and persist user_identifier if found in message
+        $extractedUserId = null;
+        if (preg_match('/User ID saya:\s*([^.\n]+)/i', $userText, $m)) {
+            $extractedUserId = trim($m[1]);
+        } elseif (preg_match('/Username:\*{0,2}\s*([^\n\r*]+)/i', $userText, $m)) {
+            $extractedUserId = trim(str_replace('*', '', $m[1]));
+        } elseif ($request->filled('user_id')) {
+            $extractedUserId = trim((string) $request->input('user_id'));
+        }
+
+        if ($extractedUserId && (empty($conversation->user_identifier) || $conversation->user_identifier === $conversation->uuid)) {
+            $conversation->user_identifier = $extractedUserId;
+            $conversation->saveQuietly();
+        }
+
         // Save user message to database
         $userMessage = Message::create([
             'conversation_id' => $conversation->id,
@@ -446,6 +461,37 @@ Sertakan tag [FORM:withdraw_status] di awal balasanmu, lalu berikan balasan rama
 3. Jika pengguna SUDAH mengirimkan data formulir (ada Username dan Tanggal) atau pertanyaannya TIDAK membutuhkan formulir status (misalnya tanya cara deposit, nomor rekening, bonus, prediksi togel, atau slot gacor):
 JANGAN sertakan tag [FORM:...], jawablah langsung secara informatif, sopan, dan ramah seperti Customer Service profesional.
 PROMPT;
+
+        // Injeksi Template Pesan (FAQ / Auto-Trigger seperti ucapan terimakasih dll)
+        $configuredTemplates = $application->chat_settings['chat_templates'] ?? [];
+        if (is_array($configuredTemplates) && count($configuredTemplates) > 0) {
+            $tplLines = [];
+            foreach ($configuredTemplates as $tpl) {
+                $topic = $tpl['topic'] ?? '';
+                $keywords = $tpl['trigger_keywords'] ?? '';
+                $rawReply = $tpl['bot_reply'] ?? '';
+                if ($rawReply) {
+                    $hour = (int) now()->format('H');
+                    $timeGreeting = $hour >= 4 && $hour < 11 ? 'Selamat Pagi' : ($hour < 15 ? 'Selamat Siang' : ($hour < 18 ? 'Selamat Sore' : 'Selamat Malam'));
+                    $cleanReply = str_replace(
+                        ['{app_name}', '{waktu}', '{nama_cs}'],
+                        [$application->name, $timeGreeting, $application->chat_settings['cs_agent_name'] ?? 'Rahma'],
+                        $rawReply
+                    );
+
+                    $desc = "- Topik: \"{$topic}\"";
+                    if ($keywords) {
+                        $desc .= " (Kata Kunci Pemicu: {$keywords})";
+                    }
+                    $desc .= " => Rekomendasi Jawaban: \"{$cleanReply}\"";
+                    $tplLines[] = $desc;
+                }
+            }
+
+            if (count($tplLines) > 0) {
+                $systemPrompt .= "\n\nPANDUAN TEMPLATE BALASAN:\nBerikut adalah template respon yang telah disiapkan admin. Evaluasilah apakah pesan pengguna cocok dengan template berikut (misal ucapan terima kasih, pertanyaan bonus, dll). Jika cocok, utamakan menjawab menggunakan isi template tersebut atau adaptasikan secara ramah dan sopan:\n".implode("\n", $tplLines);
+            }
+        }
 
         // Query LLM Service
         $llmResult = $this->llmService->chat(

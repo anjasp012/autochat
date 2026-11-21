@@ -80,6 +80,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('admin/setting', fn () => redirect('/setting'));
 
     // Applications Management (Direct routes & backwards compatibility)
+    Route::get('applications', fn () => redirect()->route('dashboard'))->name('applications.index');
+    Route::get('admin/applications', fn () => redirect()->route('dashboard'));
+
     Route::post('applications/switch-current', [ApplicationController::class, 'switchCurrent'])->name('applications.switch-current');
     Route::post('admin/applications/switch-current', [ApplicationController::class, 'switchCurrent']);
 
