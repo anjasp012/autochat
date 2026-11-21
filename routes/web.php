@@ -6,7 +6,27 @@ use App\Http\Controllers\ChatController;
 use App\Models\Application;
 use Illuminate\Support\Facades\Route;
 
-Route::inertia('/', 'welcome')->name('home');
+// Akses domain utama dikosongkan (tidak menampilkan welcome page)
+Route::get('/', fn () => response(''))->name('home');
+
+// CMS Login dan panel admin diakses via /adminbot
+Route::get('adminbot', function () {
+    if (auth()->check()) {
+        return redirect()->route('dashboard');
+    }
+
+    return redirect()->route('login');
+})->name('adminbot');
+
+Route::get('adminbot/login', function () {
+    if (auth()->check()) {
+        return redirect()->route('dashboard');
+    }
+
+    return redirect()->route('login');
+});
+
+Route::get('admin', fn () => redirect('adminbot'));
 
 // Public Chat routes
 Route::get('chat', function () {
@@ -81,5 +101,5 @@ require __DIR__.'/settings.php';
 
 // Direct slug route (e.g. domain/slug opens chatbot directly)
 Route::get('{application:app_id}', [ChatController::class, 'show'])
-    ->where('application', '^(?!dashboard|admin|login|logout|register|forgot-password|reset-password|settings|setting|knowledge-base|conversations|applications|chat|storage|up|_boost|_inertia).*$')
+    ->where('application', '^(?!dashboard|admin|adminbot|login|logout|register|forgot-password|reset-password|settings|setting|knowledge-base|conversations|applications|chat|storage|up|_boost|_inertia).*$')
     ->name('chat.direct');

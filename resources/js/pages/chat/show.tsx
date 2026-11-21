@@ -183,20 +183,19 @@ export default function ChatShow({
         }
     }, [headerTitle, application.name]);
 
-    // Dynamically update browser tab favicon
+    // Dynamically update browser tab favicon for this specific application
     useEffect(() => {
-        if (faviconUrl) {
-            const rels = ['icon', 'shortcut icon', 'apple-touch-icon'];
-            rels.forEach((rel) => {
-                let link = document.querySelector(`link[rel='${rel}']`) as HTMLLinkElement;
-                if (!link) {
-                    link = document.createElement('link');
-                    link.rel = rel;
-                    document.head.appendChild(link);
-                }
-                link.href = faviconUrl;
-            });
-        }
+        const activeFavicon = faviconUrl || '/favicon.png';
+        const oldLinks = document.querySelectorAll("link[rel*='icon'], link[rel='apple-touch-icon']");
+        oldLinks.forEach((el) => el.parentNode?.removeChild(el));
+
+        const rels = ['icon', 'shortcut icon', 'apple-touch-icon'];
+        rels.forEach((rel) => {
+            const link = document.createElement('link');
+            link.rel = rel;
+            link.href = activeFavicon;
+            document.head.appendChild(link);
+        });
     }, [faviconUrl]);
 
     // UUID Generator

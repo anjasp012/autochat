@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { ExternalLink } from 'lucide-react';
 
 interface Props {
     content: string;
@@ -12,9 +13,15 @@ export default function ChatMarkdown({ content, className = '' }: Props) {
     // dari admin/user harus tetap turun ke baris berikutnya (hard break), bukan bablas ke samping.
     const formattedContent = React.useMemo(() => {
         if (!content) return '';
-        const normalized = content.replace(/\r\n/g, '\n');
+        let text = content.replace(/\r\n/g, '\n');
+
+        // Jika teks berisi beberapa link atau kata kunci (WHATSAPP, TELEGRAM, dll.) yang menumpuk di 1 baris,
+        // rapikan otomatis dengan memisahkannya ke baris baru agar rapi menurun
+        text = text.replace(/([^\n])\s*(?:️|\uFE0F)?\s*(https?:\/\/[^\s]+)/gi, '$1\n👉 $2');
+        text = text.replace(/([^\n])\s+(WHATSAPP|TELEGRAM|LIVECHAT|LINK ANTI NAWALA|LINK ALTERNATIF)/gi, '$1\n\n**$2**');
+
         // Tambahkan dua trailing spasi pada setiap baris berteks agar diinterpretasikan sebagai hard line break (<br />) oleh Markdown
-        return normalized
+        return text
             .split('\n')
             .map((line) => (line.trim() === '' ? '' : `${line}  `))
             .join('\n');
@@ -53,9 +60,10 @@ export default function ChatMarkdown({ content, className = '' }: Props) {
                             href={href}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="font-semibold text-emerald-600 dark:text-emerald-400 underline underline-offset-2 hover:opacity-80 break-all"
+                            className="inline-flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400 underline underline-offset-2 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors break-all"
                         >
-                            {children}
+                            <span>{children}</span>
+                            <ExternalLink className="size-3 shrink-0 inline opacity-70" />
                         </a>
                     ),
                     code: ({ children }) => (
@@ -63,7 +71,7 @@ export default function ChatMarkdown({ content, className = '' }: Props) {
                     ),
                 }}
             >
-                {content}
+                {formattedContent}
             </ReactMarkdown>
         </div>
     );

@@ -30,6 +30,7 @@ import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import ChatMarkdown from '@/components/chat-markdown';
 import type { ApplicationDetail } from '@/types/application';
 
 interface Props {
@@ -263,6 +264,45 @@ export default function AdminSettings({ application }: Props) {
             updateChatSetting(settingKey, base64);
         };
         reader.readAsDataURL(file);
+    };
+
+    // State untuk tab Pesan Pembuka (Editor vs Preview)
+    const [openingTab, setOpeningTab] = useState<'editor' | 'preview'>('editor');
+
+    const handleAutoFormatOpening = () => {
+        const text = data.chat_settings.welcome_opening || '';
+        const urls = text.match(/https?:\/\/[^\s\)\>\]]+/gi) || [];
+
+        let formatted = `Selamat Datang di CS ${application.name}\n\n`;
+        formatted += `🔥 **Link Alternatif Anti Nawala Resmi:**\n`;
+
+        const antiNawalaUrls = urls.filter(
+            (u: string) => !u.includes('wa') && !u.includes('tele') && !u.includes('t.me')
+        );
+
+        if (antiNawalaUrls.length > 0) {
+            antiNawalaUrls.forEach((url: string, i: number) => {
+                formatted += `👉 [Link Alternatif ${i + 1}](${url})\n`;
+            });
+        } else {
+            formatted += `👉 [Link Alternatif 1](https://kiamkiam.site/cvtogel1)\n👉 [Link Alternatif 2](https://kiamkiam.site/cvtogel2)\n`;
+        }
+
+        formatted += `\n📱 **Layanan Kontak Resmi (WAJIB DI SIMPAN):**\n`;
+        const waUrl = urls.find((u: string) => u.includes('wa')) || 'https://kiamkiam.site/wacvtogel';
+        const teleUrl =
+            urls.find((u: string) => u.includes('tele') || u.includes('t.me')) ||
+            'https://kiamkiam.site/telecvtogel';
+
+        formatted += `💬 [WHATSAPP CS RESMI](${waUrl})\n`;
+        formatted += `✈️ [TELEGRAM CS RESMI](${teleUrl})\n`;
+
+        updateChatSetting('welcome_opening', formatted);
+    };
+
+    const handleInsertHelper = (snippet: string) => {
+        const current = data.chat_settings.welcome_opening || '';
+        updateChatSetting('welcome_opening', current ? `${current}\n${snippet}` : snippet);
     };
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -936,25 +976,113 @@ export default function AdminSettings({ application }: Props) {
                         {/* 7. PESAN PEMBUKA & LINK ANTI NAWALA */}
                         <Card>
                             <CardHeader className="pb-3">
-                                <CardTitle className="text-sm font-bold flex items-center gap-2">
-                                    <MessageSquare className="size-4 text-amber-500" />
-                                    <span>Pesan Pembuka & Link Resmi Anti Nawala</span>
-                                </CardTitle>
-                                <CardDescription className="text-xs">
-                                    Pesan selamat datang yang muncul pertama kali di kartu informasi livechat.
-                                </CardDescription>
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                    <div>
+                                        <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                            <MessageSquare className="size-4 text-amber-500" />
+                                            <span>Pesan Pembuka & Link Resmi Anti Nawala</span>
+                                        </CardTitle>
+                                        <CardDescription className="text-xs mt-0.5">
+                                            Pesan selamat datang yang muncul pertama kali di kartu informasi livechat.
+                                        </CardDescription>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={handleAutoFormatOpening}
+                                        className="px-3 py-1.5 text-xs font-bold text-amber-850 dark:text-amber-200 bg-amber-100 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700/80 rounded-xl hover:bg-amber-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs active:scale-95 shrink-0"
+                                        title="Otomatis rapikan link & kontak ke format Markdown terbaik"
+                                    >
+                                        <Sparkles className="size-3.5 text-amber-600 dark:text-amber-400" />
+                                        <span>Rapikan Otomatis</span>
+                                    </button>
+                                </div>
                             </CardHeader>
                             <CardContent className="space-y-3">
-                                <Textarea
-                                    value={data.chat_settings.welcome_opening}
-                                    onChange={(e) => updateChatSetting('welcome_opening', e.target.value)}
-                                    rows={5}
-                                    className="font-mono text-xs leading-relaxed"
-                                    placeholder="Selamat Datang di Link Alternatif Resmi..."
-                                />
-                                <span className="text-[11px] text-muted-foreground block">
-                                    Format Markdown didukung: <code className="font-mono text-emerald-600">[Link Teks](https://url)</code>.
-                                </span>
+                                {/* Tab Selector: Editor vs Preview */}
+                                <div className="flex items-center justify-between border-b border-border pb-2.5">
+                                    <div className="flex items-center gap-1 bg-muted/60 p-0.5 rounded-lg border border-border/60">
+                                        <button
+                                            type="button"
+                                            onClick={() => setOpeningTab('editor')}
+                                            className={`px-3 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                                                openingTab === 'editor'
+                                                    ? 'bg-background text-foreground shadow-xs'
+                                                    : 'text-muted-foreground hover:text-foreground'
+                                            }`}
+                                        >
+                                            Editor Teks (Markdown)
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setOpeningTab('preview')}
+                                            className={`px-3 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer flex items-center gap-1.5 ${
+                                                openingTab === 'preview'
+                                                    ? 'bg-background text-foreground shadow-xs'
+                                                    : 'text-muted-foreground hover:text-foreground'
+                                            }`}
+                                        >
+                                            <Eye className="size-3 text-emerald-500" />
+                                            <span>Pratinjau Hasil</span>
+                                        </button>
+                                    </div>
+
+                                    {/* Quick helper buttons */}
+                                    {openingTab === 'editor' && (
+                                        <div className="hidden sm:flex items-center gap-1 text-[11px]">
+                                            <button
+                                                type="button"
+                                                onClick={() => handleInsertHelper('👉 [Link Alternatif](https://...)')}
+                                                className="px-2 py-0.5 rounded bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                                            >
+                                                + Link
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleInsertHelper('💬 [WhatsApp CS](https://wa.me/...)')}
+                                                className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/60 hover:bg-emerald-100 transition-colors cursor-pointer"
+                                            >
+                                                + WhatsApp
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleInsertHelper('✈️ [Telegram CS](https://t.me/...)')}
+                                                className="px-2 py-0.5 rounded bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300 border border-sky-200/60 hover:bg-sky-100 transition-colors cursor-pointer"
+                                            >
+                                                + Telegram
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleInsertHelper('**Teks Tebal**')}
+                                                className="px-2 py-0.5 rounded bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground font-bold transition-colors cursor-pointer"
+                                            >
+                                                B
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {openingTab === 'editor' ? (
+                                    <div className="space-y-1.5">
+                                        <Textarea
+                                            value={data.chat_settings.welcome_opening}
+                                            onChange={(e) => updateChatSetting('welcome_opening', e.target.value)}
+                                            rows={7}
+                                            className="font-mono text-xs leading-relaxed"
+                                            placeholder="Selamat Datang di Link Alternatif Resmi..."
+                                        />
+                                        <span className="text-[11px] text-muted-foreground block">
+                                            Format Markdown didukung: <code className="font-mono text-emerald-600">[Nama Link](https://...)</code>, <code className="font-mono text-amber-600">**teks tebal**</code>, atau klik tombol <strong>Rapikan Otomatis</strong> di atas.
+                                        </span>
+                                    </div>
+                                ) : (
+                                    <div className="p-4 rounded-xl border border-border bg-slate-50/70 dark:bg-neutral-900/40 min-h-[140px] space-y-2">
+                                        <div className="flex items-center gap-2 font-bold text-xs text-neutral-800 dark:text-neutral-200 border-b border-border/60 pb-2">
+                                            <Sparkles className="size-3.5 text-amber-500" />
+                                            <span>Informasi Resmi & Link Alternatif (Pratinjau Livechat)</span>
+                                        </div>
+                                        <ChatMarkdown content={data.chat_settings.welcome_opening || ''} />
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
 
