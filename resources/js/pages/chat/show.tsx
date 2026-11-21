@@ -7,17 +7,12 @@ import {
     Bot,
     Clock,
     FileText,
-    Flame,
-    Gamepad2,
-    Headphones,
     HelpCircle,
     Home as HomeIcon,
     MessageSquare,
     Plus,
     Send,
-    ShieldCheck,
     Sparkles,
-    Trophy,
     User as UserIcon,
     UserCheck,
 } from 'lucide-react';
@@ -68,14 +63,18 @@ export default function ChatShow({
     const splashDescription = cs.splash_description || 'Ada yang Bisa Kami Bantu, Bosku?';
     const headerTitle = cs.header_title || application.name;
 
-    // Ambil 3 avatar terpilih dari galeri
-    const activeAvatars: string[] = Array.isArray(cs.selected_avatars) && cs.selected_avatars.length > 0
-        ? cs.selected_avatars.slice(0, 3)
-        : [
-              cs.avatar_1 || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
-              cs.avatar_2 || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&auto=format&fit=crop&q=80',
-              cs.avatar_3 || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80',
-          ];
+    // 3 Foto profil CS terpilih dari galeri
+    const activeAvatars: string[] =
+        Array.isArray(cs.selected_avatars) && cs.selected_avatars.length > 0
+            ? cs.selected_avatars.slice(0, 3)
+            : [
+                  cs.avatar_1 ||
+                      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
+                  cs.avatar_2 ||
+                      'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&auto=format&fit=crop&q=80',
+                  cs.avatar_3 ||
+                      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80',
+              ];
 
     const bannerBadge = cs.banner_badge || 'OFFICIAL 24/7 SUPPORT';
     const bannerTitle = cs.banner_title || application.name;
@@ -147,6 +146,19 @@ export default function ChatShow({
     useEffect(() => {
         scrollToBottom();
     }, [messages, isLoading, activeTab]);
+
+    // Dynamically update browser tab favicon
+    useEffect(() => {
+        if (faviconUrl) {
+            let link = document.querySelector("link[rel*='icon']") as HTMLLinkElement;
+            if (!link) {
+                link = document.createElement('link');
+                link.rel = 'icon';
+                document.head.appendChild(link);
+            }
+            link.href = faviconUrl;
+        }
+    }, [faviconUrl]);
 
     // Generate UUID v4
     const generateUuid = (): string => {
@@ -392,59 +404,51 @@ export default function ChatShow({
         }
     };
 
-    // Render icon helper
-    const renderIcon = (type: string, className = 'size-6') => {
-        switch (type) {
-            case 'bot':
-                return <Bot className={className} />;
-            case 'headphones':
-                return <Headphones className={className} />;
-            case 'gamepad':
-                return <Gamepad2 className={className} />;
-            case 'trophy':
-                return <Trophy className={className} />;
-            case 'flame':
-                return <Flame className={className} />;
-            case 'shield':
-                return <ShieldCheck className={className} />;
-            default:
-                return <Sparkles className={className} />;
-        }
-    };
+    // Kondisi apakah sedang di halaman Beranda awal (belum mulai chat sama sekali)
+    const isFirstTimeLanding = activeTab === 'beranda' && !hasSubmittedForm && messages.length === 0;
 
     return (
         <div
             className="flex h-screen w-full overflow-hidden transition-colors"
             style={{ backgroundColor: bgColor }}
         >
-            <Head title={`Livechat - ${application.name}`} />
+            <Head title={`Livechat - ${application.name}`}>
+                {faviconUrl && <link rel="icon" href={faviconUrl} />}
+            </Head>
 
             {/* ============================================================== */}
             {/* LEFT SPLIT COLUMN: BRAND WELCOME SPLASH (PERSIS 50% LAYAR KIRI) */}
             {/* ============================================================== */}
-            <div className="hidden md:flex md:w-1/2 h-full flex-col justify-center items-center px-8 lg:px-16 xl:px-24 relative select-none">
+            <div
+                className="hidden md:flex md:w-1/2 h-full flex-col justify-center items-center px-8 lg:px-16 xl:px-24 relative select-none transition-colors"
+                style={{ color: textColor }}
+            >
                 <div className="w-full max-w-lg space-y-6">
                     {/* Brand Icon Circle */}
                     <div
-                        className="flex size-14 items-center justify-center rounded-full text-neutral-950 shadow-sm border border-black/10"
+                        className="flex size-14 items-center justify-center rounded-full text-neutral-950 shadow-sm border border-black/10 overflow-hidden"
                         style={{ backgroundColor: headerColor }}
                     >
-                        {renderIcon(iconType, 'size-7')}
+                        {customIconUrl ? (
+                            <img src={customIconUrl} alt="Logo" className="size-8 object-contain" />
+                        ) : (
+                            <Sparkles className="size-7" />
+                        )}
                     </div>
 
                     <div className="space-y-2">
-                        <span className="text-xs font-bold uppercase tracking-widest text-neutral-600 block">
+                        <span className="text-xs font-bold uppercase tracking-widest opacity-80 block">
                             {splashSubtitle}
                         </span>
-                        <h1 className="text-3xl lg:text-4xl xl:text-5xl font-extrabold tracking-tight text-neutral-900 leading-tight">
+                        <h1 className="text-3xl lg:text-4xl xl:text-5xl font-extrabold tracking-tight leading-tight">
                             {splashTitle}
                         </h1>
-                        <p className="text-base text-neutral-700 font-medium pt-1">
+                        <p className="text-base font-medium pt-1 opacity-90">
                             {splashDescription}
                         </p>
                     </div>
 
-                    <p className="text-xs text-neutral-500 leading-relaxed max-w-md pt-2">
+                    <p className="text-xs leading-relaxed max-w-md pt-2 opacity-75">
                         {application.description ||
                             'Layanan customer support resmi dan interaktif 24 jam nonstop untuk membantu semua kebutuhan dan kendala Anda.'}
                     </p>
@@ -463,8 +467,12 @@ export default function ChatShow({
                     <div className="flex items-center justify-between">
                         {/* App Title & Brand */}
                         <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-neutral-900 text-amber-300">
-                                {renderIcon(iconType, 'size-4')}
+                            <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-neutral-900 text-amber-300 overflow-hidden">
+                                {customIconUrl ? (
+                                    <img src={customIconUrl} alt="Logo" className="size-4 object-contain" />
+                                ) : (
+                                    <Sparkles className="size-4" />
+                                )}
                             </div>
                             <span className="font-extrabold text-sm tracking-wide uppercase truncate">
                                 {headerTitle}
@@ -477,36 +485,21 @@ export default function ChatShow({
                             )}
                         </div>
 
-                        {/* Customer Service Agent Avatars (3 Foto Profil Overlapping) */}
+                        {/* Customer Service Agent Avatars (3 Foto Profil Terpilih dari Galeri) */}
                         <div className="flex items-center gap-2">
                             <div className="flex -space-x-2 overflow-hidden shrink-0">
-                                <img
-                                    className="inline-block size-7 rounded-full ring-2 ring-white object-cover"
-                                    src={avatar1}
-                                    alt="CS Agent 1"
-                                    onError={(e) => {
-                                        (e.target as any).src =
-                                            'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80';
-                                    }}
-                                />
-                                <img
-                                    className="inline-block size-7 rounded-full ring-2 ring-white object-cover"
-                                    src={avatar2}
-                                    alt="CS Agent 2"
-                                    onError={(e) => {
-                                        (e.target as any).src =
-                                            'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&auto=format&fit=crop&q=80';
-                                    }}
-                                />
-                                <img
-                                    className="inline-block size-7 rounded-full ring-2 ring-white object-cover"
-                                    src={avatar3}
-                                    alt="CS Agent 3"
-                                    onError={(e) => {
-                                        (e.target as any).src =
-                                            'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80';
-                                    }}
-                                />
+                                {activeAvatars.map((url, idx) => (
+                                    <img
+                                        key={idx}
+                                        className="inline-block size-7 rounded-full ring-2 ring-white object-cover"
+                                        src={url}
+                                        alt={`CS Agent ${idx + 1}`}
+                                        onError={(e) => {
+                                            (e.target as any).src =
+                                                'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80';
+                                        }}
+                                    />
+                                ))}
                             </div>
                         </div>
                     </div>
@@ -546,7 +539,7 @@ export default function ChatShow({
                 {/* BODY VIEW SWITCHER: BERANDA / PRE-CHAT FORM / ACTIVE CHAT */}
                 {/* ============================================================== */}
                 <div className="flex-1 overflow-y-auto bg-slate-50/70 p-4 sm:p-6 space-y-4">
-                    {/* TAB 1: BERANDA (HOME VIEW - Screenshot 1) */}
+                    {/* TAB 1: BERANDA (HOME VIEW - Persis Screenshot 1) */}
                     {activeTab === 'beranda' && (
                         <div className="space-y-4">
                             {/* Big Promo Banner Card (Golden / Gaming Dark Banner atau Custom Image) */}
@@ -597,19 +590,6 @@ export default function ChatShow({
                                         <ArrowUpRight className="size-3.5 text-neutral-400 group-hover:text-amber-600 transition-colors shrink-0" />
                                     </button>
                                 ))}
-                            </div>
-
-                            {/* Tombol Kuning: Kirim Pesan -> */}
-                            <div className="pt-2">
-                                <button
-                                    type="button"
-                                    onClick={() => setActiveTab('pesan')}
-                                    className="w-full flex items-center justify-center gap-2 rounded-xl text-neutral-950 font-bold py-3 text-xs sm:text-sm shadow-sm transition-transform active:scale-[0.99] cursor-pointer"
-                                    style={{ backgroundColor: headerColor }}
-                                >
-                                    <span>Kirim Pesan</span>
-                                    <ArrowRight className="size-4" />
-                                </button>
                             </div>
                         </div>
                     )}
@@ -901,7 +881,7 @@ export default function ChatShow({
                 </div>
 
                 {/* ============================================================== */}
-                {/* BOTTOM CHAT INPUT BAR (Persis Screenshot 3) */}
+                {/* BOTTOM CHAT INPUT BAR (Hanya muncul jika sedang di Tab Pesan dan sudah mulai chat) */}
                 {/* ============================================================== */}
                 {activeTab === 'pesan' && (hasSubmittedForm || messages.length > 0) && (
                     <div className="border-t border-neutral-200 bg-white p-3 shrink-0">
@@ -955,57 +935,73 @@ export default function ChatShow({
                 )}
 
                 {/* ============================================================== */}
-                {/* BOTTOM NAVIGATION TABS (Persis Screenshot 2 & 3: Beranda, Pesan, Bantuan) */}
+                {/* BOTTOM FOOTER SECTION */}
                 {/* ============================================================== */}
-                <div className="border-t border-neutral-200 bg-white px-6 py-2.5 shrink-0 flex flex-col items-center gap-1.5 select-none">
-                    <div className="w-full flex items-center justify-around">
-                        <button
-                            type="button"
-                            onClick={() => setActiveTab('beranda')}
-                            className={`flex flex-col items-center gap-1 text-[11px] font-medium transition-colors cursor-pointer ${
-                                activeTab === 'beranda'
-                                    ? 'text-amber-600 font-bold'
-                                    : 'text-neutral-400 hover:text-neutral-600'
-                            }`}
-                        >
-                            <HomeIcon className="size-4.5" />
-                            <span>Beranda</span>
-                        </button>
-
+                {isFirstTimeLanding ? (
+                    /* JIKA PERTAMA KALI (BERANDA AWAL): TOMBOL KIRIM PESAN DI PALING BAWAH MENGGANTIKAN 3 TAB (Persis Screenshot 1) */
+                    <div className="border-t border-neutral-200 bg-white p-3 sm:p-4 shrink-0">
                         <button
                             type="button"
                             onClick={() => setActiveTab('pesan')}
-                            className={`flex flex-col items-center gap-1 text-[11px] font-medium transition-colors cursor-pointer relative ${
-                                activeTab === 'pesan'
-                                    ? 'text-amber-600 font-bold'
-                                    : 'text-neutral-400 hover:text-neutral-600'
-                            }`}
+                            className="w-full flex items-center justify-center gap-2 rounded-xl text-neutral-950 font-bold py-3.5 text-xs sm:text-sm shadow-sm transition-transform active:scale-[0.99] cursor-pointer"
+                            style={{ backgroundColor: headerColor }}
                         >
-                            <MessageSquare className="size-4.5" />
-                            <span>Pesan</span>
-                            {activeTab === 'pesan' && (
-                                <span className="absolute -top-1 right-2 size-2 rounded-full bg-amber-500 animate-pulse" />
-                            )}
-                        </button>
-
-                        <button
-                            type="button"
-                            onClick={() => setActiveTab('bantuan')}
-                            className={`flex flex-col items-center gap-1 text-[11px] font-medium transition-colors cursor-pointer ${
-                                activeTab === 'bantuan'
-                                    ? 'text-amber-600 font-bold'
-                                    : 'text-neutral-400 hover:text-neutral-600'
-                            }`}
-                        >
-                            <HelpCircle className="size-4.5" />
-                            <span>Bantuan</span>
+                            <span>Kirim Pesan</span>
+                            <ArrowRight className="size-4" />
                         </button>
                     </div>
+                ) : (
+                    /* JIKA SUDAH MULAI CHAT / BUKAN DI LANDING PERTAMA: MUNCULKAN 3 TAB (Beranda, Pesan, Bantuan) */
+                    <div className="border-t border-neutral-200 bg-white px-6 py-2.5 shrink-0 flex flex-col items-center gap-1.5 select-none">
+                        <div className="w-full flex items-center justify-around">
+                            <button
+                                type="button"
+                                onClick={() => setActiveTab('beranda')}
+                                className={`flex flex-col items-center gap-1 text-[11px] font-medium transition-colors cursor-pointer ${
+                                    activeTab === 'beranda'
+                                        ? 'text-amber-600 font-bold'
+                                        : 'text-neutral-400 hover:text-neutral-600'
+                                }`}
+                            >
+                                <HomeIcon className="size-4.5" />
+                                <span>Beranda</span>
+                            </button>
 
-                    <div className="text-[10px] text-neutral-400 font-medium">
-                        Powered by <span className="font-bold text-neutral-600">AutoChat</span>
+                            <button
+                                type="button"
+                                onClick={() => setActiveTab('pesan')}
+                                className={`flex flex-col items-center gap-1 text-[11px] font-medium transition-colors cursor-pointer relative ${
+                                    activeTab === 'pesan'
+                                        ? 'text-amber-600 font-bold'
+                                        : 'text-neutral-400 hover:text-neutral-600'
+                                }`}
+                            >
+                                <MessageSquare className="size-4.5" />
+                                <span>Pesan</span>
+                                {activeTab === 'pesan' && (
+                                    <span className="absolute -top-1 right-2 size-2 rounded-full bg-amber-500 animate-pulse" />
+                                )}
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => setActiveTab('bantuan')}
+                                className={`flex flex-col items-center gap-1 text-[11px] font-medium transition-colors cursor-pointer ${
+                                    activeTab === 'bantuan'
+                                        ? 'text-amber-600 font-bold'
+                                        : 'text-neutral-400 hover:text-neutral-600'
+                                }`}
+                            >
+                                <HelpCircle className="size-4.5" />
+                                <span>Bantuan</span>
+                            </button>
+                        </div>
+
+                        <div className="text-[10px] text-neutral-400 font-medium">
+                            Powered by <span className="font-bold text-neutral-600">AutoChat</span>
+                        </div>
                     </div>
-                </div>
+                )}
             </div>
         </div>
     );
