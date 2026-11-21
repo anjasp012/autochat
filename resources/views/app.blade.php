@@ -39,7 +39,11 @@
         @viteReactRefresh
         @vite(['resources/css/app.css', 'resources/js/app.tsx', "resources/js/pages/{$page['component']}.tsx"])
         <x-inertia::head>
-            <title>{{ config('app.name', 'Laravel') }}</title>
+            @if(request()->is('chat*') && isset($page['props']['application']['name']))
+                <title>{{ $page['props']['application']['chat_settings']['header_title'] ?? $page['props']['application']['name'] }}</title>
+            @else
+                <title>{{ config('app.name', 'Laravel') }}</title>
+            @endif
         </x-inertia::head>
     </head>
     <body class="font-sans antialiased">
