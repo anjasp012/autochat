@@ -89,7 +89,26 @@ class ConversationController extends Controller
             ->when($status === 'taken_over', fn ($q) => $q->where('is_archived', false)->where('is_taken_over', true))
             ->when(! in_array($status, ['archived', 'mine', 'unassigned', 'bot', 'ai', 'taken_over']), fn ($q) => $q->where('is_archived', false))
             ->orderBy('last_activity_at', 'desc')
-            ->get();
+            ->get()
+            ->map(function ($c) {
+                if (empty($c->user_identifier)) {
+                    $firstMsg = Message::where('conversation_id', $c->id)
+                        ->where('role', 'user')
+                        ->orderBy('id', 'asc')
+                        ->value('content');
+                    if ($firstMsg) {
+                        if (preg_match('/User ID saya:\s*([^.]+)/i', $firstMsg, $m)) {
+                            $c->user_identifier = trim($m[1]);
+                            $c->saveQuietly();
+                        } elseif (preg_match('/Username:\*{0,2}\s*([^\n\r]+)/i', $firstMsg, $m)) {
+                            $c->user_identifier = trim(str_replace('*', '', $m[1]));
+                            $c->saveQuietly();
+                        }
+                    }
+                }
+
+                return $c;
+            });
 
         // Default ke percakapan pertama jika tidak ditentukan
         if (! $activeConversation && $conversations->isNotEmpty()) {
@@ -97,6 +116,22 @@ class ConversationController extends Controller
         }
 
         if ($activeConversation) {
+            if (empty($activeConversation->user_identifier)) {
+                $firstMsg = Message::where('conversation_id', $activeConversation->id)
+                    ->where('role', 'user')
+                    ->orderBy('id', 'asc')
+                    ->value('content');
+                if ($firstMsg) {
+                    if (preg_match('/User ID saya:\s*([^.]+)/i', $firstMsg, $m)) {
+                        $activeConversation->user_identifier = trim($m[1]);
+                        $activeConversation->saveQuietly();
+                    } elseif (preg_match('/Username:\*{0,2}\s*([^\n\r]+)/i', $firstMsg, $m)) {
+                        $activeConversation->user_identifier = trim(str_replace('*', '', $m[1]));
+                        $activeConversation->saveQuietly();
+                    }
+                }
+            }
+
             $activeConversation->load([
                 'application:id,app_id,name,is_active',
                 'takenOverBy:id,name,email',

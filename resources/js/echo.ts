@@ -10,22 +10,33 @@ declare global {
 
 window.Pusher = Pusher;
 
-// Deteksi otomatis apakah berjalan di localhost atau di domain VPS publik
+// Deteksi otomatis apakah berjalan di localhost/Laragon (.to, .test) atau di domain VPS publik
 const isBrowser = typeof window !== 'undefined';
 const isHttps = isBrowser && window.location.protocol === 'https:';
-const currentHost = isBrowser ? window.location.hostname : 'localhost';
+const hostname = isBrowser ? window.location.hostname : 'localhost';
+const isLocal =
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname.endsWith('.to') ||
+    hostname.endsWith('.test');
 
-// Di VPS / domain publik, gunakan hostname saat ini agar tidak salah mengarah ke localhost user
-const reverbHost =
-    import.meta.env.VITE_REVERB_HOST &&
-    import.meta.env.VITE_REVERB_HOST !== 'localhost' &&
-    import.meta.env.VITE_REVERB_HOST !== '127.0.0.1'
-        ? import.meta.env.VITE_REVERB_HOST
-        : currentHost;
+// Pada lingkungan lokal / Laragon, Reverb berjalan di HTTP port 8085 (plain ws).
+// Browser mengizinkan koneksi ws://127.0.0.1:8085 meskipun diakses via https://autochat.to karena 127.0.0.1 adalah trustworthy origin.
+const reverbHost = isLocal
+    ? '127.0.0.1'
+    : import.meta.env.VITE_REVERB_HOST &&
+        import.meta.env.VITE_REVERB_HOST !== 'localhost' &&
+        import.meta.env.VITE_REVERB_HOST !== '127.0.0.1'
+      ? import.meta.env.VITE_REVERB_HOST
+      : hostname;
 
-const reverbPort = isHttps
-    ? Number(import.meta.env.VITE_REVERB_PORT ?? 443)
-    : Number(import.meta.env.VITE_REVERB_PORT ?? 8085);
+const reverbPort = isLocal
+    ? Number(import.meta.env.VITE_REVERB_PORT ?? 8085)
+    : isHttps
+      ? Number(import.meta.env.VITE_REVERB_PORT ?? 443)
+      : Number(import.meta.env.VITE_REVERB_PORT ?? 8085);
+
+const forceTLS = !isLocal && isHttps;
 
 export const echo = new Echo({
     broadcaster: 'reverb',
@@ -33,6 +44,6 @@ export const echo = new Echo({
     wsHost: reverbHost,
     wsPort: reverbPort,
     wssPort: reverbPort,
-    forceTLS: isHttps || (import.meta.env.VITE_REVERB_SCHEME ?? 'http') === 'https',
+    forceTLS: forceTLS,
     enabledTransports: ['ws', 'wss'],
 });
