@@ -36,6 +36,9 @@ const reverbPort = isLocal
       ? Number(import.meta.env.VITE_REVERB_PORT ?? 443)
       : Number(import.meta.env.VITE_REVERB_PORT ?? 8085);
 
+// On local / Laragon, Reverb runs on plain HTTP (ws://127.0.0.1:8085).
+// We must restrict enabledTransports to ['ws'] on local so Pusher does not attempt TLS (wss://) on a plain port.
+const enabledTransports = isLocal ? ['ws'] : isHttps ? ['wss'] : ['ws', 'wss'];
 const forceTLS = !isLocal && isHttps;
 
 export const echo = new Echo({
@@ -45,5 +48,5 @@ export const echo = new Echo({
     wsPort: reverbPort,
     wssPort: reverbPort,
     forceTLS: forceTLS,
-    enabledTransports: ['ws', 'wss'],
+    enabledTransports: enabledTransports,
 });
