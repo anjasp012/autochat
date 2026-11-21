@@ -887,8 +887,10 @@ export default function ChatShow({
                                         </div>
                                     )}
 
-                                    {/* Render Messages */}
-                                    {messages.map((msg) => {
+                                    {/* Render Messages (Sembunyikan auto-inquiry formulir karena sudah ditampilkan di kartu formulir atas) */}
+                                    {messages
+                                        .filter((msg) => !(msg.role === 'user' && msg.content.startsWith('Halo CS, User ID saya:')))
+                                        .map((msg) => {
                                         const isUser = msg.role === 'user';
                                         return (
                                             <div

@@ -1159,7 +1159,7 @@ export default function AdminSettings({ application }: Props) {
                                                 <img
                                                     src={data.chat_settings.banner_image_url}
                                                     alt="Banner Preview"
-                                                    className="w-full h-24 object-cover rounded-xl block"
+                                                    className="w-full h-auto rounded-xl block"
                                                 />
                                             </div>
                                         ) : (
