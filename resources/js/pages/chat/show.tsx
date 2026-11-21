@@ -99,8 +99,24 @@ export default function ChatShow({
         activeAvatars.push(defaultAvatars[0], defaultAvatars[1], defaultAvatars[2]);
     }
 
-    const csAgentName = cs.cs_agent_name || 'Rahma';
-    const csAvatarUrl = cs.cs_avatar_url || activeAvatars[0] || '/images/avatars/cs-1.png';
+    // CS Aktif diacak per percakapan baru dan dikunci untuk seluruh percakapan tersebut
+    const [assignedCs, setAssignedCs] = useState<PresetAvatar>(() => {
+        if (typeof window !== 'undefined') {
+            try {
+                const raw = localStorage.getItem(storageKey);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed.assignedCs && parsed.assignedCs.name && parsed.assignedCs.url) {
+                        return parsed.assignedCs;
+                    }
+                }
+            } catch (e) { }
+        }
+        return PRESET_AVATARS[Math.floor(Math.random() * PRESET_AVATARS.length)];
+    });
+
+    const csAgentName = assignedCs.name;
+    const csAvatarUrl = assignedCs.url;
 
     // Template Chat & Topik Formulir Awal dari CMS Admin
     const chatTemplates: ChatTemplate[] =
@@ -245,13 +261,14 @@ export default function ChatShow({
         });
     };
 
-    const persistSession = (uuid: string) => {
+    const persistSession = (uuid: string, csToSave?: PresetAvatar) => {
         try {
             localStorage.setItem(
                 storageKey,
                 JSON.stringify({
                     uuid,
                     lastActivity: Date.now(),
+                    assignedCs: csToSave || assignedCs,
                 })
             );
         } catch (e) {
@@ -268,8 +285,10 @@ export default function ChatShow({
             console.error('Error removing session key', e);
         }
         const newUuid = generateUuid();
+        const nextCs = PRESET_AVATARS[Math.floor(Math.random() * PRESET_AVATARS.length)];
+        setAssignedCs(nextCs);
         setSessionUuid(newUuid);
-        persistSession(newUuid);
+        persistSession(newUuid, nextCs);
         setIsSessionExpired(false);
         setMessages([]);
         setHasSubmittedForm(false);
@@ -291,6 +310,9 @@ export default function ChatShow({
             const raw = localStorage.getItem(storageKey);
             if (raw) {
                 const parsed = JSON.parse(raw);
+                if (parsed.assignedCs && parsed.assignedCs.name && parsed.assignedCs.url) {
+                    setAssignedCs(parsed.assignedCs);
+                }
                 const lastActivity = Number(parsed.lastActivity) || 0;
                 const timeoutMs = sessionTimeoutMinutes * 60 * 1000;
                 const isExpired = Date.now() - lastActivity > timeoutMs;
@@ -336,8 +358,10 @@ export default function ChatShow({
 
         // New visitor: create initial UUID
         const newUuid = generateUuid();
+        const nextCs = PRESET_AVATARS[Math.floor(Math.random() * PRESET_AVATARS.length)];
+        setAssignedCs(nextCs);
         setSessionUuid(newUuid);
-        persistSession(newUuid);
+        persistSession(newUuid, nextCs);
     }, [application.app_id]);
 
     // Realtime WebSocket listener via Laravel Reverb

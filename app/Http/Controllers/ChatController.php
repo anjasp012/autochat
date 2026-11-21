@@ -539,6 +539,23 @@ PROMPT;
             }
         }
 
+        // Injeksi Automate / Canned Responses ke Prompt AI Bot
+        $cannedResponses = $application->chat_settings['canned_responses'] ?? [];
+        if (is_array($cannedResponses) && count($cannedResponses) > 0) {
+            $crLines = [];
+            foreach ($cannedResponses as $cr) {
+                $shortcut = $cr['shortcut'] ?? '';
+                $content = trim($cr['content'] ?? '');
+                if ($shortcut && $content) {
+                    $crLines[] = "- Topik/Shortcut #{$shortcut}:\n\"{$content}\"";
+                }
+            }
+
+            if (count($crLines) > 0) {
+                $systemPrompt .= "\n\nPANDUAN AUTOMATE & CANNED RESPONSES RESMI:\nBerikut adalah daftar informasi & jawaban resmi dari Automate/Canned Responses. Jika pengguna bertanya hal yang berkaitan dengan topik ini (seperti kontak WhatsApp marketing, channel Telegram resmi, nomor rekening deposit, kendala depo/wd, dll), kamu WAJIB menjawab sesuai fakta dan isi informasi resmi berikut:\n".implode("\n\n", $crLines);
+            }
+        }
+
         // Query LLM Service
         $llmResult = $this->llmService->chat(
             messages: $history,
