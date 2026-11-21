@@ -449,6 +449,9 @@ export default function ChatShow({
                 body: JSON.stringify({
                     uuid: sessionUuid,
                     message: text,
+                    is_initial_form: isFormInquiry,
+                    user_id: userId,
+                    topic: questionTopic,
                 }),
             });
 

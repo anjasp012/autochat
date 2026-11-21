@@ -140,6 +140,64 @@ class ChatController extends Controller
 
         MessageSent::safeDispatch($userMessage);
 
+        // Jika pesan berasal dari pengiriman formulir awal, kirim balasan template singkat otomatis
+        if ($request->boolean('is_initial_form')) {
+            $nowHour = (int) now()->timezone('Asia/Jakarta')->format('H');
+            $timeGreeting = match (true) {
+                $nowHour >= 5 && $nowHour < 11 => 'Selamat Pagi',
+                $nowHour >= 11 && $nowHour < 15 => 'Selamat Siang',
+                $nowHour >= 15 && $nowHour < 18 => 'Selamat Sore',
+                default => 'Selamat Malam',
+            };
+
+            $topicRaw = (string) $request->input('topic', 'Lainnya');
+            $topicFormatted = match (strtolower(trim($topicRaw))) {
+                'deposit & withdraw', 'deposit', 'withdraw' => 'depositnya',
+                'klaim bonus & promo', 'klaim bonus', 'promo' => 'klaim bonusnya',
+                'kendala login & password', 'login', 'password' => 'kendala loginnya',
+                'prediksi & pasaran togel', 'togel' => 'prediksi togelnya',
+                'bocoran slot gacor', 'slot' => 'bocoran slotnya',
+                'lainnya' => 'pertanyaan bosku',
+                default => strtolower(trim($topicRaw)),
+            };
+
+            $customTemplate = $application->chat_settings['first_reply_template'] ?? null;
+            if ($customTemplate) {
+                $replyText = str_replace(
+                    ['{waktu}', '{topik}', '{user_id}', '{app_name}'],
+                    [$timeGreeting, $topicFormatted, (string) $request->input('user_id', ''), $application->name],
+                    $customTemplate
+                );
+            } else {
+                $replyText = "Hallo bosku 👋 {$timeGreeting}, ada yang bisa dibantu terkait {$topicFormatted}, Bosku?";
+            }
+
+            $assistantMessage = Message::create([
+                'conversation_id' => $conversation->id,
+                'role' => 'assistant',
+                'content' => $replyText,
+                'tokens_used' => 0,
+            ]);
+
+            MessageSent::safeDispatch($assistantMessage);
+
+            return response()->json([
+                'conversation_uuid' => $conversation->uuid,
+                'user_message' => [
+                    'id' => (string) $userMessage->id,
+                    'role' => 'user',
+                    'content' => $userMessage->content,
+                    'created_at' => $userMessage->created_at?->format('H:i') ?? '',
+                ],
+                'assistant_message' => [
+                    'id' => (string) $assistantMessage->id,
+                    'role' => 'assistant',
+                    'content' => $assistantMessage->content,
+                    'created_at' => $assistantMessage->created_at?->format('H:i') ?? '',
+                ],
+            ]);
+        }
+
         // If conversation is taken over by admin, do not invoke AI
         if ($conversation->is_taken_over) {
             return response()->json([

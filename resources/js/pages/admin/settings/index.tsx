@@ -1083,6 +1083,22 @@ export default function AdminSettings({ application }: Props) {
                                         <ChatMarkdown content={data.chat_settings.welcome_opening || ''} />
                                     </div>
                                 )}
+
+                                {/* Template Balasan Singkat Otomatis Formulir */}
+                                <div className="space-y-1.5 pt-3 border-t border-border">
+                                    <Label className="text-xs font-bold text-foreground">
+                                        Template Balasan Awal Formulir (Otomatis)
+                                    </Label>
+                                    <Input
+                                        value={data.chat_settings.first_reply_template ?? ''}
+                                        onChange={(e) => updateChatSetting('first_reply_template', e.target.value)}
+                                        placeholder="Hallo bosku 👋 {waktu}, ada yang bisa dibantu terkait {topik}, Bosku?"
+                                        className="text-xs font-mono"
+                                    />
+                                    <p className="text-[11px] text-muted-foreground">
+                                        Tag dinamis: <code className="text-amber-600 font-mono">&#123;waktu&#125;</code> (Pagi/Siang/Sore/Malam), <code className="text-amber-600 font-mono">&#123;topik&#125;</code> (depositnya/klaim bonusnya/dll.), <code className="text-amber-600 font-mono">&#123;user_id&#125;</code>.
+                                    </p>
+                                </div>
                             </CardContent>
                         </Card>
 
