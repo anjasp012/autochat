@@ -127,6 +127,8 @@ export default function ConversationsIndex({
     const [search, setSearch] = useState(filters?.search || '');
     const [currentStatus, setCurrentStatus] = useState(filters?.status || 'all');
     const [convToDelete, setConvToDelete] = useState<ConversationItem | null>(null);
+    const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
+    const [isDeletingAll, setIsDeletingAll] = useState(false);
 
     const [localMessages, setLocalMessages] = useState<Message[]>(
         Array.isArray(activeConversation?.messages) ? activeConversation.messages : []
@@ -383,44 +385,61 @@ export default function ConversationsIndex({
 
             <div className="flex h-full flex-1 overflow-hidden bg-background min-h-0">
                 {/* PANEL 1: Kategori Percakapan (Sesuai Referensi Gambar User) */}
-                <div className="hidden md:flex w-56 shrink-0 flex-col border-r border-border bg-sidebar/30 p-3 space-y-4 overflow-y-auto min-h-0">
-                    <div className="px-3 pt-2">
-                        <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                            PERCAKAPAN
-                        </p>
-                    </div>
+                <div className="hidden md:flex w-56 shrink-0 flex-col justify-between border-r border-border bg-sidebar/30 p-3 overflow-y-auto min-h-0">
+                    <div className="space-y-4">
+                        <div className="px-3 pt-2">
+                            <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                                PERCAKAPAN
+                            </p>
+                        </div>
 
-                    <nav className="space-y-1">
-                        {categories.map((cat) => {
-                            const Icon = cat.icon;
-                            const isActive = currentStatus === cat.key;
+                        <nav className="space-y-1">
+                            {categories.map((cat) => {
+                                const Icon = cat.icon;
+                                const isActive = currentStatus === cat.key;
 
-                            return (
-                                <button
-                                    key={cat.key}
-                                    type="button"
-                                    onClick={() => handleSelectCategory(cat.key)}
-                                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-colors cursor-pointer ${isActive
-                                        ? 'bg-emerald-50 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300 font-semibold shadow-2xs'
-                                        : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
-                                        }`}
-                                >
-                                    <div className="flex items-center gap-2.5 min-w-0">
-                                        <Icon className={`size-4 shrink-0 ${isActive ? 'text-emerald-700 dark:text-emerald-400' : 'text-muted-foreground'}`} />
-                                        <span className="truncate">{cat.label}</span>
-                                    </div>
-                                    <span
-                                        className={`text-xs tabular-nums ml-2 font-semibold ${isActive
-                                            ? 'text-emerald-800 dark:text-emerald-300'
-                                            : 'text-muted-foreground'
+                                return (
+                                    <button
+                                        key={cat.key}
+                                        type="button"
+                                        onClick={() => handleSelectCategory(cat.key)}
+                                        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-colors cursor-pointer ${isActive
+                                            ? 'bg-emerald-50 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300 font-semibold shadow-2xs'
+                                            : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
                                             }`}
                                     >
-                                        {cat.count}
-                                    </span>
-                                </button>
-                            );
-                        })}
-                    </nav>
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                            <Icon className={`size-4 shrink-0 ${isActive ? 'text-emerald-700 dark:text-emerald-400' : 'text-muted-foreground'}`} />
+                                            <span className="truncate">{cat.label}</span>
+                                        </div>
+                                        <span
+                                            className={`text-xs tabular-nums ml-2 font-semibold ${isActive
+                                                ? 'text-emerald-800 dark:text-emerald-300'
+                                                : 'text-muted-foreground'
+                                                }`}
+                                        >
+                                            {cat.count}
+                                        </span>
+                                    </button>
+                                );
+                            })}
+                        </nav>
+                    </div>
+
+                    {/* Tombol Hapus Semua di Menu Percakapan (Paling Bawah) */}
+                    <div className="pt-3 border-t border-border mt-auto">
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setShowDeleteAllModal(true)}
+                            className="w-full justify-start text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-500/10 dark:hover:bg-rose-950/30 gap-2 cursor-pointer font-semibold rounded-xl h-9"
+                            title="Hapus Semua Riwayat Percakapan"
+                        >
+                            <Trash2 className="size-4 text-rose-600 shrink-0" />
+                            <span>Hapus Semua</span>
+                        </Button>
+                    </div>
                 </div>
 
                 {/* PANEL 2: Thread List Percakapan */}
@@ -438,7 +457,7 @@ export default function ConversationsIndex({
                             </h2>
 
                             {/* Mobile Category Dropdown / Selector */}
-                            <div className="flex md:hidden items-center gap-1">
+                            <div className="flex md:hidden items-center gap-1.5">
                                 <select
                                     value={currentStatus}
                                     onChange={(e) => handleSelectCategory(e.target.value)}
@@ -450,6 +469,16 @@ export default function ConversationsIndex({
                                         </option>
                                     ))}
                                 </select>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => setShowDeleteAllModal(true)}
+                                    className="size-7 rounded-lg text-rose-600 hover:text-rose-700 hover:bg-rose-500/10 cursor-pointer"
+                                    title="Hapus Semua Percakapan"
+                                >
+                                    <Trash2 className="size-3.5" />
+                                </Button>
                             </div>
                         </div>
 
@@ -998,6 +1027,7 @@ export default function ConversationsIndex({
             </div >
 
             {/* Modal Konfirmasi Hapus */}
+            {/* Modal Konfirmasi Hapus Satuan */}
             <Dialog open={!!convToDelete} onOpenChange={(open) => !open && setConvToDelete(null)}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
@@ -1013,6 +1043,52 @@ export default function ConversationsIndex({
                         </Button>
                         <Button variant="destructive" onClick={handleDeleteConfirm}>
                             Hapus Percakapan
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Modal Konfirmasi Hapus Semua Percakapan */}
+            <Dialog open={showDeleteAllModal} onOpenChange={setShowDeleteAllModal}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-destructive">
+                            <Trash2 className="size-5" />
+                            Hapus Semua Percakapan?
+                        </DialogTitle>
+                        <DialogDescription className="space-y-2 pt-1 text-xs">
+                            <p>
+                                Tindakan ini akan menghapus <strong>seluruh riwayat percakapan</strong> beserta semua pesan di dalamnya secara permanen dari database.
+                            </p>
+                            <p className="text-muted-foreground font-semibold">
+                                Tindakan ini bersifat permanen dan tidak dapat dibatalkan.
+                            </p>
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="gap-2 sm:gap-0">
+                        <Button
+                            variant="outline"
+                            onClick={() => setShowDeleteAllModal(false)}
+                            disabled={isDeletingAll}
+                        >
+                            Batal
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            disabled={isDeletingAll}
+                            onClick={() => {
+                                setIsDeletingAll(true);
+                                router.delete('/conversations/destroy-all', {
+                                    onFinish: () => {
+                                        setIsDeletingAll(false);
+                                        setShowDeleteAllModal(false);
+                                    },
+                                });
+                            }}
+                            className="gap-1.5"
+                        >
+                            {isDeletingAll && <Spinner className="size-3.5" />}
+                            <span>Ya, Hapus Semua</span>
                         </Button>
                     </DialogFooter>
                 </DialogContent>

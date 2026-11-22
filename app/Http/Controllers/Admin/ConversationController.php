@@ -305,4 +305,26 @@ class ConversationController extends Controller
             ->route('conversations.index')
             ->with('success', 'Riwayat percakapan berhasil dihapus.');
     }
+
+    /**
+     * Delete all conversations (Hapus semua percakapan).
+     */
+    public function destroyAll(Request $request): RedirectResponse
+    {
+        $currentAppId = session('current_application_id');
+        $query = Conversation::query();
+
+        if ($currentAppId) {
+            $query->where('application_id', $currentAppId);
+        }
+
+        $conversationIds = $query->pluck('id');
+        BotEscalation::whereIn('conversation_id', $conversationIds)->delete();
+        Message::whereIn('conversation_id', $conversationIds)->delete();
+        $query->delete();
+
+        return redirect()
+            ->route('conversations.index')
+            ->with('success', 'Semua riwayat percakapan berhasil dihapus.');
+    }
 }

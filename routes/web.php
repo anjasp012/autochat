@@ -65,6 +65,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('conversations/{conversation:uuid}/archive', [ConversationController::class, 'archive'])->name('conversations.archive');
     Route::post('conversations/{conversation:uuid}/unarchive', [ConversationController::class, 'unarchive'])->name('conversations.unarchive');
     Route::post('conversations/{conversation:uuid}/reply', [ConversationController::class, 'reply'])->name('conversations.reply');
+    Route::delete('conversations/destroy-all', [ConversationController::class, 'destroyAll'])->name('conversations.destroy-all');
     Route::delete('conversations/{conversation:uuid}', [ConversationController::class, 'destroy'])->name('conversations.destroy');
 
     // Backwards compatibility for conversations
@@ -73,6 +74,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('admin/conversations/{conversation:uuid}/takeover', [ConversationController::class, 'takeover']);
     Route::post('admin/conversations/{conversation:uuid}/release-takeover', [ConversationController::class, 'releaseTakeover']);
     Route::post('admin/conversations/{conversation:uuid}/reply', [ConversationController::class, 'reply']);
+    Route::delete('admin/conversations/destroy-all', [ConversationController::class, 'destroyAll']);
     Route::delete('admin/conversations/{conversation:uuid}', [ConversationController::class, 'destroy']);
 
     // Bot Settings (Direct Menu: /setting)

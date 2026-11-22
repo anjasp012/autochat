@@ -12,6 +12,8 @@ use App\Services\AI\LLMService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -714,17 +716,54 @@ PROMPT;
                 implode("\n\n", $crLines);
         }
 
-        // Query LLM Service
-        $llmResult = $this->llmService->chat(
-            messages: $history,
-            systemPrompt: $systemPrompt,
-            model: $application->model,
-            temperature: $application->temperature,
-            maxTokens: $application->max_tokens
-        );
+        // Query LLM Service dengan antrean teratur (queue lock) dan jeda optimal agar tidak terjadi limit / tabrakan antrean
+        $queueLock = Cache::lock('llm_chat_request_queue', 25);
+        $llmResult = null;
+
+        try {
+            // Tunggu giliran antrean hingga 15 detik jika ada pesan chat lain yang sedang diproses bersamaan
+            $queueLock->block(15);
+
+            // Jeda pacing optimal antar-request (minimal 700ms) untuk mencegah lonjakan rate-limit
+            $lastCallTime = Cache::get('last_llm_call_timestamp');
+            if ($lastCallTime) {
+                $elapsedMs = (microtime(true) - (float) $lastCallTime) * 1000;
+                if ($elapsedMs < 700) {
+                    usleep((int) ((700 - $elapsedMs) * 1000));
+                }
+            }
+
+            $llmResult = $this->llmService->chat(
+                messages: $history,
+                systemPrompt: $systemPrompt,
+                model: $application->model,
+                temperature: $application->temperature,
+                maxTokens: $application->max_tokens
+            );
+
+            Cache::put('last_llm_call_timestamp', microtime(true), 15);
+        } catch (\Throwable $e) {
+            Log::warning('LLM queue/process exception: '.$e->getMessage());
+            $llmResult = \App\Services\AI\LLMResponse::failure($e->getMessage());
+        } finally {
+            optional($queueLock)->release();
+        }
 
         if (! $llmResult->successful) {
-            $fallbackReply = 'Maaf, server AI sedang mengalami kendala atau sedang memproses antrean. Silakan coba kembali sesaat lagi.';
+            // 1. Jika terdeteksi kata kunci Automate, langsung berikan panduan Automate resmi tanpa error!
+            if (! empty($matchedAutomates)) {
+                $fallbackReply = $matchedAutomates[0]['content'];
+            } else {
+                // 2. Jika tidak ada tag Automate, berikan balasan CS yang ramah dan alami (bukan pesan robotik error)
+                $csName = $application->chat_settings['cs_agent_name'] ?? 'Rahma';
+                $fallbackReply = "Halo Bosku, pesan Bosku sudah kami terima 🙏 {$csName} sedang mengecek informasi dan segera merespon ya. Jika ada detail tambahan yang ingin disampaikan, silakan infokan di sini ya Bosku.";
+
+                // Tandai percakapan butuh perhatian CS
+                $conversation->update([
+                    'is_waiting_admin' => true,
+                    'last_activity_at' => now(),
+                ]);
+            }
 
             $assistantMessage = Message::create([
                 'conversation_id' => $conversation->id,
