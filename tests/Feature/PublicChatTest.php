@@ -259,3 +259,51 @@ test('lupa pas prioritizes reset automation over generic lupa', function () {
     // Pastikan prompt memprioritaskan #reset daripada #lupa
     expect($interceptedPrompt)->toContain('TAG / SHORTCUT TERPILIH: #reset');
 });
+
+test('multi-turn follow up preserves pasaran togel context for short responses', function () {
+    $uuid = (string) Str::uuid();
+
+    $conv = Conversation::create([
+        'uuid' => $uuid,
+        'application_id' => $this->chatbot->id,
+        'last_activity_at' => now(),
+    ]);
+
+    // Turn 1
+    Message::create([
+        'conversation_id' => $conv->id,
+        'role' => 'user',
+        'content' => 'pasaran hongkong',
+    ]);
+    Message::create([
+        'conversation_id' => $conv->id,
+        'role' => 'assistant',
+        'content' => 'Untuk prediksi angka terbaru di Pasaran Hong Kong... Kalau ada pasar lain yang ingin Bosku lihat tinggal bilang ya!',
+    ]);
+
+    $interceptedPrompt = '';
+    Http::fake([
+        '*chat/completions' => function ($request) use (&$interceptedPrompt) {
+            $data = $request->data();
+            $messages = $data['messages'] ?? [];
+            $systemMsg = collect($messages)->firstWhere('role', 'system');
+            $interceptedPrompt = $systemMsg['content'] ?? '';
+
+            return Http::response([
+                'choices' => [
+                    ['message' => ['role' => 'assistant', 'content' => 'Prediksi pasaran Kentucky hari ini.']],
+                ],
+            ], 200);
+        },
+    ]);
+
+    // Turn 2: User says only "kentucky"
+    $this->postJson("/chat/{$this->chatbot->app_id}/send", [
+        'uuid' => $uuid,
+        'message' => 'kentucky',
+    ])->assertOk();
+
+    // Verify context hint and pasaran URL are present in prompt
+    expect($interceptedPrompt)->toContain('Pengguna sedang menyebut nama PASARAN TOGEL ("kentucky")');
+    expect($interceptedPrompt)->toContain('pasaran=kentucky');
+});

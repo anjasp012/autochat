@@ -532,8 +532,71 @@ class ChatController extends Controller
             ])
             ->toArray();
 
-        // Prepare system prompt with interactive form capabilities
-        $systemPrompt = ($application->system_prompt ? $application->system_prompt."\n\n" : '').<<<'PROMPT'
+        $todayDate = now()->format('Y-m-d');
+        $todayIndo = now()->translatedFormat('d F Y');
+        $currentWib = now()->format('H:i').' WIB';
+
+        // Deteksi follow-up konteks percakapan untuk respon pendek (<= 3 kata)
+        $isShortFollowup = count(preg_split('/\s+/', trim($userText), -1, PREG_SPLIT_NO_EMPTY) ?: []) <= 3;
+        $contextHint = '';
+        if ($isShortFollowup && count($history) >= 2) {
+            $lastAssistant = '';
+            for ($i = count($history) - 2; $i >= 0; $i--) {
+                if ($history[$i]['role'] === 'assistant') {
+                    $lastAssistant = $history[$i]['content'];
+                    break;
+                }
+            }
+
+            if ($lastAssistant) {
+                // Kasus 1: Sebelumnya membahas pasaran togel / prediksi angka
+                if (preg_match('/(pasaran|prediksi|togel|angka keluar|pasar)/i', $lastAssistant)) {
+                    $cleanFollowup = strtolower(trim($userText));
+                    $cleanPasaran = preg_replace('/[^a-z0-9]/', '', $cleanFollowup);
+                    $contextHint = "\n======================================================================\n".
+                        "📌 [PERINGATAN KONTEKS LIVECHAT AKTIF]:\n".
+                        "Pesan pengguna saat ini (\"{$userText}\") adalah JAWABAN / FOLLOW-UP singkat dari pesan asisten sebelumnya yang membahas PASARAN TOGEL & PREDIKSI!\n".
+                        "Pengguna sedang menyebut nama PASARAN TOGEL (\"{$userText}\")!\n".
+                        "TUGAS KAMU:\n".
+                        "1. Berikan link prediksi resmi untuk Pasaran Togel {$userText} menggunakan format:\n".
+                        "   https://vip4.prediksi-mimpi.com/?page=prediksi-togel&pasaran={$cleanPasaran}&tanggal={$todayDate}\n".
+                        "2. Jelaskan bahwa link tersebut berisi prediksi angka jitu hari ini ({$todayIndo}).\n".
+                        "3. DILARANG KERAS menganggap \"{$userText}\" sebagai game slot atau mengarang game slot fiktif!\n".
+                        "======================================================================\n";
+                }
+                // Kasus 2: Sebelumnya membahas metode deposit (bank / e-wallet)
+                elseif (preg_match('/(deposit|depo|transfer|tujuan|rekening)/i', $lastAssistant) && preg_match('/\b(bca|bni|bri|mandiri|cimb|dana|ovo|gopay|qris|linkaja|bsi)\b/i', $userText)) {
+                    $contextHint = "\n======================================================================\n".
+                        "📌 [PERINGATAN KONTEKS LIVECHAT AKTIF]:\n".
+                        "Pesan pengguna (\"{$userText}\") adalah pilihan metode transfer untuk DEPOSIT yang sedang dibahas sebelumnya. Berikan panduan cara deposit via {$userText} secara ramah!\n".
+                        "======================================================================\n";
+                }
+            }
+        }
+
+        // Prepare system prompt with context continuity & interactive form capabilities
+        $systemPrompt = ($application->system_prompt ? $application->system_prompt."\n\n" : '').<<<PROMPT
+======================================================================
+🧠 PANDUAN MUTLAK KONTINUITAS KONTEKS PERCAKAPAN (MULTI-TURN CHAT) 🧠
+Kamu adalah Customer Service livechat profesional. Percakapan ini berlangsung secara multi-turn, di mana setiap pesan pengguna berkaitan langsung dengan percakapan sebelumnya.
+
+1. MEMAHAMI RESPON PENDEK SEBAGAI LANJUTAN KONTEKS:
+   - Jika pengguna membalas dengan 1-3 kata (contoh: "kentucky", "sydney", "hongkong", "bca", "sudah", "belum", "mau"), kamu WAJIB melihat apa yang sedang dibahas pada pesan terakhirmu!
+   - Contoh Nyata:
+     * Jika sebelumnya kamu dan pengguna membahas Pasaran Togel atau Prediksi ("Ada pasar lain yang ingin Bosku lihat?"), lalu pengguna menjawab "kentucky" -> MAKSUD USER ADALAH PASARAN TOGEL KENTUCKY!
+     * Format link prediksi resmi:
+       https://vip4.prediksi-mimpi.com/?page=prediksi-togel&pasaran={nama_pasaran}&tanggal={$todayDate}
+     * DILARANG KERAS mengalihkan topik ke game slot atau mengarang game slot palsu (misal: "slot Kentucky tema rodeo")!
+2. DAFTAR NAMA PASARAN TOGEL POPULER:
+   - Hongkong (HK), Singapore (SGP), Sydney (SDY), Macau / Toto Macau, Kentucky (Midday & Evening), Bullseye, Carolina (Day & Eve), Cambodia, Taiwan, China, Japan, Poipet, Oregon, Florida, New York, Texas, dll.
+   - Semua nama di atas dalam percakapan angka/prediksi/pasar adalah PASARAN TOGEL, BUKAN game slot!
+3. WAKTU & TANGGAL HARI INI:
+   - Tanggal saat ini: {$todayIndo} ({$todayDate}), Pukul {$currentWib}.
+   - Gunakan tanggal ini untuk link prediksi dan salam waktu yang tepat.
+4. ANTI-HALUSINASI:
+   - Dilarang mengarang nama game, nilai RTP, atau fitur fiktif jika tidak ada di panduan resmi.
+======================================================================
+
 PANDUAN FORMULIR INTERAKTIF:
 Kamu memiliki kemampuan untuk memunculkan formulir interaktif di layar livechat jika pengguna membutuhkan pengecekan deposit atau withdraw:
 1. Jika pengguna bertanya tentang status deposit, ingin cek deposit, komplain deposit belum masuk, atau butuh bantuan terkait depositnya:
@@ -547,6 +610,10 @@ Sertakan tag [FORM:withdraw_status] di awal balasanmu, lalu berikan balasan rama
 3. Jika pengguna SUDAH mengirimkan data formulir (ada Username dan Tanggal) atau pertanyaannya TIDAK membutuhkan formulir status (misalnya tanya cara deposit, nomor rekening, bonus, prediksi togel, atau slot gacor):
 JANGAN sertakan tag [FORM:...], jawablah langsung secara informatif, sopan, dan ramah seperti Customer Service profesional.
 PROMPT;
+
+        if ($contextHint) {
+            $systemPrompt = $contextHint."\n".$systemPrompt;
+        }
 
         // Injeksi Template Pesan (FAQ / Auto-Trigger seperti ucapan terimakasih dll)
         $configuredTemplates = $application->chat_settings['chat_templates'] ?? [];
