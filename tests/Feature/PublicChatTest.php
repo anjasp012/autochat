@@ -190,3 +190,72 @@ test('inactive application rejects chat messages', function () {
 
     $response->assertStatus(403);
 });
+
+test('real visitor ip is extracted from cf-connecting-ip header', function () {
+    Http::fake([
+        '*chat/completions' => Http::response([
+            'choices' => [
+                ['message' => ['role' => 'assistant', 'content' => 'Halo!']],
+            ],
+        ], 200),
+    ]);
+
+    $uuid = (string) Str::uuid();
+
+    $this->withHeaders([
+        'CF-Connecting-IP' => '114.125.45.1',
+    ])->postJson("/chat/{$this->chatbot->app_id}/send", [
+        'uuid' => $uuid,
+        'message' => 'Test IP',
+    ])->assertOk();
+
+    $this->assertDatabaseHas('conversations', [
+        'uuid' => $uuid,
+        'ip_address' => '114.125.45.1',
+    ]);
+});
+
+test('lupa pas prioritizes reset automation over generic lupa', function () {
+    $this->chatbot->update([
+        'chat_settings' => [
+            'canned_responses' => [
+                [
+                    'id' => 'cr-lupa',
+                    'shortcut' => 'lupa',
+                    'content' => 'Panduan Lupa User ID: Mohon kirim data rekening.',
+                ],
+                [
+                    'id' => 'cr-reset',
+                    'shortcut' => 'reset',
+                    'content' => 'Panduan Reset Password: Silakan klik menu Lupa Password di situs.',
+                ],
+            ],
+        ],
+    ]);
+
+    $interceptedPrompt = '';
+    Http::fake([
+        '*chat/completions' => function ($request) use (&$interceptedPrompt) {
+            $data = $request->data();
+            $messages = $data['messages'] ?? [];
+            $systemMsg = collect($messages)->firstWhere('role', 'system');
+            $interceptedPrompt = $systemMsg['content'] ?? '';
+
+            return Http::response([
+                'choices' => [
+                    ['message' => ['role' => 'assistant', 'content' => 'Silakan klik menu Lupa Password untuk reset kata sandi.']],
+                ],
+            ], 200);
+        },
+    ]);
+
+    $uuid = (string) Str::uuid();
+
+    $this->postJson("/chat/{$this->chatbot->app_id}/send", [
+        'uuid' => $uuid,
+        'message' => 'bos saya lupa pas akun saya',
+    ])->assertOk();
+
+    // Pastikan prompt memprioritaskan #reset daripada #lupa
+    expect($interceptedPrompt)->toContain('TAG / SHORTCUT TERPILIH: #reset');
+});

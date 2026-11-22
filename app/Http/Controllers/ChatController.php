@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
+use Stevebauman\Location\Facades\Location;
 
 class ChatController extends Controller
 {
@@ -184,22 +185,24 @@ class ChatController extends Controller
                 ], 422);
             }
 
+            $clientIp = self::getClientIp($request);
             $conversation->update(['last_activity_at' => now()]);
 
-            if (empty($conversation->city)) {
-                $city = $request->header('cf-ipcity') ?: self::resolveCityFromIp($conversation->ip_address ?: $request->ip());
-                if ($city) {
-                    $conversation->update(['city' => $city]);
-                }
+            if (empty($conversation->city) || empty($conversation->ip_address)) {
+                $city = $request->header('cf-ipcity') ?: self::resolveCityFromIp($conversation->ip_address ?: $clientIp);
+                $conversation->update([
+                    'ip_address' => $conversation->ip_address ?: $clientIp,
+                    'city' => $conversation->city ?: $city,
+                ]);
             }
         } else {
-            $ip = $request->ip();
-            $city = $request->header('cf-ipcity') ?: self::resolveCityFromIp($ip);
+            $clientIp = self::getClientIp($request);
+            $city = $request->header('cf-ipcity') ?: self::resolveCityFromIp($clientIp);
 
             $conversation = Conversation::create([
                 'uuid' => $uuid,
                 'application_id' => $application->id,
-                'ip_address' => $ip,
+                'ip_address' => $clientIp,
                 'city' => $city,
                 'user_agent' => substr((string) $request->userAgent(), 0, 500),
                 'last_activity_at' => now(),
@@ -614,7 +617,7 @@ PROMPT;
             ];
 
         $userLower = strtolower($userText);
-        $matchedAutomates = [];
+        $scoredAutomates = [];
         $crLines = [];
 
         foreach ($cannedResponses as $cr) {
@@ -627,51 +630,33 @@ PROMPT;
 
             $crLines[] = "- Tag #{$shortcut}:\n\"{$content}\"";
 
-            // Cek apakah pesan user cocok dengan tag / kata kunci Automate
-            $isMatch = false;
-            if (str_contains($userLower, '#'.$shortcut) || str_contains($userLower, $shortcut)) {
-                $isMatch = true;
-            } else {
-                $keywords = $this->extractShortcutKeywords($shortcut);
-                if (count($keywords) >= 2) {
-                    $allFound = true;
-                    foreach ($keywords as $kw) {
-                        if (! str_contains($userLower, $kw)) {
-                            $allFound = false;
-                            break;
-                        }
-                    }
-                    if ($allFound) {
-                        $isMatch = true;
-                    }
-                } elseif (count($keywords) === 1 && strlen($keywords[0]) >= 4) {
-                    if (str_contains($userLower, $keywords[0])) {
-                        $isMatch = true;
-                    }
-                }
-            }
-
-            if ($isMatch) {
-                $matchedAutomates[] = [
+            $score = $this->scoreCannedResponse($userText, $shortcut, $content);
+            if ($score > 0) {
+                $scoredAutomates[] = [
                     'shortcut' => $shortcut,
                     'content' => $content,
+                    'score' => $score,
                 ];
             }
         }
+
+        // Urutkan berdasarkan skor relevansi tertinggi
+        usort($scoredAutomates, fn ($a, $b) => $b['score'] <=> $a['score']);
+        $matchedAutomates = array_slice($scoredAutomates, 0, 2);
 
         // Jika ditemukan Automate yang cocok langsung dengan pertanyaan user, pasang sebagai PRIORITAS UTAMA
         if (count($matchedAutomates) > 0) {
             $matchHighlights = [];
             foreach ($matchedAutomates as $ma) {
-                $matchHighlights[] = "TAG / SHORTCUT: #{$ma['shortcut']}\nINFORMASI RESMI DARI SISTEM AUTOMATE:\n\"{$ma['content']}\"";
+                $matchHighlights[] = "TAG / SHORTCUT TERPILIH: #{$ma['shortcut']}\nINFORMASI RESMI DARI SISTEM AUTOMATE:\n\"{$ma['content']}\"";
             }
             $priorityBlock = "======================================================================\n".
                 "🚨 PRIORITAS UTAMA: DITEMUKAN PANDUAN AUTOMATE RESMI UNTUK PERTANYAAN USER! 🚨\n".
-                "Pertanyaan pengguna terdeteksi cocok dengan kata kunci dari tag Automate berikut:\n\n".
+                "Pertanyaan pengguna terdeteksi cocok dengan topik Automate berikut:\n\n".
                 implode("\n\n", $matchHighlights)."\n\n".
                 "INSTRUKSI MUTLAK & WAJIB DIPATUHI:\n".
-                "1. Kamu WAJIB mengambil dan menggunakan fakta, arahan, atau isi dari Automate resmi di atas sebagai dasar utama jawabanmu!\n".
-                "2. DILARANG KERAS menjawab asal-asalan, membuat perkiraan sendiri, atau memberikan jawaban generik di luar informasi resmi ini.\n".
+                "1. Kamu WAJIB mengambil dan menggunakan fakta, arahan, atau isi dari Automate resmi di atas (#{$matchedAutomates[0]['shortcut']}) sebagai dasar utama jawabanmu!\n".
+                "2. PENTING: Jika pengguna menanyakan kata sandi / password (\"lupa pas\", \"lupa password\", \"lupa sandi\", \"reset sandi\"), arahkan HANYA ke panduan reset password (#reset), JANGAN PERNAH menyuruh mengecek user ID!\n".
                 "3. Rangkai jawabanmu dengan bahasa Customer Service yang ramah, santun, dan komunikatif kepada pengguna.\n".
                 "======================================================================\n\n";
 
@@ -679,13 +664,28 @@ PROMPT;
         }
 
         if (count($crLines) > 0) {
-            $systemPrompt .= "\n\nPANDUAN UTAMA: DAFTAR AUTOMATE / CANNED RESPONSES RESMI:\n".
-                "Setiap tag/shortcut (misal: #akunlimit, #marketing, #telegram, #rekening, #deposit-kendala) adalah KATA KUNCI UTAMA topik pertanyaan member.\n".
-                "Sebelum memberikan jawaban, kamu WAJIB selalu mengecek apakah pertanyaan user berkaitan dengan salah satu tag di bawah:\n".
-                "- Jika pertanyaan user mengandung kata kunci atau bermaksud menanyakan topik yang cocok dengan salah satu tag (contoh: user bertanya soal akun limit/dibatasi -> cocok dengan #akunlimit), kamu WAJIB mengambil dan menggunakan data dari tag Automate tersebut!\n".
-                "- DILARANG KERAS menjawab asal-asalan jika sudah tersedia panduan Automate untuk topik tersebut.\n\n".
-                "Daftar Lengkap Automate:\n".
-                implode("\n\n", $crLines);
+            $systemPrompt .= "\n\n======================================================================\n".
+                "🧠 PANDUAN SEMANTIK AUTOMATE / SHORTCUT RESMI (PELAJARI DENGAN TELITI) 🧠\n".
+                "Setiap tag/shortcut diawali tanda pagar (#) berisi panduan resmi untuk topik tertentu.\n".
+                "Kamu WAJIB memahami MAKSUD dan TUJUAN pengguna secara cerdas dan mendalam:\n\n".
+                "ATURAN PEMILIHAN AUTOMATE YANG TEPAT:\n".
+                "1. PENGELOMPOKAN KELUHAN LUPA (PENTING! JANGAN TERTUKAR):\n".
+                "   - Jika pengguna menulis \"lupa pas\", \"lupa password\", \"lupa sandi\", \"reset sandi\", \"ganti password\", \"lupa pw\", \"lupa pass\" -> Masalahnya adalah KATA SANDI / PASSWORD! Kamu WAJIB merujuk pada panduan #reset (atau tag reset password), BUKAN tag lupa user ID!\n".
+                "   - Jika pengguna menulis \"lupa id\", \"lupa user\", \"lupa username\", \"lupa akun\" -> Masalahnya adalah USER ID! Kamu WAJIB merujuk pada panduan #lupa (atau tag lupa ID).\n".
+                "   - Jangan pernah memberikan solusi User ID kepada pengguna yang minta reset password, dan sebaliknya!\n".
+                "2. DAFTAR SINGKATAN UMUM MEMBER:\n".
+                "   - \"pas\" / \"pw\" / \"pass\" = Password / Kata Sandi.\n".
+                "   - \"id\" / \"user\" = User ID / Username.\n".
+                "   - \"depo\" / \"dp\" = Deposit.\n".
+                "   - \"wd\" = Withdraw / Tarik Dana.\n".
+                "   - \"rek\" = Rekening.\n".
+                "   - \"mutasi\" = Bukti transaksi / Mutasi bank.\n".
+                "3. KONSISTENSI JAWABAN:\n".
+                "   - Gunakan isi dan langkah-langkah dari Automate resmi sebagai panduan jawabanmu.\n".
+                "   - Sampaikan dengan tutur kata Customer Service yang ramah, hangat, dan profesional.\n\n".
+                "Daftar Lengkap Automate Resmi:\n".
+                implode("\n\n", $crLines)."\n".
+                "======================================================================\n";
         }
 
         // Query LLM Service dengan antrean teratur (queue lock) dan jeda optimal agar tidak terjadi limit / tabrakan antrean
@@ -835,29 +835,194 @@ PROMPT;
     }
 
     /**
-     * Resolve city location from IP address (using Cloudflare or IP Geolocation API with caching).
+     * Score a canned response based on user question, shortcut, and intent.
+     */
+    protected function scoreCannedResponse(string $userText, string $shortcut, string $content): int
+    {
+        $user = strtolower($userText);
+        $shortcut = strtolower(ltrim(trim($shortcut), '#'));
+        $contentLower = strtolower($content);
+
+        // Check intents for member slang & abbreviations
+        // "pas", "pass", "pw", "sandi" -> password
+        // "id", "user", "username" -> user ID
+        $hasPasswordIntent = (bool) preg_match('/\b(pas|pass|pw|password|sandi|katasandi|pin)\b/i', $user);
+        $hasUserIdIntent = (bool) preg_match('/\b(id|user|username|userid|akun)\b/i', $user);
+        $hasForgotIntent = (bool) preg_match('/\b(lupa|hilang|tidak ingat|gagal login|reset)\b/i', $user);
+
+        $score = 0;
+
+        // 1. Exact match with tag
+        if (str_contains($user, '#'.$shortcut)) {
+            $score += 100;
+        } elseif (preg_match('/\b'.preg_quote($shortcut, '/').'\b/i', $user)) {
+            $score += 50;
+        }
+
+        // 2. Specific intent handling: LUPA PASSWORD / RESET PASSWORD
+        if ($hasPasswordIntent || ($hasForgotIntent && (str_contains($user, 'pas') || str_contains($user, 'pw')))) {
+            if (in_array($shortcut, ['reset', 'password', 'pass', 'pw', 'lupapassword', 'lupa-password', 'gantipassword', 'sandi', 'resetpass'], true)) {
+                $score += 85;
+            } elseif (str_contains($contentLower, 'password') || str_contains($contentLower, 'sandi') || str_contains($contentLower, 'reset')) {
+                $score += 65;
+            }
+
+            // Penalty for generic #lupa or user-id tag when user specifically mentioned password/sandi
+            if (in_array($shortcut, ['lupa', 'lupaid', 'lupa-id', 'username', 'id'], true) && ! str_contains($shortcut, 'pass') && ! str_contains($shortcut, 'pw') && ! str_contains($shortcut, 'sandi')) {
+                $score -= 60;
+            }
+        }
+
+        // 3. Specific intent handling: LUPA USER ID / USERNAME
+        if ($hasForgotIntent && $hasUserIdIntent && ! $hasPasswordIntent) {
+            if (in_array($shortcut, ['lupa', 'lupaid', 'lupa-id', 'username', 'id'], true)) {
+                $score += 85;
+            } elseif (str_contains($contentLower, 'user id') || str_contains($contentLower, 'username')) {
+                $score += 65;
+            }
+        }
+
+        // 4. Keyword tokens match
+        $words = preg_split('/[\s,?.!-]+/', $user, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        foreach ($words as $w) {
+            if (strlen($w) < 3) {
+                continue;
+            }
+            if (str_contains($shortcut, $w)) {
+                $score += 15;
+            }
+            if (str_contains($contentLower, $w)) {
+                $score += 5;
+            }
+        }
+
+        return max(0, $score);
+    }
+
+    /**
+     * Get real client IP address even when behind Cloudflare or reverse proxy.
+     */
+    public static function getClientIp(Request $request): string
+    {
+        foreach (['cf-connecting-ip', 'true-client-ip', 'x-real-ip'] as $header) {
+            if ($val = $request->header($header)) {
+                $ip = trim(explode(',', $val)[0]);
+                if (filter_var($ip, FILTER_VALIDATE_IP)) {
+                    return $ip;
+                }
+            }
+        }
+
+        if ($forwarded = $request->header('x-forwarded-for')) {
+            $ip = trim(explode(',', $forwarded)[0]);
+            if (filter_var($ip, FILTER_VALIDATE_IP)) {
+                return $ip;
+            }
+        }
+
+        return (string) $request->ip();
+    }
+
+    /**
+     * Resolve city & location from IP address using Stevebauman Location package with multi-fallback and caching.
      */
     public static function resolveCityFromIp(?string $ip): ?string
     {
         if (empty($ip) || in_array($ip, ['127.0.0.1', '::1', 'localhost'], true)) {
-            return 'Local';
+            return 'Localhost';
         }
 
         if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
-            return 'Local / Private';
+            return 'Local / Private Network';
         }
 
-        return Cache::remember("ip_city_{$ip}", 86400 * 30, function () use ($ip) {
+        return Cache::remember("ip_location_v3_{$ip}", 86400 * 30, function () use ($ip) {
+            // Driver 1: Stevebauman Location facade
             try {
-                $res = Http::timeout(2)->get("http://ip-api.com/json/{$ip}?fields=status,city,country");
-                if ($res->successful()) {
-                    $data = $res->json();
-                    if (($data['status'] ?? '') === 'success' && ! empty($data['city'])) {
-                        return $data['city'];
+                if (class_exists(Location::class)) {
+                    $pos = Location::get($ip);
+                    if ($pos) {
+                        $city = trim((string) $pos->cityName);
+                        $region = trim((string) $pos->regionName);
+                        $country = trim((string) $pos->countryName);
+                        $code = trim((string) $pos->countryCode);
+
+                        if ($city) {
+                            if ($country && strcasecmp($city, $country) === 0) {
+                                return $code ? "{$city} ({$code})" : $city;
+                            }
+                            if ($region && strcasecmp($city, $region) !== 0) {
+                                return "{$city}, {$region}".($country ? " ({$country})" : '');
+                            }
+
+                            return $country ? "{$city} ({$country})" : $city;
+                        }
+
+                        if ($region) {
+                            return $country ? "{$region} ({$country})" : $region;
+                        }
+
+                        if ($country) {
+                            return $country;
+                        }
                     }
                 }
             } catch (\Throwable $e) {
-                // Ignore timeout or network errors
+                // Fallback to HTTP APIs below
+            }
+
+            // Driver 2: ipwho.is (HTTPS, fast, accurate)
+            try {
+                $res = Http::timeout(3)->get("https://ipwho.is/{$ip}");
+                if ($res->successful()) {
+                    $data = $res->json();
+                    if (($data['success'] ?? false) === true) {
+                        $city = trim($data['city'] ?? '');
+                        $region = trim($data['region'] ?? '');
+                        $country = trim($data['country'] ?? '');
+                        $code = trim($data['country_code'] ?? '');
+
+                        if ($city) {
+                            if ($country && strcasecmp($city, $country) === 0) {
+                                return $code ? "{$city} ({$code})" : $city;
+                            }
+                            if ($region && strcasecmp($city, $region) !== 0) {
+                                return "{$city}, {$region}".($country ? " ({$country})" : '');
+                            }
+
+                            return $country ? "{$city} ({$country})" : $city;
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                // Ignore
+            }
+
+            // Driver 3: ip-api.com
+            try {
+                $res = Http::timeout(2)->get("http://ip-api.com/json/{$ip}?fields=status,city,regionName,country,countryCode");
+                if ($res->successful()) {
+                    $data = $res->json();
+                    if (($data['status'] ?? '') === 'success') {
+                        $city = trim($data['city'] ?? '');
+                        $region = trim($data['regionName'] ?? '');
+                        $country = trim($data['country'] ?? '');
+                        $code = trim($data['countryCode'] ?? '');
+
+                        if ($city) {
+                            if ($country && strcasecmp($city, $country) === 0) {
+                                return $code ? "{$city} ({$code})" : $city;
+                            }
+                            if ($region && strcasecmp($city, $region) !== 0) {
+                                return "{$city}, {$region}".($country ? " ({$country})" : '');
+                            }
+
+                            return $country ? "{$city} ({$country})" : $city;
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                // Ignore
             }
 
             return null;

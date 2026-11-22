@@ -116,6 +116,28 @@ interface Props {
     } | null;
 }
 
+const formatWibDateTime = (dateStr?: string | null) => {
+    if (!dateStr) return '-';
+    try {
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return dateStr;
+        return (
+            new Intl.DateTimeFormat('id-ID', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false,
+                timeZone: 'Asia/Jakarta',
+            }).format(d) + ' WIB'
+        );
+    } catch {
+        return dateStr;
+    }
+};
+
 export default function ConversationsIndex({
     conversations = [],
     activeConversation,
@@ -823,7 +845,7 @@ export default function ConversationsIndex({
                                                 <span>IP: {activeConversation.ip_address}</span>
                                             )}
                                             <span>KOTA : {activeConversation.city || '-'}</span>
-                                            <span>Aktif: {activeConversation.last_activity_at}</span>
+                                            <span>Aktif: {formatWibDateTime(activeConversation.last_activity_at)}</span>
                                         </div>
                                     </div>
                                 </div>
