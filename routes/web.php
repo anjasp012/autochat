@@ -40,6 +40,7 @@ Route::get('chat', function () {
 })->name('chat.default');
 
 Route::get('chat/{application:app_id}', [ChatController::class, 'show'])->name('chat.show');
+Route::get('chat/{application:app_id}/config', [ChatController::class, 'getWidgetConfig'])->name('chat.config');
 Route::post('chat/{application:app_id}/send', [ChatController::class, 'sendMessage'])->name('chat.send');
 Route::get('chat/{application:app_id}/session/{uuid}', [ChatController::class, 'getSessionMessages'])->name('chat.session');
 

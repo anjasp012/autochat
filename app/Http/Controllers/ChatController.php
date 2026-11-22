@@ -43,6 +43,26 @@ class ChatController extends Controller
     }
 
     /**
+     * Get public widget config (colors, brand icon) for embedded widget launcher.
+     */
+    public function getWidgetConfig(Application $application): JsonResponse
+    {
+        $cs = $application->chat_settings ?? [];
+        $bgColor = $cs['bg_color'] ?? '#FFF9E6';
+        $headerColor = $cs['header_color'] ?? '#FFD200';
+        $customIcon = $cs['custom_icon_url'] ?? $cs['favicon_url'] ?? null;
+
+        return response()->json([
+            'app_id' => $application->app_id,
+            'name' => $application->name,
+            'bg_color' => $bgColor,
+            'header_color' => $headerColor,
+            'icon_url' => $customIcon,
+            'is_active' => (bool) $application->is_active,
+        ])->header('Access-Control-Allow-Origin', '*');
+    }
+
+    /**
      * Get active messages for an existing conversation session.
      */
     public function getSessionMessages(Application $application, string $uuid): JsonResponse

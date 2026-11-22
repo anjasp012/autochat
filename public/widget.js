@@ -44,10 +44,10 @@
             width: 58px;
             height: 58px;
             border-radius: 50%;
-            background: #FFD200;
+            background: #FFF9E6;
             color: #111827;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18), 0 1px 3px rgba(0,0,0,0.1);
-            border: none;
+            border: 1px solid rgba(0, 0, 0, 0.08);
             cursor: pointer;
             display: flex;
             align-items: center;
@@ -187,18 +187,31 @@
 
     btn.addEventListener('click', toggleChat);
 
-    // Listen to theme & background customizations from within chat iframe
+    // Fetch app theme config to set floating button background to match chat app bg_color
+    var customBg = (currentScript && currentScript.getAttribute('data-bg-color')) || null;
+    if (customBg) {
+        btn.style.background = customBg;
+    } else {
+        fetch(baseUrl + '/chat/' + encodeURIComponent(appId) + '/config')
+            .then(function (res) { return res.json(); })
+            .then(function (data) {
+                if (data && data.bg_color) {
+                    btn.style.background = data.bg_color;
+                }
+                if (data && data.icon_url && !currentScript.getAttribute('data-icon')) {
+                    var img = btn.querySelector('img');
+                    if (img) img.src = data.icon_url;
+                }
+            })
+            .catch(function () {});
+    }
+
+    // Listen to theme customizations from within chat iframe
     window.addEventListener('message', function (event) {
         if (!event.data || typeof event.data !== 'object') return;
         if (event.data.type === 'autochat-theme') {
             if (event.data.bgColor) {
-                frameContainer.style.background = event.data.bgColor;
-            }
-            if (event.data.headerColor) {
-                btn.style.background = event.data.headerColor;
-            }
-            if (event.data.headerTextColor) {
-                btn.style.color = event.data.headerTextColor;
+                btn.style.background = event.data.bgColor;
             }
         }
     });
