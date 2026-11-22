@@ -45,8 +45,14 @@ class HandleInertiaRequests extends Middleware
                 'user' => $request->user(),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
-            'allApplications' => fn () => $request->user()
-                ? Application::query()
+            'allApplications' => function () use ($request) {
+                $user = $request->user();
+                if (! $user) {
+                    return [];
+                }
+
+                return Application::query()
+                    ->when(! $user->isSuperAdmin(), fn ($q) => $q->whereIn('id', $user->assigned_application_ids ?? []))
                     ->select(['id', 'app_id', 'name', 'is_active', 'model'])
                     ->selectRaw("JSON_UNQUOTE(JSON_EXTRACT(chat_settings, '$.custom_icon_url')) as custom_icon_url")
                     ->orderBy('id', 'desc')
@@ -60,10 +66,16 @@ class HandleInertiaRequests extends Middleware
                         'chat_settings' => [
                             'custom_icon_url' => $app->custom_icon_url && $app->custom_icon_url !== 'null' ? $app->custom_icon_url : null,
                         ],
-                    ])
-                : [],
-            'applications' => fn () => $request->user()
-                ? Application::query()
+                    ]);
+            },
+            'applications' => function () use ($request) {
+                $user = $request->user();
+                if (! $user) {
+                    return [];
+                }
+
+                return Application::query()
+                    ->when(! $user->isSuperAdmin(), fn ($q) => $q->whereIn('id', $user->assigned_application_ids ?? []))
                     ->select(['id', 'app_id', 'name', 'is_active', 'model'])
                     ->selectRaw("JSON_UNQUOTE(JSON_EXTRACT(chat_settings, '$.custom_icon_url')) as custom_icon_url")
                     ->orderBy('id', 'desc')
@@ -77,11 +89,33 @@ class HandleInertiaRequests extends Middleware
                         'chat_settings' => [
                             'custom_icon_url' => $app->custom_icon_url && $app->custom_icon_url !== 'null' ? $app->custom_icon_url : null,
                         ],
-                    ])
-                : [],
-            'currentAppId' => fn () => $request->session()->get('current_app_id')
-                ?? Application::query()->where('is_active', true)->value('app_id')
-                ?? Application::query()->value('app_id'),
+                    ]);
+            },
+            'currentAppId' => function () use ($request) {
+                $user = $request->user();
+                if (! $user) {
+                    return null;
+                }
+
+                $sessionAppId = $request->session()->get('current_app_id');
+                if ($sessionAppId) {
+                    $app = Application::where('app_id', $sessionAppId)->first();
+                    if ($app && $user->canAccessApplication($app->id)) {
+                        return $sessionAppId;
+                    }
+                }
+
+                $firstAccessible = Application::query()
+                    ->when(! $user->isSuperAdmin(), fn ($q) => $q->whereIn('id', $user->assigned_application_ids ?? []))
+                    ->first();
+
+                if ($firstAccessible) {
+                    $request->session()->put('current_app_id', $firstAccessible->app_id);
+                    return $firstAccessible->app_id;
+                }
+
+                return null;
+            },
             'escalations' => fn () => $request->user() ? [
                 'unread_count' => BotEscalation::where('is_read', false)->count(),
                 'recent' => BotEscalation::with('application:id,name,app_id')

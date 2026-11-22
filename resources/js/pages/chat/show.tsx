@@ -1140,7 +1140,7 @@ export default function ChatShow({
                                                         msg.content.startsWith('Formulir Bantuan:'))
                                                 )
                                         )
-                                        .map((msg) => {
+                                        .map((msg, idx, visibleMessages) => {
                                             if (msg.role === 'system') {
                                                 const isTakeover = msg.content.includes('diambil alih');
                                                 return (
@@ -1164,8 +1164,8 @@ export default function ChatShow({
                                             }
 
                                             const isUser = msg.role === 'user';
-                                            const firstNonIndex = messages.findIndex((m) => m.role !== 'user' && m.role !== 'system');
-                                            const firstAdminIndex = messages.findIndex((m) => m.role === 'admin');
+                                            const firstNonIndex = visibleMessages.findIndex((m) => m.role !== 'user' && m.role !== 'system');
+                                            const firstAdminIndex = visibleMessages.findIndex((m) => m.role === 'admin');
                                             const isFirstGreeting = !isUser && (idx === firstNonIndex || (msg.role === 'admin' && idx === firstAdminIndex));
                                             const formMatch =
                                                 !isUser &&

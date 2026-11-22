@@ -30,12 +30,18 @@ class ApplicationController extends Controller
         $sessionAppId = $request->session()->get('current_app_id');
         $application = null;
 
+        $user = $request->user();
         if ($sessionAppId) {
             $application = Application::where('app_id', $sessionAppId)->first();
+            if ($application && ! $user->canAccessApplication($application->id)) {
+                $application = null;
+            }
         }
 
         if (! $application) {
-            $application = Application::where('is_active', true)->first() ?? Application::first();
+            $application = Application::query()
+                ->when(! $user->isSuperAdmin(), fn ($q) => $q->whereIn('id', $user->assigned_application_ids ?? []))
+                ->first();
             if ($application) {
                 $request->session()->put('current_app_id', $application->app_id);
             }
@@ -53,8 +59,10 @@ class ApplicationController extends Controller
     /**
      * Show the form for creating a new application.
      */
-    public function create(): Response
+    public function create(Request $request): Response
     {
+        abort_if(! $request->user()?->isSuperAdmin(), 403, 'Hanya Admin Utama yang berhak membuat aplikasi baru.');
+
         $defaultModel = SystemSetting::get('ai_model') ?: config('ai.model', 'openai/gpt-oss-120b');
 
         return Inertia::render('admin/applications/create', [
@@ -72,6 +80,8 @@ class ApplicationController extends Controller
      */
     public function store(StoreApplicationRequest $request): RedirectResponse
     {
+        abort_if(! $request->user()?->isSuperAdmin(), 403, 'Hanya Admin Utama yang berhak membuat aplikasi baru.');
+
         $application = Application::create($request->validated());
 
         // Set as current app in session
@@ -113,6 +123,8 @@ class ApplicationController extends Controller
      */
     public function destroy(Request $request, Application $application): RedirectResponse
     {
+        abort_if(! $request->user()?->isSuperAdmin(), 403, 'Hanya Admin Utama yang berhak menghapus aplikasi.');
+
         $name = $application->name;
         $appId = $application->app_id;
 

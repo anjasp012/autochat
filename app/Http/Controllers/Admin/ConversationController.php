@@ -39,6 +39,11 @@ class ConversationController extends Controller
      */
     protected function renderConsole(Request $request, ?Conversation $activeConversation): Response
     {
+        $user = $request->user();
+        if ($activeConversation) {
+            $this->authorizeConversationAccess($request, $activeConversation);
+        }
+
         $search = $request->query('search');
         $status = $request->query('status'); // 'taken_over', 'ai', 'all'
 
@@ -48,10 +53,15 @@ class ConversationController extends Controller
 
         if ($sessionAppId) {
             $currentApp = Application::where('app_id', $sessionAppId)->first();
+            if ($currentApp && $user && ! $user->canAccessApplication($currentApp->id)) {
+                $currentApp = null;
+            }
         }
 
-        if (! $currentApp) {
-            $currentApp = Application::where('is_active', true)->first() ?? Application::first();
+        if (! $currentApp && $user) {
+            $currentApp = Application::query()
+                ->when(! $user->isSuperAdmin(), fn ($q) => $q->whereIn('id', $user->assigned_application_ids ?? []))
+                ->first();
             if ($currentApp) {
                 $request->session()->put('current_app_id', $currentApp->app_id);
             }
@@ -159,10 +169,23 @@ class ConversationController extends Controller
     }
 
     /**
+     * Helper to verify user has access to conversation's application.
+     */
+    protected function authorizeConversationAccess(Request $request, Conversation $conversation): void
+    {
+        $user = $request->user();
+        if ($user && ! $user->canAccessApplication($conversation->application_id)) {
+            abort(403, 'Anda tidak memiliki hak akses untuk percakapan pada aplikasi ini.');
+        }
+    }
+
+    /**
      * Take over conversation from AI (Admin human agent intervenes).
      */
     public function takeover(Request $request, Conversation $conversation): RedirectResponse
     {
+        $this->authorizeConversationAccess($request, $conversation);
+
         $conversation->update([
             'is_taken_over' => true,
             'is_waiting_admin' => false,
@@ -190,8 +213,10 @@ class ConversationController extends Controller
     /**
      * Release takeover back to AI.
      */
-    public function releaseTakeover(Conversation $conversation): RedirectResponse
+    public function releaseTakeover(Request $request, Conversation $conversation): RedirectResponse
     {
+        $this->authorizeConversationAccess($request, $conversation);
+
         $conversation->update([
             'is_taken_over' => false,
             'taken_over_at' => null,
@@ -213,8 +238,10 @@ class ConversationController extends Controller
     /**
      * Get JSON messages for a conversation (for fast background polling & syncing).
      */
-    public function messages(Conversation $conversation): JsonResponse
+    public function messages(Request $request, Conversation $conversation): JsonResponse
     {
+        $this->authorizeConversationAccess($request, $conversation);
+
         $messages = $conversation->messages()
             ->orderBy('created_at', 'asc')
             ->get(['id', 'conversation_id', 'role', 'content', 'media_url', 'media_type', 'created_at'])
@@ -241,6 +268,8 @@ class ConversationController extends Controller
      */
     public function reply(Request $request, Conversation $conversation): RedirectResponse|JsonResponse
     {
+        $this->authorizeConversationAccess($request, $conversation);
+
         $validated = $request->validate([
             'message' => ['nullable', 'string', 'max:4000'],
             'attachment' => ['nullable', 'file', 'max:25600', 'mimes:jpg,jpeg,png,gif,webp,mp4,webm,mov,ogg'],
@@ -329,8 +358,10 @@ class ConversationController extends Controller
     /**
      * Archive conversation.
      */
-    public function archive(Conversation $conversation): RedirectResponse
+    public function archive(Request $request, Conversation $conversation): RedirectResponse
     {
+        $this->authorizeConversationAccess($request, $conversation);
+
         $conversation->update(['is_archived' => true]);
 
         return back()->with('success', 'Percakapan berhasil diarsipkan.');
@@ -339,8 +370,10 @@ class ConversationController extends Controller
     /**
      * Unarchive conversation.
      */
-    public function unarchive(Conversation $conversation): RedirectResponse
+    public function unarchive(Request $request, Conversation $conversation): RedirectResponse
     {
+        $this->authorizeConversationAccess($request, $conversation);
+
         $conversation->update(['is_archived' => false]);
 
         return back()->with('success', 'Percakapan dikembalikan dari arsip.');
@@ -349,8 +382,10 @@ class ConversationController extends Controller
     /**
      * Delete a conversation.
      */
-    public function destroy(Conversation $conversation): RedirectResponse
+    public function destroy(Request $request, Conversation $conversation): RedirectResponse
     {
+        $this->authorizeConversationAccess($request, $conversation);
+
         $conversation->delete();
 
         return redirect()
