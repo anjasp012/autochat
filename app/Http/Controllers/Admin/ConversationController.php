@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Events\MessageSent;
+use App\Http\Controllers\ChatController;
 use App\Http\Controllers\Controller;
 use App\Models\Application;
 use App\Models\BotEscalation;
@@ -11,7 +12,6 @@ use App\Models\Message;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -118,6 +118,14 @@ class ConversationController extends Controller
                     }
                 }
 
+                if (empty($c->city) && ! empty($c->ip_address)) {
+                    $city = ChatController::resolveCityFromIp($c->ip_address);
+                    if ($city) {
+                        $c->city = $city;
+                        $c->saveQuietly();
+                    }
+                }
+
                 return $c;
             });
 
@@ -127,6 +135,13 @@ class ConversationController extends Controller
         }
 
         if ($activeConversation) {
+            if (empty($activeConversation->city) && ! empty($activeConversation->ip_address)) {
+                $city = ChatController::resolveCityFromIp($activeConversation->ip_address);
+                if ($city) {
+                    $activeConversation->city = $city;
+                    $activeConversation->saveQuietly();
+                }
+            }
             if (empty($activeConversation->user_identifier)) {
                 $firstMsg = Message::where('conversation_id', $activeConversation->id)
                     ->where('role', 'user')
@@ -186,11 +201,18 @@ class ConversationController extends Controller
     {
         $this->authorizeConversationAccess($request, $conversation);
 
+        $user = $request->user();
+        if ($conversation->is_taken_over && $conversation->taken_over_by && (int) $conversation->taken_over_by !== (int) $user?->id && ! $user?->isSuperAdmin()) {
+            $takenOverName = $conversation->takenOverBy?->name ?? 'Admin lain';
+
+            return back()->with('error', "Percakapan ini sedang ditangani oleh {$takenOverName}.");
+        }
+
         $conversation->update([
             'is_taken_over' => true,
             'is_waiting_admin' => false,
             'taken_over_at' => now(),
-            'taken_over_by' => $request->user()?->id,
+            'taken_over_by' => $user?->id,
             'last_activity_at' => now(),
         ]);
 
@@ -216,6 +238,13 @@ class ConversationController extends Controller
     public function releaseTakeover(Request $request, Conversation $conversation): RedirectResponse
     {
         $this->authorizeConversationAccess($request, $conversation);
+
+        $user = $request->user();
+        if ($conversation->is_taken_over && $conversation->taken_over_by && (int) $conversation->taken_over_by !== (int) $user?->id && ! $user?->isSuperAdmin()) {
+            $takenOverName = $conversation->takenOverBy?->name ?? 'Admin lain';
+
+            return back()->with('error', "Hanya {$takenOverName} atau Admin Utama yang dapat mengembalikan percakapan ini ke bot.");
+        }
 
         $conversation->update([
             'is_taken_over' => false,
@@ -259,6 +288,10 @@ class ConversationController extends Controller
             'uuid' => $conversation->uuid,
             'is_taken_over' => (bool) $conversation->is_taken_over,
             'is_waiting_admin' => (bool) $conversation->is_waiting_admin,
+            'taken_over_by' => $conversation->takenOverBy ? [
+                'id' => $conversation->takenOverBy->id,
+                'name' => $conversation->takenOverBy->name,
+            ] : null,
             'messages' => $messages,
         ]);
     }
@@ -269,6 +302,17 @@ class ConversationController extends Controller
     public function reply(Request $request, Conversation $conversation): RedirectResponse|JsonResponse
     {
         $this->authorizeConversationAccess($request, $conversation);
+
+        $user = $request->user();
+        if ($conversation->is_taken_over && $conversation->taken_over_by && (int) $conversation->taken_over_by !== (int) $user?->id) {
+            $takenOverName = $conversation->takenOverBy?->name ?? 'Admin lain';
+            $errorMsg = "Percakapan ini sedang ditangani oleh {$takenOverName}. Anda tidak dapat membalas.";
+            if ($request->wantsJson()) {
+                return response()->json(['error' => $errorMsg], 403);
+            }
+
+            return back()->with('error', $errorMsg);
+        }
 
         $validated = $request->validate([
             'message' => ['nullable', 'string', 'max:4000'],
@@ -306,6 +350,7 @@ class ConversationController extends Controller
             if ($request->wantsJson()) {
                 return response()->json(['error' => 'Pesan atau lampiran tidak boleh kosong.'], 422);
             }
+
             return back()->withErrors(['message' => 'Pesan atau lampiran tidak boleh kosong.']);
         }
 
@@ -384,6 +429,8 @@ class ConversationController extends Controller
      */
     public function destroy(Request $request, Conversation $conversation): RedirectResponse
     {
+        abort_if(! $request->user()?->isSuperAdmin(), 403, 'Hanya Admin Utama yang berhak menghapus percakapan.');
+
         $this->authorizeConversationAccess($request, $conversation);
 
         $conversation->delete();
@@ -398,11 +445,16 @@ class ConversationController extends Controller
      */
     public function destroyAll(Request $request): RedirectResponse
     {
-        $currentAppId = session('current_application_id');
+        abort_if(! $request->user()?->isSuperAdmin(), 403, 'Hanya Admin Utama yang berhak menghapus semua riwayat percakapan.');
+
+        $sessionAppId = $request->session()->get('current_app_id');
         $query = Conversation::query();
 
-        if ($currentAppId) {
-            $query->where('application_id', $currentAppId);
+        if ($sessionAppId) {
+            $app = Application::where('app_id', $sessionAppId)->first();
+            if ($app) {
+                $query->where('application_id', $app->id);
+            }
         }
 
         $conversationIds = $query->pluck('id');

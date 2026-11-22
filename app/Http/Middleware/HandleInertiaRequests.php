@@ -111,6 +111,7 @@ class HandleInertiaRequests extends Middleware
 
                 if ($firstAccessible) {
                     $request->session()->put('current_app_id', $firstAccessible->app_id);
+
                     return $firstAccessible->app_id;
                 }
 

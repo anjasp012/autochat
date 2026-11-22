@@ -12,10 +12,7 @@ import {
     Plus,
     Radio,
     ShieldAlert,
-    ShoppingCart,
-    ShoppingBag,
     Sparkles,
-    ThumbsUp,
     Users,
     Wallet,
 } from 'lucide-react';
@@ -341,82 +338,6 @@ export default function Dashboard({
                                         </div>
                                     );
                                 })}
-                            </div>
-                        </div>
-
-                        {/* BOTTOM STATS & GOALS ROW INSIDE CARD */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-5 border-t border-zinc-800/80">
-                            {/* QUEUED VISITORS */}
-                            <div className="flex items-center justify-between p-2 rounded-xl bg-zinc-900/40">
-                                <div className="flex items-center gap-2.5">
-                                    <div className="flex size-7 items-center justify-center rounded-lg bg-zinc-800 text-zinc-300">
-                                        <Users className="size-3.5" />
-                                    </div>
-                                    <span className="text-xs font-semibold text-zinc-300">
-                                        Queued visitors
-                                    </span>
-                                </div>
-                                <span className="text-base font-extrabold text-white">
-                                    {weekly.queued_visitors}
-                                </span>
-                            </div>
-
-                            {/* CHAT SATISFACTION */}
-                            <div className="flex items-center justify-between p-2 rounded-xl bg-zinc-900/40">
-                                <div className="flex items-center gap-2.5">
-                                    <div className="flex size-7 items-center justify-center rounded-lg bg-zinc-800 text-emerald-400">
-                                        <ThumbsUp className="size-3.5" />
-                                    </div>
-                                    <span className="text-xs font-semibold text-zinc-300">
-                                        Chat satisfaction
-                                    </span>
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                    <span className="text-[10px] font-bold text-emerald-400">
-                                        {weekly.chat_satisfaction_diff}
-                                    </span>
-                                    <span className="text-base font-extrabold text-white">
-                                        {weekly.chat_satisfaction}%
-                                    </span>
-                                </div>
-                            </div>
-
-                            {/* GOALS */}
-                            <div className="flex items-center justify-between p-2 rounded-xl bg-zinc-900/40">
-                                <div className="flex items-center gap-2.5">
-                                    <div className="flex size-7 items-center justify-center rounded-lg bg-zinc-800 text-amber-400">
-                                        <ShoppingCart className="size-3.5" />
-                                    </div>
-                                    <span className="text-xs font-semibold text-zinc-300">
-                                        Goals
-                                    </span>
-                                </div>
-                                <button
-                                    type="button"
-                                    className="inline-flex items-center gap-1 text-[11px] font-bold text-zinc-400 hover:text-white px-2 py-1 rounded-md bg-zinc-800 hover:bg-zinc-700 transition-colors cursor-pointer"
-                                >
-                                    <Plus className="size-3" />
-                                    <span>Add</span>
-                                </button>
-                            </div>
-
-                            {/* SALES */}
-                            <div className="flex items-center justify-between p-2 rounded-xl bg-zinc-900/40">
-                                <div className="flex items-center gap-2.5">
-                                    <div className="flex size-7 items-center justify-center rounded-lg bg-zinc-800 text-indigo-400">
-                                        <ShoppingBag className="size-3.5" />
-                                    </div>
-                                    <span className="text-xs font-semibold text-zinc-300">
-                                        Sales
-                                    </span>
-                                </div>
-                                <button
-                                    type="button"
-                                    className="inline-flex items-center gap-1 text-[11px] font-bold text-zinc-400 hover:text-white px-2 py-1 rounded-md bg-zinc-800 hover:bg-zinc-700 transition-colors cursor-pointer"
-                                >
-                                    <Plus className="size-3" />
-                                    <span>Add</span>
-                                </button>
                             </div>
                         </div>
                     </div>

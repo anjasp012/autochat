@@ -27,6 +27,8 @@ class ApplicationController extends Controller
      */
     public function settings(Request $request): Response
     {
+        abort_if(! $request->user()?->isSuperAdmin(), 403, 'Hanya Admin Utama yang berhak mengakses pengaturan bot.');
+
         $sessionAppId = $request->session()->get('current_app_id');
         $application = null;
 
@@ -95,8 +97,10 @@ class ApplicationController extends Controller
     /**
      * Show the form for editing the specified application.
      */
-    public function edit(Application $application): Response
+    public function edit(Request $request, Application $application): Response
     {
+        abort_if(! $request->user()?->isSuperAdmin(), 403, 'Hanya Admin Utama yang berhak mengakses pengaturan bot.');
+
         $application->loadCount(['conversations', 'knowledgeSources', 'knowledgeChunks']);
 
         return Inertia::render('admin/applications/edit', [
@@ -109,6 +113,8 @@ class ApplicationController extends Controller
      */
     public function update(UpdateApplicationRequest $request, Application $application): RedirectResponse
     {
+        abort_if(! $request->user()?->isSuperAdmin(), 403, 'Hanya Admin Utama yang berhak memperbarui pengaturan bot.');
+
         $application->update($request->validated());
 
         // Keep current session in sync with updated app_id
@@ -143,8 +149,10 @@ class ApplicationController extends Controller
     /**
      * Toggle the active status of the application.
      */
-    public function toggleStatus(Application $application): RedirectResponse
+    public function toggleStatus(Request $request, Application $application): RedirectResponse
     {
+        abort_if(! $request->user()?->isSuperAdmin(), 403, 'Hanya Admin Utama yang berhak mengubah status aplikasi.');
+
         $application->update(['is_active' => ! $application->is_active]);
 
         $status = $application->is_active ? 'diaktifkan' : 'dinonaktifkan';
@@ -160,6 +168,11 @@ class ApplicationController extends Controller
         $validated = $request->validate([
             'app_id' => ['required', 'string', 'exists:applications,app_id'],
         ]);
+
+        $app = Application::where('app_id', $validated['app_id'])->first();
+        if ($app && ! $request->user()?->canAccessApplication($app->id)) {
+            abort(403, 'Anda tidak memiliki akses ke aplikasi ini.');
+        }
 
         $request->session()->put('current_app_id', $validated['app_id']);
 

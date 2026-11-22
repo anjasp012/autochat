@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
 import {
     AlertCircle,
     Archive,
@@ -58,6 +58,7 @@ interface ConversationItem {
     application_id: number;
     user_identifier?: string | null;
     ip_address: string | null;
+    city?: string | null;
     last_activity_at: string;
     is_taken_over: boolean;
     is_waiting_admin?: boolean;
@@ -128,6 +129,19 @@ export default function ConversationsIndex({
         : Array.isArray(rawConversations?.data)
             ? rawConversations.data
             : [];
+
+    const { auth } = usePage().props as Record<string, any>;
+    const currentUserId = auth?.user?.id;
+    const isSuperAdmin =
+        auth?.user?.role === 'admin' ||
+        auth?.user?.role === 'super_admin' ||
+        (auth?.user?.is_admin && !auth?.user?.role);
+
+    const isTakenOver = Boolean(activeConversation?.is_taken_over);
+    const takenOverUserId = activeConversation?.taken_over_by?.id;
+    const isTakenOverByMe = isTakenOver && takenOverUserId === currentUserId;
+    const isTakenOverByOther = isTakenOver && Boolean(takenOverUserId) && takenOverUserId !== currentUserId;
+    const canReply = isTakenOver ? (!takenOverUserId || isTakenOverByMe) : false;
 
     const [search, setSearch] = useState(filters?.search || '');
     const [currentStatus, setCurrentStatus] = useState(filters?.status || 'all');
@@ -371,6 +385,9 @@ export default function ConversationsIndex({
 
     const handleToggleTakeover = (conv: ConversationItem) => {
         if (conv.is_taken_over) {
+            if (conv.taken_over_by?.id && conv.taken_over_by.id !== currentUserId && !isSuperAdmin) {
+                return;
+            }
             router.post(`/conversations/${conv.uuid}/release-takeover`, {}, { preserveScroll: true });
         } else {
             router.post(`/conversations/${conv.uuid}/takeover`, {}, { preserveScroll: true });
@@ -387,7 +404,7 @@ export default function ConversationsIndex({
 
     const handleSendReply = (e?: React.FormEvent) => {
         if (e) e.preventDefault();
-        if (!activeConversation || (!data.message.trim() && !data.attachment) || processing) return;
+        if (!activeConversation || isTakenOverByOther || !canReply || (!data.message.trim() && !data.attachment) || processing) return;
 
         const tempId = `temp-admin-${Date.now()}`;
         const tempMediaUrl = data.attachment ? URL.createObjectURL(data.attachment) : null;
@@ -449,7 +466,7 @@ export default function ConversationsIndex({
     };
 
     const handleDeleteConfirm = () => {
-        if (!convToDelete) return;
+        if (!convToDelete || !isSuperAdmin) return;
         router.delete(`/conversations/${convToDelete.uuid}`, {
             onSuccess: () => setConvToDelete(null),
         });
@@ -551,20 +568,22 @@ export default function ConversationsIndex({
                         </nav>
                     </div>
 
-                    {/* Tombol Hapus Semua di Menu Percakapan (Paling Bawah) */}
-                    <div className="pt-3 border-t border-border mt-auto">
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setShowDeleteAllModal(true)}
-                            className="w-full justify-start text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-500/10 dark:hover:bg-rose-950/30 gap-2 cursor-pointer font-semibold rounded-xl h-9"
-                            title="Hapus Semua Riwayat Percakapan"
-                        >
-                            <Trash2 className="size-4 text-rose-600 shrink-0" />
-                            <span>Hapus Semua</span>
-                        </Button>
-                    </div>
+                    {/* Tombol Hapus Semua di Menu Percakapan (Paling Bawah) - Khusus Super Admin */}
+                    {isSuperAdmin && (
+                        <div className="pt-3 border-t border-border mt-auto">
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setShowDeleteAllModal(true)}
+                                className="w-full justify-start text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-500/10 dark:hover:bg-rose-950/30 gap-2 cursor-pointer font-semibold rounded-xl h-9"
+                                title="Hapus Semua Riwayat Percakapan"
+                            >
+                                <Trash2 className="size-4 text-rose-600 shrink-0" />
+                                <span>Hapus Semua</span>
+                            </Button>
+                        </div>
+                    )}
                 </div>
 
                 {/* PANEL 2: Thread List Percakapan */}
@@ -594,16 +613,18 @@ export default function ConversationsIndex({
                                         </option>
                                     ))}
                                 </select>
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => setShowDeleteAllModal(true)}
-                                    className="size-7 rounded-lg text-rose-600 hover:text-rose-700 hover:bg-rose-500/10 cursor-pointer"
-                                    title="Hapus Semua Percakapan"
-                                >
-                                    <Trash2 className="size-3.5" />
-                                </Button>
+                                {isSuperAdmin && (
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => setShowDeleteAllModal(true)}
+                                        className="size-7 rounded-lg text-rose-600 hover:text-rose-700 hover:bg-rose-500/10 cursor-pointer"
+                                        title="Hapus Semua Percakapan"
+                                    >
+                                        <Trash2 className="size-3.5" />
+                                    </Button>
+                                )}
                             </div>
                         </div>
 
@@ -797,10 +818,11 @@ export default function ConversationsIndex({
                                                 </Badge>
                                             )}
                                         </div>
-                                        <div className="flex items-center gap-3 text-[11px] text-muted-foreground font-mono">
+                                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground font-mono">
                                             {activeConversation.ip_address && (
                                                 <span>IP: {activeConversation.ip_address}</span>
                                             )}
+                                            <span>KOTA : {activeConversation.city || '-'}</span>
                                             <span>Aktif: {activeConversation.last_activity_at}</span>
                                         </div>
                                     </div>
@@ -808,27 +830,37 @@ export default function ConversationsIndex({
 
                                 <div className="flex items-center gap-2 shrink-0">
                                     {/* Tombol Ambil Alih / Lepas */}
-                                    <Button
-                                        size="sm"
-                                        variant={activeConversation.is_taken_over ? 'secondary' : 'default'}
-                                        onClick={() => handleToggleTakeover(activeConversation)}
-                                        className={`h-8 gap-1.5 text-xs font-semibold rounded-xl cursor-pointer shadow-xs ${activeConversation.is_taken_over
-                                            ? 'border border-amber-500/30 text-amber-700 dark:text-amber-300 hover:bg-amber-500/10'
-                                            : 'bg-primary text-primary-foreground'
-                                            }`}
-                                    >
-                                        {activeConversation.is_taken_over ? (
-                                            <>
-                                                <Bot className="size-3.5" />
-                                                <span>Lepas ke Bot</span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <HandMetal className="size-3.5" />
-                                                <span>Ambil Alih</span>
-                                            </>
-                                        )}
-                                    </Button>
+                                    {isTakenOverByOther && !isSuperAdmin ? (
+                                        <Badge
+                                            variant="secondary"
+                                            className="h-8 px-3 text-xs font-semibold bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30 gap-1.5 shadow-2xs"
+                                        >
+                                            <UserCheck className="size-3.5" />
+                                            <span>Ditangani {activeConversation.taken_over_by?.name || 'Admin Lain'}</span>
+                                        </Badge>
+                                    ) : (
+                                        <Button
+                                            size="sm"
+                                            variant={activeConversation.is_taken_over ? 'secondary' : 'default'}
+                                            onClick={() => handleToggleTakeover(activeConversation)}
+                                            className={`h-8 gap-1.5 text-xs font-semibold rounded-xl cursor-pointer shadow-xs ${activeConversation.is_taken_over
+                                                ? 'border border-amber-500/30 text-amber-700 dark:text-amber-300 hover:bg-amber-500/10'
+                                                : 'bg-primary text-primary-foreground'
+                                                }`}
+                                        >
+                                            {activeConversation.is_taken_over ? (
+                                                <>
+                                                    <Bot className="size-3.5" />
+                                                    <span>Lepas ke Bot</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <HandMetal className="size-3.5" />
+                                                    <span>Ambil Alih</span>
+                                                </>
+                                            )}
+                                        </Button>
+                                    )}
 
                                     {/* Tombol Arsipkan / Buka Arsip */}
                                     <Button
@@ -851,15 +883,17 @@ export default function ConversationsIndex({
                                         )}
                                     </Button>
 
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => setConvToDelete(activeConversation)}
-                                        className="size-8 rounded-lg text-muted-foreground hover:text-destructive cursor-pointer"
-                                        title="Hapus Percakapan"
-                                    >
-                                        <Trash2 className="size-4" />
-                                    </Button>
+                                    {isSuperAdmin && (
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => setConvToDelete(activeConversation)}
+                                            className="size-8 rounded-lg text-muted-foreground hover:text-destructive cursor-pointer"
+                                            title="Hapus Percakapan"
+                                        >
+                                            <Trash2 className="size-4" />
+                                        </Button>
+                                    )}
                                 </div>
                             </div>
 
@@ -1032,7 +1066,28 @@ export default function ConversationsIndex({
 
                             {/* Reply Input Box & Takeover Controls */}
                             <div className="border-t border-border bg-sidebar/20 p-2.5 sm:p-3 shrink-0 space-y-2">
-                                {!activeConversation.is_taken_over ? (
+                                {isTakenOverByOther ? (
+                                    <div className="flex items-center justify-between rounded-xl bg-amber-500/10 border border-amber-500/25 px-3 py-1.5 text-xs shadow-2xs">
+                                        <div className="flex items-center gap-2 font-bold text-amber-800 dark:text-amber-300 min-w-0">
+                                            <UserCheck className="size-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                                            <span className="text-[11px] truncate">
+                                                Sedang Ditangani oleh {activeConversation.taken_over_by?.name || 'Admin Lain'} (Mode Pantau / Tidak Dapat Mengetik)
+                                            </span>
+                                        </div>
+                                        {isSuperAdmin && (
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => handleToggleTakeover(activeConversation)}
+                                                className="h-6 px-2 text-[11px] font-semibold text-amber-700 dark:text-amber-300 hover:bg-amber-500/15 cursor-pointer gap-1 shrink-0"
+                                            >
+                                                <RotateCcw className="size-3" />
+                                                <span>Kembalikan ke Bot</span>
+                                            </Button>
+                                        )}
+                                    </div>
+                                ) : !activeConversation.is_taken_over ? (
                                     <div className="flex items-center justify-between gap-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 px-3 py-1.5 shadow-2xs">
                                         <div className="flex items-center gap-2 min-w-0">
                                             <div className="relative flex size-6 items-center justify-center rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400 shrink-0">
@@ -1142,9 +1197,15 @@ export default function ConversationsIndex({
                                         variant="outline"
                                         size="icon"
                                         onClick={() => fileInputRef.current?.click()}
-                                        disabled={!activeConversation.is_taken_over || processing}
+                                        disabled={!canReply || processing}
                                         className="size-9 rounded-xl shrink-0 cursor-pointer text-muted-foreground hover:text-foreground"
-                                        title="Kirim Foto atau Video"
+                                        title={
+                                            isTakenOverByOther
+                                                ? `Sedang ditangani oleh ${activeConversation.taken_over_by?.name || 'Admin Lain'}`
+                                                : canReply
+                                                    ? 'Kirim Foto atau Video'
+                                                    : 'Klik Ambil Alih Chat terlebih dahulu'
+                                        }
                                     >
                                         <Paperclip className="size-4" />
                                     </Button>
@@ -1156,14 +1217,16 @@ export default function ConversationsIndex({
                                             onChange={(e) => setData('message', e.target.value)}
                                             onKeyDown={handleKeyDown}
                                             placeholder={
-                                                activeConversation.is_taken_over
-                                                    ? data.attachment
-                                                        ? 'Tambah keterangan lampiran (opsional)... (Tekan Enter untuk kirim)'
-                                                        : 'Ketik balasan Anda langsung ke pengunjung... (Tekan Enter untuk kirim)'
-                                                    : 'Klik "Ambil Alih Chat" di atas untuk membalas...'
+                                                isTakenOverByOther
+                                                    ? `Sedang ditangani oleh ${activeConversation.taken_over_by?.name || 'Admin Lain'} (Mode Pantau / Hanya Baca)`
+                                                    : canReply
+                                                        ? data.attachment
+                                                            ? 'Tambah keterangan lampiran (opsional)... (Tekan Enter untuk kirim)'
+                                                            : 'Ketik balasan Anda langsung ke pengunjung... (Tekan Enter untuk kirim)'
+                                                        : 'Klik "Ambil Alih Chat" di atas untuk membalas...'
                                             }
-                                            disabled={!activeConversation.is_taken_over || processing}
-                                            className={`h-9 text-xs rounded-xl bg-background transition-all px-3 ${activeConversation.is_taken_over
+                                            disabled={!canReply || processing}
+                                            className={`h-9 text-xs rounded-xl bg-background transition-all px-3 ${canReply
                                                 ? 'border-emerald-500/40 focus:ring-1 focus:ring-emerald-500/30'
                                                 : 'opacity-60 bg-muted/30 cursor-not-allowed'
                                                 }`}
@@ -1173,10 +1236,10 @@ export default function ConversationsIndex({
                                     <Button
                                         type="submit"
                                         size="sm"
-                                        disabled={!activeConversation.is_taken_over || (!data.message.trim() && !data.attachment) || processing}
-                                        className={`h-9 px-4 rounded-xl font-semibold text-xs shadow-2xs gap-1.5 transition-all cursor-pointer shrink-0 ${activeConversation.is_taken_over
-                                            ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
-                                            : 'opacity-50'
+                                        disabled={!canReply || (!data.message.trim() && !data.attachment) || processing}
+                                        className={`h-9 px-4 rounded-xl font-semibold text-xs shadow-2xs gap-1.5 transition-all shrink-0 ${canReply
+                                            ? 'bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer'
+                                            : 'opacity-50 cursor-not-allowed'
                                             }`}
                                     >
                                         {processing ? (
@@ -1257,6 +1320,7 @@ export default function ConversationsIndex({
                             variant="destructive"
                             disabled={isDeletingAll}
                             onClick={() => {
+                                if (!isSuperAdmin) return;
                                 setIsDeletingAll(true);
                                 router.delete('/conversations/destroy-all', {
                                     onFinish: () => {

@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\ChatController;
 use App\Models\Application;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 
 // Akses domain utama dikosongkan (tidak menampilkan welcome page)
 Route::get('/', fn () => response(''))->name('home');
@@ -116,10 +117,11 @@ require __DIR__.'/settings.php';
 
 // Fallback route for uploaded chat media (images & videos) if public symlink is not created
 Route::get('storage/{path}', function (string $path) {
-    if (! \Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {
+    if (! Storage::disk('public')->exists($path)) {
         abort(404);
     }
-    return \Illuminate\Support\Facades\Storage::disk('public')->response($path);
+
+    return Storage::disk('public')->response($path);
 })->where('path', '.*')->name('storage.media');
 
 // Direct slug route (e.g. domain/slug opens chatbot directly)

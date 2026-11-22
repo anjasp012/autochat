@@ -21,7 +21,12 @@ import type { ApplicationSummary } from '@/types/application';
 import type { NavItem } from '@/types';
 
 export function AppSidebar() {
-    const { currentAppId, allApplications, applications } = usePage().props as Record<string, any>;
+    const { currentAppId, allApplications, applications, auth } = usePage().props as Record<string, any>;
+    const user = auth?.user;
+    const isSuperAdmin =
+        user?.role === 'admin' ||
+        user?.role === 'super_admin' ||
+        (user?.is_admin && !user?.role);
 
     const appList: ApplicationSummary[] = Array.isArray(allApplications)
         ? allApplications
@@ -46,11 +51,15 @@ export function AppSidebar() {
             href: '/conversations',
             icon: MessageSquare,
         },
-        {
-            title: 'Pengaturan Bot',
-            href: '/setting',
-            icon: Settings2,
-        },
+        ...(isSuperAdmin
+            ? [
+                  {
+                      title: 'Pengaturan Bot',
+                      href: '/setting',
+                      icon: Settings2,
+                  },
+              ]
+            : []),
     ];
 
     return (

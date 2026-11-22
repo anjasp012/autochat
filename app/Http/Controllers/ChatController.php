@@ -8,13 +8,14 @@ use App\Models\Application;
 use App\Models\BotEscalation;
 use App\Models\Conversation;
 use App\Models\Message;
+use App\Services\AI\LLMResponse;
 use App\Services\AI\LLMService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -90,27 +91,6 @@ class ChatController extends Controller
                 'expired' => true,
                 'messages' => [],
             ]);
-        }
-
-        // Jika sudah diambil alih admin lalu dibalas admin, dan pengunjung tidak kunjung membalas (> 3 menit), kembalikan ke bot AI
-        if ($conversation->is_taken_over) {
-            $lastMsg = $conversation->messages()->latest('id')->first();
-            if ($lastMsg && $lastMsg->role === 'admin' && Carbon::parse($lastMsg->created_at)->diffInMinutes(now()) >= 3) {
-                $conversation->update([
-                    'is_taken_over' => false,
-                    'taken_over_by' => null,
-                    'is_waiting_admin' => false,
-                ]);
-
-                $systemMsg = Message::create([
-                    'conversation_id' => $conversation->id,
-                    'role' => 'system',
-                    'content' => 'Percakapan telah dikembalikan ke asisten AI.',
-                    'tokens_used' => 0,
-                ]);
-
-                MessageSent::safeDispatch($systemMsg);
-            }
         }
 
         $messages = $conversation->messages()
@@ -205,11 +185,22 @@ class ChatController extends Controller
             }
 
             $conversation->update(['last_activity_at' => now()]);
+
+            if (empty($conversation->city)) {
+                $city = $request->header('cf-ipcity') ?: self::resolveCityFromIp($conversation->ip_address ?: $request->ip());
+                if ($city) {
+                    $conversation->update(['city' => $city]);
+                }
+            }
         } else {
+            $ip = $request->ip();
+            $city = $request->header('cf-ipcity') ?: self::resolveCityFromIp($ip);
+
             $conversation = Conversation::create([
                 'uuid' => $uuid,
                 'application_id' => $application->id,
-                'ip_address' => $request->ip(),
+                'ip_address' => $ip,
+                'city' => $city,
                 'user_agent' => substr((string) $request->userAgent(), 0, 500),
                 'last_activity_at' => now(),
             ]);
@@ -507,44 +498,21 @@ class ChatController extends Controller
 
         // If conversation is taken over by admin:
         if ($conversation->is_taken_over) {
-            $lastPriorMsg = $conversation->messages()
-                ->where('id', '!=', $userMessage->id)
-                ->latest('id')
-                ->first();
+            $conversation->update(['last_activity_at' => now()]);
 
-            // Jika pesan sebelumnya berasal dari admin (admin sudah sempat membalas),
-            // dan user baru membalas lagi, kembalikan percakapan otomatis ke asisten AI!
-            if ($lastPriorMsg && $lastPriorMsg->role === 'admin') {
-                $conversation->update([
-                    'is_taken_over' => false,
-                    'taken_over_by' => null,
-                    'is_waiting_admin' => false,
-                ]);
-
-                $systemMsg = Message::create([
-                    'conversation_id' => $conversation->id,
-                    'role' => 'system',
-                    'content' => 'Percakapan telah dikembalikan ke asisten AI.',
-                    'tokens_used' => 0,
-                ]);
-
-                MessageSent::safeDispatch($systemMsg);
-                // Lanjutkan eksekusi ke pemrosesan AI di bawah!
-            } else {
-                return response()->json([
-                    'conversation_uuid' => $conversation->uuid,
-                    'is_taken_over' => true,
-                    'user_message' => [
-                        'id' => (string) $userMessage->id,
-                        'role' => 'user',
-                        'content' => $userMessage->content,
-                        'media_url' => $userMessage->media_url,
-                        'media_type' => $userMessage->media_type,
-                        'created_at' => $userMessage->created_at?->format('H:i') ?? '',
-                    ],
-                    'assistant_message' => null,
-                ]);
-            }
+            return response()->json([
+                'conversation_uuid' => $conversation->uuid,
+                'is_taken_over' => true,
+                'user_message' => [
+                    'id' => (string) $userMessage->id,
+                    'role' => 'user',
+                    'content' => $userMessage->content,
+                    'media_url' => $userMessage->media_url,
+                    'media_type' => $userMessage->media_type,
+                    'created_at' => $userMessage->created_at?->format('H:i') ?? '',
+                ],
+                'assistant_message' => null,
+            ]);
         }
 
         // Load recent conversation history (last 10 messages in chronological order, user & assistant only)
@@ -748,7 +716,7 @@ PROMPT;
             Cache::put('last_llm_call_timestamp', microtime(true), 15);
         } catch (\Throwable $e) {
             Log::warning('LLM queue/process exception: '.$e->getMessage());
-            $llmResult = \App\Services\AI\LLMResponse::failure($e->getMessage());
+            $llmResult = LLMResponse::failure($e->getMessage());
         } finally {
             optional($queueLock)->release();
         }
@@ -864,5 +832,35 @@ PROMPT;
         }
 
         return array_values(array_unique(array_filter($words, fn ($w) => strlen($w) >= 3)));
+    }
+
+    /**
+     * Resolve city location from IP address (using Cloudflare or IP Geolocation API with caching).
+     */
+    public static function resolveCityFromIp(?string $ip): ?string
+    {
+        if (empty($ip) || in_array($ip, ['127.0.0.1', '::1', 'localhost'], true)) {
+            return 'Local';
+        }
+
+        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
+            return 'Local / Private';
+        }
+
+        return Cache::remember("ip_city_{$ip}", 86400 * 30, function () use ($ip) {
+            try {
+                $res = Http::timeout(2)->get("http://ip-api.com/json/{$ip}?fields=status,city,country");
+                if ($res->successful()) {
+                    $data = $res->json();
+                    if (($data['status'] ?? '') === 'success' && ! empty($data['city'])) {
+                        return $data['city'];
+                    }
+                }
+            } catch (\Throwable $e) {
+                // Ignore timeout or network errors
+            }
+
+            return null;
+        });
     }
 }

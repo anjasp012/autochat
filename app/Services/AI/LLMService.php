@@ -119,6 +119,7 @@ class LLMService
                         }
 
                         usleep((int) ($sleepSeconds * 1_000_000));
+
                         continue;
                     }
                 }
@@ -131,6 +132,7 @@ class LLMService
                     Log::info("Model '{$payload['model']}' tidak ditemukan di provider. Auto-retrying dengan fallback model 'llama-3.3-70b-versatile'.");
                     $payload['model'] = 'llama-3.3-70b-versatile';
                     usleep(500_000);
+
                     continue;
                 }
 
@@ -174,6 +176,7 @@ class LLMService
 
                 if ($attempt < $maxAttempts) {
                     usleep((int) (1.2 * 1_000_000));
+
                     continue;
                 }
 
