@@ -210,13 +210,43 @@ class ConversationController extends Controller
     }
 
     /**
+     * Get JSON messages for a conversation (for fast background polling & syncing).
+     */
+    public function messages(Conversation $conversation): JsonResponse
+    {
+        $messages = $conversation->messages()
+            ->orderBy('created_at', 'asc')
+            ->get(['id', 'conversation_id', 'role', 'content', 'media_url', 'media_type', 'created_at'])
+            ->map(fn (Message $m) => [
+                'id' => $m->id,
+                'conversation_id' => $m->conversation_id,
+                'role' => $m->role,
+                'content' => $m->content,
+                'media_url' => $m->media_url,
+                'media_type' => $m->media_type,
+                'created_at' => $m->created_at?->format('H:i') ?? '',
+            ]);
+
+        return response()->json([
+            'uuid' => $conversation->uuid,
+            'is_taken_over' => (bool) $conversation->is_taken_over,
+            'is_waiting_admin' => (bool) $conversation->is_waiting_admin,
+            'messages' => $messages,
+        ]);
+    }
+
+    /**
      * Admin replies directly to the visitor.
      */
-    public function reply(Request $request, Conversation $conversation): RedirectResponse
+    public function reply(Request $request, Conversation $conversation): RedirectResponse|JsonResponse
     {
         $validated = $request->validate([
             'message' => ['nullable', 'string', 'max:4000'],
             'attachment' => ['nullable', 'file', 'max:25600', 'mimes:jpg,jpeg,png,gif,webp,mp4,webm,mov,ogg'],
+        ], [
+            'attachment.max' => 'Ukuran file lampiran maksimal 25 MB.',
+            'attachment.mimes' => 'Format file harus berupa gambar (JPG, PNG, WebP, GIF) atau video (MP4, WebM, MOV).',
+            'attachment.uploaded' => 'File gagal diunggah. Ukuran file melebihi batas upload server (upload_max_filesize di PHP VPS).',
         ]);
 
         $content = trim($validated['message'] ?? '');
@@ -243,6 +273,9 @@ class ConversationController extends Controller
         }
 
         if ($content === '' && ! $mediaUrl) {
+            if ($request->wantsJson()) {
+                return response()->json(['error' => 'Pesan atau lampiran tidak boleh kosong.'], 422);
+            }
             return back()->withErrors(['message' => 'Pesan atau lampiran tidak boleh kosong.']);
         }
 
@@ -250,18 +283,21 @@ class ConversationController extends Controller
             $content = $mediaType === 'video' ? '[Video]' : '[Gambar]';
         }
 
+        $conversation->update([
+            'is_taken_over' => true,
+            'is_waiting_admin' => false,
+            'taken_over_at' => $conversation->taken_over_at ?? now(),
+            'taken_over_by' => $conversation->taken_over_by ?? $request->user()?->id,
+            'last_activity_at' => now(),
+        ]);
+
         $adminMessage = Message::create([
             'conversation_id' => $conversation->id,
-            'role' => 'assistant',
+            'role' => 'admin',
             'content' => $content,
             'media_url' => $mediaUrl,
             'media_type' => $mediaType,
             'tokens_used' => 0,
-        ]);
-
-        $conversation->update([
-            'is_waiting_admin' => false,
-            'last_activity_at' => now(),
         ]);
 
         BotEscalation::where('conversation_id', $conversation->id)->update([
@@ -269,7 +305,22 @@ class ConversationController extends Controller
             'is_resolved' => true,
         ]);
 
+        $adminMessage->setRelation('conversation', $conversation->fresh(['application']));
         MessageSent::safeDispatch($adminMessage);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => [
+                    'id' => $adminMessage->id,
+                    'role' => $adminMessage->role,
+                    'content' => $adminMessage->content,
+                    'media_url' => $adminMessage->media_url,
+                    'media_type' => $adminMessage->media_type,
+                    'created_at' => $adminMessage->created_at?->format('H:i') ?? '',
+                ],
+            ]);
+        }
 
         return back()->with('success', 'Pesan balasan admin berhasil dikirim.');
     }

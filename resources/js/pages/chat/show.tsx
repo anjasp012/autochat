@@ -5,12 +5,15 @@ import {
     ArrowRight,
     ArrowUpRight,
     Bot,
+    Check,
+    CheckCheck,
     Clock,
     ExternalLink,
     FileText,
     Film,
     HelpCircle,
     Home as HomeIcon,
+    Loader2,
     MessageSquare,
     Paperclip,
     RotateCcw,
@@ -34,11 +37,13 @@ import {
 
 interface ChatMessage {
     id: string;
-    role: 'user' | 'assistant' | 'system';
+    role: 'user' | 'assistant' | 'admin' | 'system';
     content: string;
     media_url?: string | null;
     media_type?: 'image' | 'video' | null;
     created_at?: string;
+    status?: 'sending' | 'sent' | 'failed';
+    error?: string;
 }
 
 interface ApplicationData {
@@ -409,7 +414,7 @@ export default function ChatShow({
             if (event.role !== 'user') {
                 setHasSubmittedForm(true);
                 // If an admin or assistant reply arrives, clear waiting state
-                if (event.role === 'assistant' && event.is_taken_over) {
+                if (event.role === 'admin' || (event.role === 'assistant' && event.is_taken_over)) {
                     setIsWaitingAdmin(false);
                 }
                 setMessages((prev) => {
@@ -424,6 +429,7 @@ export default function ChatShow({
                             media_url: event.media_url,
                             media_type: event.media_type,
                             created_at: event.created_at,
+                            status: 'sent',
                         },
                     ];
                 });
@@ -438,6 +444,55 @@ export default function ChatShow({
             channel.stopListening('MessageSent');
         };
     }, [sessionUuid]);
+
+    // Fallback sync polling: periodically sync in background so no message is ever delayed or lost
+    useEffect(() => {
+        if (!sessionUuid || isSessionExpired) return;
+
+        const interval = setInterval(async () => {
+            if (document.hidden) return;
+
+            try {
+                const res = await fetch(`/chat/${application.app_id}/session/${sessionUuid}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.is_taken_over !== undefined) {
+                        setIsTakenOver(Boolean(data.is_taken_over));
+                    }
+                    if (data.is_waiting_admin !== undefined) {
+                        setIsWaitingAdmin(Boolean(data.is_waiting_admin));
+                    }
+                    if (data.messages && Array.isArray(data.messages)) {
+                        setMessages((prev) => {
+                            let hasNew = false;
+                            const merged = [...prev];
+                            for (const serverMsg of data.messages) {
+                                const exists = merged.some(
+                                    (m) =>
+                                        String(m.id) === String(serverMsg.id) ||
+                                        (m.role === serverMsg.role &&
+                                            m.content === serverMsg.content &&
+                                            (m.media_url === serverMsg.media_url || !m.media_url))
+                                );
+                                if (!exists) {
+                                    hasNew = true;
+                                    merged.push({
+                                        ...serverMsg,
+                                        status: 'sent',
+                                    });
+                                }
+                            }
+                            return hasNew ? merged : prev;
+                        });
+                    }
+                }
+            } catch (e) {
+                // Ignore silent background sync errors
+            }
+        }, 3500);
+
+        return () => clearInterval(interval);
+    }, [sessionUuid, application.app_id, isSessionExpired]);
 
     // Fetch existing messages from backend for current active session
     const fetchSessionMessages = async (uuid: string) => {
@@ -454,7 +509,12 @@ export default function ChatShow({
                 if (data.expired) {
                     setIsSessionExpired(true);
                 } else if (data.messages && data.messages.length > 0) {
-                    setMessages(data.messages);
+                    setMessages(
+                        data.messages.map((m: any) => ({
+                            ...m,
+                            status: 'sent',
+                        }))
+                    );
                     setHasSubmittedForm(true);
                 }
             }
@@ -537,6 +597,7 @@ export default function ChatShow({
                 media_url: tempMediaUrl,
                 media_type: tempMediaType,
                 created_at: nowFormatted,
+                status: 'sending',
             };
             setMessages((prev) => [...prev, tempUserMsg]);
         }
@@ -615,7 +676,11 @@ export default function ChatShow({
             }
 
             if (!response.ok) {
-                throw new Error(data.error || 'Gagal mengirim pesan.');
+                let errMsg = data.errors?.attachment?.[0] || data.error || data.message || 'Gagal mengirim pesan.';
+                if (typeof errMsg === 'string' && (errMsg.includes('failed to upload') || errMsg.includes('lampiran'))) {
+                    errMsg = 'File gagal diunggah: ukuran melebihi batas upload PHP server (upload_max_filesize).';
+                }
+                throw new Error(errMsg);
             }
 
             // Update ID temp user message jika ada response user_message
@@ -629,9 +694,14 @@ export default function ChatShow({
                                   media_url: data.user_message.media_url || m.media_url,
                                   media_type: data.user_message.media_type || m.media_type,
                                   created_at: data.user_message.created_at || m.created_at,
+                                  status: 'sent',
                               }
                             : m
                     )
+                );
+            } else {
+                setMessages((prev) =>
+                    prev.map((m) => (m.id === tempUserMsgId ? { ...m, status: 'sent' } : m))
                 );
             }
 
@@ -651,20 +721,27 @@ export default function ChatShow({
                             media_url: data.assistant_message.media_url,
                             media_type: data.assistant_message.media_type,
                             created_at: data.assistant_message.created_at,
+                            status: 'sent',
                         },
                     ];
                 });
             }
         } catch (err: any) {
             console.error('Send message error:', err);
-            setMessages((prev) => [
-                ...prev,
-                {
-                    id: `err-${Date.now()}`,
-                    role: 'assistant',
-                    content: 'Maaf, terjadi kendala saat memproses pesan Anda. Silakan coba kembali sebentar lagi.',
-                },
-            ]);
+            const errText = err?.message || 'Maaf, terjadi kendala saat memproses pesan Anda.';
+            setErrorMessage(errText);
+            // Mark optimistic message as failed
+            setMessages((prev) =>
+                prev.map((m) =>
+                    m.id === tempUserMsgId
+                        ? {
+                              ...m,
+                              status: 'failed',
+                              error: errText,
+                          }
+                        : m
+                )
+            );
         } finally {
             setIsLoading(false);
             setTimeout(() => {
@@ -1155,11 +1232,11 @@ export default function ChatShow({
 
                                                         {/* Media Attachment (Image or Video) */}
                                                         {msg.media_url && (
-                                                            <div className="overflow-hidden rounded-2xl max-w-full shadow-2xs">
+                                                            <div className="relative overflow-hidden rounded-2xl max-w-full shadow-2xs group">
                                                                 {msg.media_type === 'video' ? (
                                                                     <video
                                                                         src={msg.media_url}
-                                                                        controls
+                                                                        controls={msg.status !== 'sending'}
                                                                         playsInline
                                                                         className="max-h-60 max-w-full rounded-2xl bg-black"
                                                                     />
@@ -1167,9 +1244,38 @@ export default function ChatShow({
                                                                     <img
                                                                         src={msg.media_url}
                                                                         alt="Lampiran"
-                                                                        onClick={() => setLightboxMedia({ url: msg.media_url!, type: 'image' })}
+                                                                        onClick={() => msg.status !== 'sending' && setLightboxMedia({ url: msg.media_url!, type: 'image' })}
                                                                         className="max-h-60 max-w-full rounded-2xl object-contain cursor-pointer hover:opacity-95 transition-opacity bg-black/5"
                                                                     />
+                                                                )}
+
+                                                                {/* Uploading Overlay */}
+                                                                {msg.status === 'sending' && (
+                                                                    <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex flex-col items-center justify-center text-white gap-1.5 p-3 animate-in fade-in duration-200">
+                                                                        <Loader2 className="size-6 animate-spin text-amber-400" />
+                                                                        <span className="text-xs font-semibold text-white tracking-wide">
+                                                                            Mengunggah {msg.media_type === 'video' ? 'video' : 'foto'}...
+                                                                        </span>
+                                                                    </div>
+                                                                )}
+
+                                                                {/* Failed Overlay */}
+                                                                {msg.status === 'failed' && (
+                                                                    <div className="absolute inset-0 bg-rose-950/80 backdrop-blur-xs flex flex-col items-center justify-center text-white gap-1 p-2 text-center animate-in fade-in duration-200">
+                                                                        <AlertCircle className="size-6 text-rose-400 mb-0.5" />
+                                                                        <span className="text-xs font-bold text-rose-200">Gagal Terkirim</span>
+                                                                        <span className="text-[10px] text-rose-300 max-w-[200px] leading-tight">
+                                                                            {msg.error || 'Ukuran melebihi batas atau kendala jaringan'}
+                                                                        </span>
+                                                                    </div>
+                                                                )}
+
+                                                                {/* Sent Badge on Media */}
+                                                                {(msg.status === 'sent' || (!msg.status && isUser)) && (
+                                                                    <div className="absolute bottom-2 right-2 flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-medium text-white backdrop-blur-xs shadow-xs">
+                                                                        <CheckCheck className="size-3 text-emerald-400" />
+                                                                        <span>Terkirim</span>
+                                                                    </div>
                                                                 )}
                                                             </div>
                                                         )}
@@ -1191,11 +1297,25 @@ export default function ChatShow({
                                                             </div>
                                                         )}
 
-                                                        {msg.created_at && (
-                                                            <span className="text-[9px] text-neutral-400 px-1">
-                                                                {msg.created_at}
-                                                            </span>
-                                                        )}
+                                                        {/* Status & Timestamp */}
+                                                        <div className={`flex items-center gap-1 text-[9px] px-1 ${isUser ? 'justify-end text-neutral-400' : 'text-neutral-400'}`}>
+                                                            {msg.created_at && <span>{msg.created_at}</span>}
+                                                            {isUser && (
+                                                                msg.status === 'sending' ? (
+                                                                    <span className="flex items-center gap-0.5 text-amber-500 font-medium">
+                                                                        <Clock className="size-2.5 animate-spin" />
+                                                                        <span>Mengirim...</span>
+                                                                    </span>
+                                                                ) : msg.status === 'failed' ? (
+                                                                    <span className="flex items-center gap-0.5 text-rose-500 font-bold">
+                                                                        <AlertCircle className="size-2.5" />
+                                                                        <span>Gagal</span>
+                                                                    </span>
+                                                                ) : (
+                                                                    <CheckCheck className="size-3 text-emerald-500" />
+                                                                )
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             );
@@ -1339,8 +1459,15 @@ export default function ChatShow({
                                     onChange={(e) => {
                                         const file = e.target.files?.[0];
                                         if (file) {
+                                            if (file.size > 25 * 1024 * 1024) {
+                                                setErrorMessage('Ukuran file maksimal 25 MB. Silakan pilih file yang lebih kecil.');
+                                                e.target.value = '';
+                                                return;
+                                            }
                                             setSelectedFile(file);
                                             setFilePreviewUrl(URL.createObjectURL(file));
+                                            setErrorMessage(null);
+                                            setTimeout(() => textareaRef.current?.focus(), 50);
                                         }
                                         e.target.value = '';
                                     }}
@@ -1371,7 +1498,7 @@ export default function ChatShow({
                                         !application.is_active
                                             ? 'Chatbot sedang offline...'
                                             : selectedFile
-                                                ? 'Tambah keterangan (opsional)...'
+                                                ? 'Tambah keterangan (opsional)... (Tekan Enter untuk kirim)'
                                                 : 'Tulis pesan...'
                                     }
                                     className="flex-1 h-9 px-3.5 text-xs rounded-full bg-slate-100 border-none text-neutral-900 focus:outline-none focus:ring-1 focus:ring-amber-400 placeholder:text-neutral-400"
@@ -1382,8 +1509,13 @@ export default function ChatShow({
                                     disabled={(!input.trim() && !selectedFile) || isLoading || !application.is_active}
                                     className="flex size-9 items-center justify-center rounded-full font-bold disabled:opacity-40 transition-colors cursor-pointer shrink-0 shadow-2xs"
                                     style={{ backgroundColor: headerColor, color: headerTextColor }}
+                                    title="Kirim pesan (Enter)"
                                 >
-                                    <Send className="size-3.5" />
+                                    {isLoading ? (
+                                        <Loader2 className="size-3.5 animate-spin" />
+                                    ) : (
+                                        <Send className="size-3.5" />
+                                    )}
                                 </button>
                             </form>
                         </div>

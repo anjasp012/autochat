@@ -60,6 +60,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Conversations & Human Takeover Management (WhatsApp-Style Live Console)
     Route::get('conversations', [ConversationController::class, 'index'])->name('conversations.index');
     Route::get('conversations/{conversation:uuid}', [ConversationController::class, 'show'])->name('conversations.show');
+    Route::get('conversations/{conversation:uuid}/messages', [ConversationController::class, 'messages'])->name('conversations.messages');
     Route::post('conversations/{conversation:uuid}/takeover', [ConversationController::class, 'takeover'])->name('conversations.takeover');
     Route::post('conversations/{conversation:uuid}/release-takeover', [ConversationController::class, 'releaseTakeover'])->name('conversations.release-takeover');
     Route::post('conversations/{conversation:uuid}/archive', [ConversationController::class, 'archive'])->name('conversations.archive');
@@ -71,6 +72,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Backwards compatibility for conversations
     Route::get('admin/conversations', fn () => redirect('/conversations'));
     Route::get('admin/conversations/{conversation:uuid}', fn ($conversation) => redirect("/conversations/{$conversation}"));
+    Route::get('admin/conversations/{conversation:uuid}/messages', [ConversationController::class, 'messages']);
     Route::post('admin/conversations/{conversation:uuid}/takeover', [ConversationController::class, 'takeover']);
     Route::post('admin/conversations/{conversation:uuid}/release-takeover', [ConversationController::class, 'releaseTakeover']);
     Route::post('admin/conversations/{conversation:uuid}/reply', [ConversationController::class, 'reply']);
@@ -111,6 +113,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 require __DIR__.'/settings.php';
+
+// Fallback route for uploaded chat media (images & videos) if public symlink is not created
+Route::get('storage/{path}', function (string $path) {
+    if (! \Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {
+        abort(404);
+    }
+    return \Illuminate\Support\Facades\Storage::disk('public')->response($path);
+})->where('path', '.*')->name('storage.media');
 
 // Direct slug route (e.g. domain/slug opens chatbot directly)
 Route::get('{application:app_id}', [ChatController::class, 'show'])

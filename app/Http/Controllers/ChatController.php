@@ -149,6 +149,10 @@ class ChatController extends Controller
             'uuid' => ['required', 'string', 'uuid'],
             'message' => ['nullable', 'string', 'max:4000'],
             'attachment' => ['nullable', 'file', 'max:25600', 'mimes:jpg,jpeg,png,gif,webp,mp4,webm,mov,ogg'],
+        ], [
+            'attachment.max' => 'Ukuran file lampiran maksimal 25 MB.',
+            'attachment.mimes' => 'Format file harus berupa gambar (JPG, PNG, WebP, GIF) atau video (MP4, WebM, MOV).',
+            'attachment.uploaded' => 'File gagal diunggah. Ukuran file melebihi batas upload server (upload_max_filesize di PHP VPS).',
         ]);
 
         $uuid = $validated['uuid'];

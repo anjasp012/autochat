@@ -1,14 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import { Head, router, useForm } from '@inertiajs/react';
 import {
+    AlertCircle,
     Archive,
     ArchiveRestore,
     ArrowLeft,
     Bot,
+    CheckCheck,
     Clock,
     Film,
     HandMetal,
     Inbox,
+    Loader2,
     MessageSquare,
     Paperclip,
     RotateCcw,
@@ -37,7 +40,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { echo } from '@/echo';
 
 interface Message {
-    id: number;
+    id: number | string;
     conversation_id?: number;
     role: 'user' | 'assistant' | 'admin' | 'system';
     content: string;
@@ -45,6 +48,8 @@ interface Message {
     media_type?: 'image' | 'video' | null;
     tokens_used?: number;
     created_at?: string;
+    status?: 'sending' | 'sent' | 'failed';
+    error?: string;
 }
 
 interface ConversationItem {
@@ -140,6 +145,7 @@ export default function ConversationsIndex({
 
     const messagesContainerRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
     const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
     const [lightboxMedia, setLightboxMedia] = useState<{ url: string; type: 'image' | 'video' } | null>(null);
 
@@ -207,10 +213,31 @@ export default function ConversationsIndex({
         const roomChannel = echo.channel(`conversation.${activeConversation.uuid}`);
         const handleRoomUpdate = (event: any) => {
             console.log('[Echo Admin] Received conversation room update:', event);
-            // Instant local state append
+            // Instant local state append / deduplication
             setLocalMessages((prev) => {
                 const idStr = String(event.id);
                 if (prev.some((m) => String(m.id) === idStr)) return prev;
+
+                // Replace matching temporary optimistic message
+                const tempIndex = prev.findIndex(
+                    (m) =>
+                        String(m.id).startsWith('temp-admin-') &&
+                        (m.content === event.content || (event.media_url && m.media_url))
+                );
+
+                if (tempIndex !== -1) {
+                    const next = [...prev];
+                    next[tempIndex] = {
+                        ...next[tempIndex],
+                        id: Number(event.id) || event.id,
+                        media_url: event.media_url || next[tempIndex].media_url,
+                        media_type: event.media_type || next[tempIndex].media_type,
+                        created_at: event.created_at || next[tempIndex].created_at,
+                        status: 'sent',
+                    };
+                    return next;
+                }
+
                 return [
                     ...prev,
                     {
@@ -222,6 +249,7 @@ export default function ConversationsIndex({
                         media_type: event.media_type,
                         tokens_used: 0,
                         created_at: event.created_at || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                        status: 'sent',
                     },
                 ];
             });
@@ -242,6 +270,64 @@ export default function ConversationsIndex({
             roomChannel.stopListening('MessageSent');
         };
     }, [activeConversation?.uuid, activeConversation?.id]);
+
+    // Fallback sync polling: periodically sync in background so no message is ever delayed or lost
+    useEffect(() => {
+        if (!activeConversation?.uuid) return;
+
+        const interval = setInterval(async () => {
+            if (document.hidden) return;
+
+            try {
+                const res = await fetch(`/conversations/${activeConversation.uuid}/messages`, {
+                    headers: { Accept: 'application/json' },
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.messages && Array.isArray(data.messages)) {
+                        setLocalMessages((prev) => {
+                            let hasNew = false;
+                            const merged = [...prev];
+                            for (const serverMsg of data.messages) {
+                                const exists = merged.some(
+                                    (m) =>
+                                        String(m.id) === String(serverMsg.id) ||
+                                        (m.role === serverMsg.role &&
+                                            m.content === serverMsg.content &&
+                                            (m.media_url === serverMsg.media_url || !m.media_url))
+                                );
+                                if (!exists) {
+                                    hasNew = true;
+                                    merged.push({
+                                        ...serverMsg,
+                                        status: 'sent',
+                                    });
+                                }
+                            }
+                            return hasNew ? merged : prev;
+                        });
+                    }
+                }
+            } catch (e) {
+                // Ignore silent background sync errors
+            }
+        }, 3500);
+
+        return () => clearInterval(interval);
+    }, [activeConversation?.uuid]);
+
+    // Auto-reload on browser window focus
+    useEffect(() => {
+        const handleFocus = () => {
+            router.reload({
+                only: ['conversations', 'counts'],
+                preserveScroll: true,
+                preserveState: true,
+            });
+        };
+        window.addEventListener('focus', handleFocus);
+        return () => window.removeEventListener('focus', handleFocus);
+    }, []);
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
@@ -303,6 +389,32 @@ export default function ConversationsIndex({
         if (e) e.preventDefault();
         if (!activeConversation || (!data.message.trim() && !data.attachment) || processing) return;
 
+        const tempId = `temp-admin-${Date.now()}`;
+        const tempMediaUrl = data.attachment ? URL.createObjectURL(data.attachment) : null;
+        const tempMediaType = data.attachment
+            ? data.attachment.type.startsWith('video/')
+                ? 'video'
+                : 'image'
+            : null;
+        const sentContent = data.message.trim() || (tempMediaType === 'video' ? '[Video]' : '[Gambar]');
+        const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        // Optimistic append immediately to localMessages
+        const optimisticMsg: Message = {
+            id: tempId,
+            conversation_id: activeConversation.id,
+            role: 'admin',
+            content: sentContent,
+            media_url: tempMediaUrl,
+            media_type: tempMediaType,
+            tokens_used: 0,
+            created_at: timeNow,
+            status: 'sending',
+        };
+
+        setLocalMessages((prev) => [...prev, optimisticMsg]);
+        scrollToBottom(true);
+
         post(`/conversations/${activeConversation.uuid}/reply`, {
             preserveScroll: true,
             forceFormData: true,
@@ -312,11 +424,24 @@ export default function ConversationsIndex({
                     URL.revokeObjectURL(filePreviewUrl);
                     setFilePreviewUrl(null);
                 }
+                setLocalMessages((prev) =>
+                    prev.map((m) => (m.id === tempId ? { ...m, status: 'sent' } : m))
+                );
+            },
+            onError: (errors) => {
+                const errMsg = errors?.attachment || errors?.message || 'Gagal mengirim lampiran.';
+                setLocalMessages((prev) =>
+                    prev.map((m) =>
+                        m.id === tempId
+                            ? { ...m, status: 'failed', error: String(errMsg) }
+                            : m
+                    )
+                );
             },
         });
     };
 
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             handleSendReply();
@@ -802,11 +927,11 @@ export default function ConversationsIndex({
 
                                                     {/* Media Attachment (Image or Video) */}
                                                     {msg.media_url && (
-                                                        <div className="overflow-hidden rounded-2xl max-w-full shadow-2xs mb-1.5">
+                                                        <div className="relative overflow-hidden rounded-2xl max-w-full shadow-2xs mb-1.5 group">
                                                             {msg.media_type === 'video' ? (
                                                                 <video
                                                                     src={msg.media_url}
-                                                                    controls
+                                                                    controls={msg.status !== 'sending'}
                                                                     playsInline
                                                                     className="max-h-60 max-w-full rounded-2xl bg-black"
                                                                 />
@@ -814,9 +939,38 @@ export default function ConversationsIndex({
                                                                 <img
                                                                     src={msg.media_url}
                                                                     alt="Lampiran"
-                                                                    onClick={() => setLightboxMedia({ url: msg.media_url!, type: 'image' })}
+                                                                    onClick={() => msg.status !== 'sending' && setLightboxMedia({ url: msg.media_url!, type: 'image' })}
                                                                     className="max-h-60 max-w-full rounded-2xl object-contain cursor-pointer hover:opacity-95 transition-opacity bg-black/5"
                                                                 />
+                                                            )}
+
+                                                            {/* Uploading Overlay */}
+                                                            {msg.status === 'sending' && (
+                                                                <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex flex-col items-center justify-center text-white gap-1.5 p-3">
+                                                                    <Loader2 className="size-5 animate-spin text-emerald-400" />
+                                                                    <span className="text-xs font-semibold text-white drop-shadow">
+                                                                        Mengunggah {msg.media_type === 'video' ? 'video' : 'foto'}...
+                                                                    </span>
+                                                                </div>
+                                                            )}
+
+                                                            {/* Failed Overlay */}
+                                                            {msg.status === 'failed' && (
+                                                                <div className="absolute inset-0 bg-rose-950/80 backdrop-blur-xs flex flex-col items-center justify-center text-white gap-1 p-2 text-center">
+                                                                    <AlertCircle className="size-5 text-rose-400 mb-0.5" />
+                                                                    <span className="text-xs font-bold text-rose-200">Gagal Terkirim</span>
+                                                                    <span className="text-[10px] text-rose-300 max-w-[200px] leading-tight">
+                                                                        {msg.error || 'Ukuran melebihi batas atau kendala jaringan'}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+
+                                                            {/* Sent Badge on Media */}
+                                                            {(msg.status === 'sent' || (!msg.status && isRight)) && (
+                                                                <div className="absolute bottom-2 right-2 flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-medium text-white backdrop-blur-xs shadow-xs">
+                                                                    <CheckCheck className="size-3 text-emerald-400" />
+                                                                    <span>Terkirim</span>
+                                                                </div>
                                                             )}
                                                         </div>
                                                     )}
@@ -837,12 +991,28 @@ export default function ConversationsIndex({
                                                             )}
                                                         </div>
                                                     )}
-                                                    <span
-                                                        className={`text-[10px] text-muted-foreground mt-1 px-1 font-mono ${isRight ? 'text-right' : 'text-left'
+
+                                                    <div
+                                                        className={`text-[10px] text-muted-foreground mt-1 px-1 font-mono flex items-center gap-1 ${isRight ? 'justify-end' : 'justify-start'
                                                             }`}
                                                     >
-                                                        {msg.created_at || ''}
-                                                    </span>
+                                                        <span>{msg.created_at || ''}</span>
+                                                        {isRight && (
+                                                            msg.status === 'sending' ? (
+                                                                <span className="flex items-center gap-0.5 text-amber-500 font-medium">
+                                                                    <Clock className="size-2.5 animate-spin" />
+                                                                    <span>Mengirim...</span>
+                                                                </span>
+                                                            ) : msg.status === 'failed' ? (
+                                                                <span className="flex items-center gap-0.5 text-rose-500 font-bold">
+                                                                    <AlertCircle className="size-2.5" />
+                                                                    <span>Gagal</span>
+                                                                </span>
+                                                            ) : (
+                                                                <CheckCheck className="size-3 text-emerald-500" />
+                                                            )
+                                                        )}
+                                                    </div>
                                                 </div>
 
                                                 {isRight && (
@@ -954,8 +1124,14 @@ export default function ConversationsIndex({
                                         onChange={(e) => {
                                             const file = e.target.files?.[0];
                                             if (file) {
+                                                if (file.size > 25 * 1024 * 1024) {
+                                                    alert('Ukuran file maksimal 25 MB. Silakan pilih file yang lebih kecil.');
+                                                    e.target.value = '';
+                                                    return;
+                                                }
                                                 setData('attachment', file);
                                                 setFilePreviewUrl(URL.createObjectURL(file));
+                                                setTimeout(() => inputRef.current?.focus(), 50);
                                             }
                                             e.target.value = '';
                                         }}
@@ -975,13 +1151,14 @@ export default function ConversationsIndex({
 
                                     <div className="relative flex-1">
                                         <Input
+                                            ref={inputRef}
                                             value={data.message}
                                             onChange={(e) => setData('message', e.target.value)}
                                             onKeyDown={handleKeyDown}
                                             placeholder={
                                                 activeConversation.is_taken_over
                                                     ? data.attachment
-                                                        ? 'Tambah keterangan lampiran (opsional)...'
+                                                        ? 'Tambah keterangan lampiran (opsional)... (Tekan Enter untuk kirim)'
                                                         : 'Ketik balasan Anda langsung ke pengunjung... (Tekan Enter untuk kirim)'
                                                     : 'Klik "Ambil Alih Chat" di atas untuk membalas...'
                                             }
@@ -1003,7 +1180,10 @@ export default function ConversationsIndex({
                                             }`}
                                     >
                                         {processing ? (
-                                            <Spinner className="size-3.5" />
+                                            <>
+                                                <Loader2 className="size-3.5 animate-spin" />
+                                                <span>Mengirim...</span>
+                                            </>
                                         ) : (
                                             <>
                                                 <Send className="size-3.5" />
