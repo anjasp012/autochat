@@ -66,6 +66,8 @@ interface QuickButton {
     title: string;
     type: 'query' | 'link';
     value: string;
+    show_on_home?: boolean;
+    show_in_chat?: boolean;
 }
 
 export default function ChatShow({
@@ -175,6 +177,9 @@ export default function ChatShow({
                         'Bisa jelaskan promo dan bonus deposit / new member terbaru yang sedang aktif?',
                 },
             ];
+
+    const homeButtons = quickButtons.filter((b) => b.show_on_home !== false && Boolean(b.title));
+    const chatButtons = quickButtons.filter((b) => b.show_in_chat !== false && Boolean(b.title));
 
     // Default welcome promo message if none set in CMS
     const appCleanName = application.name.replace(/^CS\s+/i, '');
@@ -961,13 +966,13 @@ export default function ChatShow({
                                 </div>
                             )}
 
-                            {/* Tombol Cepat Dinamis (Bisa 1, 2, atau berapapun tombol sesuai CMS) */}
-                            {quickButtons.length > 0 && (
+                            {/* Tombol Cepat Dinamis Beranda */}
+                            {homeButtons.length > 0 && (
                                 <div
-                                    className={`grid gap-2.5 ${quickButtons.length === 1 ? 'grid-cols-1' : 'grid-cols-2'
+                                    className={`grid gap-2.5 ${homeButtons.length === 1 ? 'grid-cols-1' : 'grid-cols-2'
                                         }`}
                                 >
-                                    {quickButtons.map((item, idx) => {
+                                    {homeButtons.map((item, idx) => {
                                         const isHovered = hoveredBtn === idx;
                                         const hoverStyle = isHovered
                                             ? {
@@ -1287,10 +1292,10 @@ export default function ChatShow({
                                                             </div>
                                                         )}
 
-                                                        {/* Tombol Cepat (Pill Buttons) di awal chat seperti di Beranda */}
-                                                        {isFirstGreeting && quickButtons.length > 0 && (
+                                                        {/* Tombol Cepat (Pill Buttons) di awal chat */}
+                                                        {isFirstGreeting && chatButtons.length > 0 && (
                                                             <div className="flex flex-wrap gap-2 pt-1 w-full">
-                                                                {quickButtons.map((btn, bIdx) => {
+                                                                {chatButtons.map((btn, bIdx) => {
                                                                     if (btn.type === 'link') {
                                                                         return (
                                                                             <a

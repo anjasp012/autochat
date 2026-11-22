@@ -32,6 +32,7 @@ import {
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogContent,
@@ -66,6 +67,8 @@ interface QuickButton {
     title: string;
     type: 'query' | 'link';
     value: string;
+    show_on_home?: boolean;
+    show_in_chat?: boolean;
 }
 
 export default function AdminSettings({ application }: Props) {
@@ -92,6 +95,8 @@ export default function AdminSettings({ application }: Props) {
                     value:
                         currentSettings.btn_1_query ||
                         'Halo CS, bisa berikan bocoran prediksi togel dan pasaran hari ini?',
+                    show_on_home: true,
+                    show_in_chat: true,
                 },
                 {
                     id: 'btn-2',
@@ -100,12 +105,16 @@ export default function AdminSettings({ application }: Props) {
                     value:
                         currentSettings.btn_2_query ||
                         'Halo CS, apa saja daftar RTP slot yang lagi gacor hari ini?',
+                    show_on_home: true,
+                    show_in_chat: true,
                 },
                 {
                     id: 'btn-3',
                     title: currentSettings.btn_3_title || 'Download APK',
                     type: 'link',
                     value: currentSettings.btn_3_query || 'https://kiamkiam.site/cvtogel1',
+                    show_on_home: true,
+                    show_in_chat: true,
                 },
                 {
                     id: 'btn-4',
@@ -114,6 +123,8 @@ export default function AdminSettings({ application }: Props) {
                     value:
                         currentSettings.btn_4_query ||
                         'Bisa jelaskan promo dan bonus deposit / new member terbaru yang sedang aktif?',
+                    show_on_home: true,
+                    show_in_chat: true,
                 },
             ];
 
@@ -333,6 +344,8 @@ export default function AdminSettings({ application }: Props) {
             title: '',
             type: 'query',
             value: '',
+            show_on_home: true,
+            show_in_chat: true,
         });
         updateChatSetting('quick_buttons', list);
     };
@@ -343,7 +356,7 @@ export default function AdminSettings({ application }: Props) {
         updateChatSetting('quick_buttons', list);
     };
 
-    const handleUpdateButton = (index: number, key: 'title' | 'type' | 'value', val: string) => {
+    const handleUpdateButton = (index: number, key: string, val: any) => {
         const list = [...(data.chat_settings.quick_buttons || [])];
         list[index] = {
             ...list[index],
@@ -1201,13 +1214,13 @@ export default function AdminSettings({ application }: Props) {
                             </CardContent>
                         </Card>
 
-                        {/* 6. TOMBOL CEPAT DINAMIS BERANDA (BISA 1, 2, ATAU BANYAK, TIPE PERTANYAAN / LINK) */}
+                        {/* 6. TOMBOL CEPAT DINAMIS */}
                         <Card>
                             <CardHeader className="pb-3">
                                 <div className="flex items-center justify-between">
                                     <CardTitle className="text-sm font-bold flex items-center gap-2">
                                         <ArrowUpRight className="size-4 text-amber-500" />
-                                        <span>Tombol Cepat Beranda ({currentQuickButtons.length} Tombol)</span>
+                                        <span>Tombol Cepat</span>
                                     </CardTitle>
                                     <Button
                                         type="button"
@@ -1221,7 +1234,7 @@ export default function AdminSettings({ application }: Props) {
                                     </Button>
                                 </div>
                                 <CardDescription className="text-xs">
-                                    Atur tombol di beranda secara fleksibel (bisa 1, 2, atau berapapun). Tiap tombol bisa berupa pesan otomatis ke chat atau link eksternal (WA, Telegram, APK, web).
+                                    Atur tombol cepat secara fleksibel. Tentukan apakah tiap tombol muncul di Beranda, di Awal Chat (di bawah salam pembuka CS), atau keduanya.
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-3.5">
@@ -1330,6 +1343,25 @@ export default function AdminSettings({ application }: Props) {
                                                     }
                                                     className={`text-xs ${btn.type === 'link' ? 'font-mono' : ''}`}
                                                 />
+                                            </div>
+
+                                            {/* LOKASI TAMPIL TOMBOL */}
+                                            <div className="flex flex-wrap items-center gap-4 pt-2 border-t border-border/60">
+                                                <span className="text-[11px] font-semibold text-muted-foreground">Lokasi Tampil:</span>
+                                                <label className="flex items-center gap-2 text-xs font-medium text-foreground cursor-pointer select-none">
+                                                    <Checkbox
+                                                        checked={btn.show_on_home !== false}
+                                                        onCheckedChange={(checked) => handleUpdateButton(idx, 'show_on_home', Boolean(checked))}
+                                                    />
+                                                    <span>Tampil di Beranda</span>
+                                                </label>
+                                                <label className="flex items-center gap-2 text-xs font-medium text-foreground cursor-pointer select-none">
+                                                    <Checkbox
+                                                        checked={btn.show_in_chat !== false}
+                                                        onCheckedChange={(checked) => handleUpdateButton(idx, 'show_in_chat', Boolean(checked))}
+                                                    />
+                                                    <span>Tampil di Awal Chat</span>
+                                                </label>
                                             </div>
                                         </div>
                                     ))
@@ -1683,27 +1715,32 @@ export default function AdminSettings({ application }: Props) {
                                             </div>
                                         )}
 
-                                        {/* TOMBOL CEPAT DINAMIS (PREVIEW) */}
-                                        {currentQuickButtons.length > 0 && (
+                                        {/* TOMBOL CEPAT DINAMIS (PREVIEW BERANDA) */}
+                                        {currentQuickButtons.filter((btn: any) => btn.show_on_home !== false).length > 0 && (
                                             <div
-                                                className={`grid gap-1.5 ${currentQuickButtons.length === 1 ? 'grid-cols-1' : 'grid-cols-2'
-                                                    }`}
+                                                className={`grid gap-1.5 ${
+                                                    currentQuickButtons.filter((btn: any) => btn.show_on_home !== false).length === 1
+                                                        ? 'grid-cols-1'
+                                                        : 'grid-cols-2'
+                                                }`}
                                             >
-                                                {currentQuickButtons.map((btn: any, idx: number) => (
-                                                    <div
-                                                        key={idx}
-                                                        className="flex items-center justify-between rounded-lg border border-neutral-200 bg-white p-2 text-left shadow-2xs"
-                                                    >
-                                                        <span className="text-[9px] font-bold text-neutral-800 truncate">
-                                                            {btn.title || `Tombol ${idx + 1}`}
-                                                        </span>
-                                                        {btn.type === 'link' ? (
-                                                            <Globe className="size-2.5 text-emerald-600 shrink-0" />
-                                                        ) : (
-                                                            <ArrowUpRight className="size-2.5 text-neutral-400 shrink-0" />
-                                                        )}
-                                                    </div>
-                                                ))}
+                                                {currentQuickButtons
+                                                    .filter((btn: any) => btn.show_on_home !== false)
+                                                    .map((btn: any, idx: number) => (
+                                                        <div
+                                                            key={idx}
+                                                            className="flex items-center justify-between rounded-lg border border-neutral-200 bg-white p-2 text-left shadow-2xs"
+                                                        >
+                                                            <span className="text-[9px] font-bold text-neutral-800 truncate">
+                                                                {btn.title || `Tombol ${idx + 1}`}
+                                                            </span>
+                                                            {btn.type === 'link' ? (
+                                                                <Globe className="size-2.5 text-emerald-600 shrink-0" />
+                                                            ) : (
+                                                                <ArrowUpRight className="size-2.5 text-neutral-400 shrink-0" />
+                                                            )}
+                                                        </div>
+                                                    ))}
                                             </div>
                                         )}
 
