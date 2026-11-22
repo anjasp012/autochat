@@ -23,6 +23,8 @@ use Illuminate\Support\Carbon;
     'conversation_id',
     'role',
     'content',
+    'media_url',
+    'media_type',
     'tokens_used',
 ])]
 class Message extends Model

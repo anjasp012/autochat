@@ -6,9 +6,11 @@ import {
     ArrowLeft,
     Bot,
     Clock,
+    Film,
     HandMetal,
     Inbox,
     MessageSquare,
+    Paperclip,
     RotateCcw,
     Search,
     Send,
@@ -39,6 +41,8 @@ interface Message {
     conversation_id?: number;
     role: 'user' | 'assistant' | 'admin' | 'system';
     content: string;
+    media_url?: string | null;
+    media_type?: 'image' | 'video' | null;
     tokens_used?: number;
     created_at?: string;
 }
@@ -133,9 +137,16 @@ export default function ConversationsIndex({
     }, [activeConversation?.id, activeConversation?.uuid, activeConversation?.messages]);
 
     const messagesContainerRef = useRef<HTMLDivElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
+    const [lightboxMedia, setLightboxMedia] = useState<{ url: string; type: 'image' | 'video' } | null>(null);
 
-    const { data, setData, post, processing, reset } = useForm({
+    const { data, setData, post, processing, reset } = useForm<{
+        message: string;
+        attachment: File | null;
+    }>({
         message: '',
+        attachment: null,
     });
 
     const scrollToBottom = (smooth = true) => {
@@ -205,6 +216,8 @@ export default function ConversationsIndex({
                         conversation_id: activeConversation.id,
                         role: event.role,
                         content: event.content,
+                        media_url: event.media_url,
+                        media_type: event.media_type,
                         tokens_used: 0,
                         created_at: event.created_at || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                     },
@@ -286,12 +299,17 @@ export default function ConversationsIndex({
 
     const handleSendReply = (e?: React.FormEvent) => {
         if (e) e.preventDefault();
-        if (!activeConversation || !data.message.trim() || processing) return;
+        if (!activeConversation || (!data.message.trim() && !data.attachment) || processing) return;
 
         post(`/conversations/${activeConversation.uuid}/reply`, {
             preserveScroll: true,
+            forceFormData: true,
             onSuccess: () => {
                 reset();
+                if (filePreviewUrl) {
+                    URL.revokeObjectURL(filePreviewUrl);
+                    setFilePreviewUrl(null);
+                }
             },
         });
     };
@@ -753,20 +771,43 @@ export default function ConversationsIndex({
                                                         )}
                                                     </span>
 
-                                                    <div
-                                                        className={`rounded-2xl px-4 py-2.5 text-xs shadow-2xs leading-relaxed ${isRight
-                                                            ? isAdmin
-                                                                ? 'bg-emerald-600 text-white rounded-br-xs'
-                                                                : 'bg-emerald-700 text-white rounded-br-xs dark:bg-emerald-800'
-                                                            : 'bg-card text-card-foreground border border-border rounded-bl-xs'
-                                                            }`}
-                                                    >
-                                                        {isUser ? (
-                                                            <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
-                                                        ) : (
-                                                            <ChatMarkdown content={msg.content} />
-                                                        )}
-                                                    </div>
+                                                    {/* Media Attachment (Image or Video) */}
+                                                    {msg.media_url && (
+                                                        <div className="overflow-hidden rounded-2xl max-w-full shadow-2xs mb-1.5">
+                                                            {msg.media_type === 'video' ? (
+                                                                <video
+                                                                    src={msg.media_url}
+                                                                    controls
+                                                                    playsInline
+                                                                    className="max-h-60 max-w-full rounded-2xl bg-black"
+                                                                />
+                                                            ) : (
+                                                                <img
+                                                                    src={msg.media_url}
+                                                                    alt="Lampiran"
+                                                                    onClick={() => setLightboxMedia({ url: msg.media_url!, type: 'image' })}
+                                                                    className="max-h-60 max-w-full rounded-2xl object-contain cursor-pointer hover:opacity-95 transition-opacity bg-black/5"
+                                                                />
+                                                            )}
+                                                        </div>
+                                                    )}
+
+                                                    {msg.content && msg.content !== '[Gambar]' && msg.content !== '[Video]' && (
+                                                        <div
+                                                            className={`rounded-2xl px-4 py-2.5 text-xs shadow-2xs leading-relaxed ${isRight
+                                                                ? isAdmin
+                                                                    ? 'bg-emerald-600 text-white rounded-br-xs'
+                                                                    : 'bg-emerald-700 text-white rounded-br-xs dark:bg-emerald-800'
+                                                                : 'bg-card text-card-foreground border border-border rounded-bl-xs'
+                                                                }`}
+                                                        >
+                                                            {isUser ? (
+                                                                <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                                                            ) : (
+                                                                <ChatMarkdown content={msg.content} />
+                                                            )}
+                                                        </div>
+                                                    )}
                                                     <span
                                                         className={`text-[10px] text-muted-foreground mt-1 px-1 font-mono ${isRight ? 'text-right' : 'text-left'
                                                             }`}
@@ -846,7 +887,63 @@ export default function ConversationsIndex({
                                     </div>
                                 )}
 
+                                {/* Attachment Preview Chip */}
+                                {data.attachment && (
+                                    <div className="flex items-center gap-2 p-1.5 px-2.5 rounded-xl bg-muted border border-border text-xs w-fit max-w-full">
+                                        {filePreviewUrl && data.attachment.type.startsWith('image/') ? (
+                                            <img
+                                                src={filePreviewUrl}
+                                                alt="Preview"
+                                                className="size-8 rounded-lg object-cover"
+                                            />
+                                        ) : (
+                                            <Film className="size-5 text-muted-foreground shrink-0" />
+                                        )}
+                                        <span className="truncate max-w-[200px] font-medium text-[11px]">
+                                            {data.attachment.name}
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setData('attachment', null);
+                                                if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl);
+                                                setFilePreviewUrl(null);
+                                            }}
+                                            className="p-1 rounded-full hover:bg-black/10 dark:hover:bg-white/10 text-muted-foreground hover:text-foreground cursor-pointer"
+                                        >
+                                            <X className="size-3.5" />
+                                        </button>
+                                    </div>
+                                )}
+
                                 <form onSubmit={handleSendReply} className="flex gap-2 items-center">
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        accept="image/png,image/jpeg,image/gif,image/webp,video/mp4,video/webm,video/quicktime,video/ogg"
+                                        className="hidden"
+                                        onChange={(e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) {
+                                                setData('attachment', file);
+                                                setFilePreviewUrl(URL.createObjectURL(file));
+                                            }
+                                            e.target.value = '';
+                                        }}
+                                    />
+
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="icon"
+                                        onClick={() => fileInputRef.current?.click()}
+                                        disabled={!activeConversation.is_taken_over || processing}
+                                        className="size-9 rounded-xl shrink-0 cursor-pointer text-muted-foreground hover:text-foreground"
+                                        title="Kirim Foto atau Video"
+                                    >
+                                        <Paperclip className="size-4" />
+                                    </Button>
+
                                     <div className="relative flex-1">
                                         <Input
                                             value={data.message}
@@ -854,7 +951,9 @@ export default function ConversationsIndex({
                                             onKeyDown={handleKeyDown}
                                             placeholder={
                                                 activeConversation.is_taken_over
-                                                    ? 'Ketik balasan Anda langsung ke pengunjung... (Tekan Enter untuk kirim)'
+                                                    ? data.attachment
+                                                        ? 'Tambah keterangan lampiran (opsional)...'
+                                                        : 'Ketik balasan Anda langsung ke pengunjung... (Tekan Enter untuk kirim)'
                                                     : 'Klik "Ambil Alih Chat" di atas untuk membalas...'
                                             }
                                             disabled={!activeConversation.is_taken_over || processing}
@@ -868,7 +967,7 @@ export default function ConversationsIndex({
                                     <Button
                                         type="submit"
                                         size="sm"
-                                        disabled={!activeConversation.is_taken_over || !data.message.trim() || processing}
+                                        disabled={!activeConversation.is_taken_over || (!data.message.trim() && !data.attachment) || processing}
                                         className={`h-9 px-4 rounded-xl font-semibold text-xs shadow-2xs gap-1.5 transition-all cursor-pointer shrink-0 ${activeConversation.is_taken_over
                                             ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
                                             : 'opacity-50'
@@ -899,8 +998,7 @@ export default function ConversationsIndex({
             </div >
 
             {/* Modal Konfirmasi Hapus */}
-            < Dialog open={!!convToDelete
-            } onOpenChange={(open) => !open && setConvToDelete(null)}>
+            <Dialog open={!!convToDelete} onOpenChange={(open) => !open && setConvToDelete(null)}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle>Hapus Percakapan?</DialogTitle>
@@ -918,7 +1016,43 @@ export default function ConversationsIndex({
                         </Button>
                     </DialogFooter>
                 </DialogContent>
-            </Dialog >
+            </Dialog>
+
+            {/* Lightbox Media Preview (Image & Video) */}
+            {lightboxMedia && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm animate-in fade-in duration-150"
+                    onClick={() => setLightboxMedia(null)}
+                >
+                    <button
+                        type="button"
+                        onClick={() => setLightboxMedia(null)}
+                        className="absolute top-4 right-4 flex size-10 items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30 cursor-pointer transition-colors"
+                        title="Tutup Preview"
+                    >
+                        <X className="size-6" />
+                    </button>
+                    <div
+                        className="relative max-w-4xl max-h-[90vh] overflow-hidden flex items-center justify-center"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {lightboxMedia.type === 'video' ? (
+                            <video
+                                src={lightboxMedia.url}
+                                controls
+                                autoPlay
+                                className="max-h-[85vh] max-w-full rounded-2xl shadow-2xl"
+                            />
+                        ) : (
+                            <img
+                                src={lightboxMedia.url}
+                                alt="Pratinjau Foto"
+                                className="max-h-[85vh] max-w-full object-contain rounded-2xl shadow-2xl"
+                            />
+                        )}
+                    </div>
+                </div>
+            )}
         </>
     );
 }

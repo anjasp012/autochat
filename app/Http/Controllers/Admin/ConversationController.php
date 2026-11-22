@@ -10,6 +10,8 @@ use App\Models\Conversation;
 use App\Models\Message;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -213,13 +215,47 @@ class ConversationController extends Controller
     public function reply(Request $request, Conversation $conversation): RedirectResponse
     {
         $validated = $request->validate([
-            'message' => ['required', 'string', 'max:4000'],
+            'message' => ['nullable', 'string', 'max:4000'],
+            'attachment' => ['nullable', 'file', 'max:25600', 'mimes:jpg,jpeg,png,gif,webp,mp4,webm,mov,ogg'],
         ]);
+
+        $content = trim($validated['message'] ?? '');
+        $mediaUrl = null;
+        $mediaType = null;
+
+        if ($request->hasFile('attachment')) {
+            $file = $request->file('attachment');
+            $extension = strtolower($file->getClientOriginalExtension());
+            $imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+            $videoExtensions = ['mp4', 'webm', 'mov', 'ogg'];
+
+            if (in_array($extension, $imageExtensions, true)) {
+                $mediaType = 'image';
+            } elseif (in_array($extension, $videoExtensions, true)) {
+                $mediaType = 'video';
+            }
+
+            if ($mediaType) {
+                $filename = Str::random(24).'.'.$extension;
+                $path = $file->storeAs('chat_media', $filename, 'public');
+                $mediaUrl = '/storage/'.$path;
+            }
+        }
+
+        if ($content === '' && ! $mediaUrl) {
+            return back()->withErrors(['message' => 'Pesan atau lampiran tidak boleh kosong.']);
+        }
+
+        if ($content === '' && $mediaUrl) {
+            $content = $mediaType === 'video' ? '[Video]' : '[Gambar]';
+        }
 
         $adminMessage = Message::create([
             'conversation_id' => $conversation->id,
             'role' => 'assistant',
-            'content' => trim($validated['message']),
+            'content' => $content,
+            'media_url' => $mediaUrl,
+            'media_type' => $mediaType,
             'tokens_used' => 0,
         ]);
 

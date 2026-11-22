@@ -12,6 +12,8 @@ use App\Services\AI\LLMService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -91,11 +93,13 @@ class ChatController extends Controller
 
         $messages = $conversation->messages()
             ->orderBy('created_at', 'asc')
-            ->get(['id', 'role', 'content', 'created_at'])
+            ->get(['id', 'role', 'content', 'media_url', 'media_type', 'created_at'])
             ->map(fn (Message $m) => [
                 'id' => (string) $m->id,
                 'role' => $m->role,
                 'content' => $m->content,
+                'media_url' => $m->media_url,
+                'media_type' => $m->media_type,
                 'created_at' => $m->created_at?->format('H:i') ?? '',
             ]);
 
@@ -121,11 +125,34 @@ class ChatController extends Controller
 
         $validated = $request->validate([
             'uuid' => ['required', 'string', 'uuid'],
-            'message' => ['required', 'string', 'max:4000'],
+            'message' => ['nullable', 'string', 'max:4000'],
+            'attachment' => ['nullable', 'file', 'max:25600', 'mimes:jpg,jpeg,png,gif,webp,mp4,webm,mov,ogg'],
         ]);
 
         $uuid = $validated['uuid'];
-        $userText = trim($validated['message']);
+        $userText = trim($validated['message'] ?? '');
+        $mediaUrl = null;
+        $mediaType = null;
+
+        if ($request->hasFile('attachment')) {
+            $file = $request->file('attachment');
+            $mime = (string) $file->getMimeType();
+            $mediaType = str_starts_with($mime, 'video/') ? 'video' : 'image';
+            $filename = Str::random(24).'.'.$file->getClientOriginalExtension();
+            $path = $file->storeAs('chat_media', $filename, 'public');
+            $mediaUrl = '/storage/'.$path;
+        }
+
+        if ($userText === '' && ! $mediaUrl) {
+            return response()->json([
+                'error' => 'Pesan atau lampiran tidak boleh kosong.',
+            ], 422);
+        }
+
+        if ($userText === '' && $mediaUrl) {
+            $userText = $mediaType === 'video' ? '[Video]' : '[Gambar]';
+        }
+
         $timeoutMinutes = (int) config('ai.session_timeout', 10);
 
         // Find or create conversation
@@ -182,6 +209,8 @@ class ChatController extends Controller
             'conversation_id' => $conversation->id,
             'role' => 'user',
             'content' => $userText,
+            'media_url' => $mediaUrl,
+            'media_type' => $mediaType,
             'tokens_used' => 0,
         ]);
 
@@ -241,12 +270,16 @@ class ChatController extends Controller
                     'id' => (string) $userMessage->id,
                     'role' => 'user',
                     'content' => $userMessage->content,
+                    'media_url' => $userMessage->media_url,
+                    'media_type' => $userMessage->media_type,
                     'created_at' => $userMessage->created_at?->format('H:i') ?? '',
                 ],
                 'assistant_message' => [
                     'id' => (string) $assistantMessage->id,
                     'role' => 'assistant',
                     'content' => $assistantMessage->content,
+                    'media_url' => $assistantMessage->media_url,
+                    'media_type' => $assistantMessage->media_type,
                     'created_at' => $assistantMessage->created_at?->format('H:i') ?? '',
                 ],
             ]);
@@ -289,12 +322,16 @@ class ChatController extends Controller
                     'id' => (string) $userMessage->id,
                     'role' => 'user',
                     'content' => $userMessage->content,
+                    'media_url' => $userMessage->media_url,
+                    'media_type' => $userMessage->media_type,
                     'created_at' => $userMessage->created_at?->format('H:i') ?? '',
                 ],
                 'assistant_message' => [
                     'id' => (string) $assistantMessage->id,
                     'role' => 'assistant',
                     'content' => $assistantMessage->content,
+                    'media_url' => $assistantMessage->media_url,
+                    'media_type' => $assistantMessage->media_type,
                     'created_at' => $assistantMessage->created_at?->format('H:i') ?? '',
                 ],
             ]);
@@ -427,12 +464,16 @@ class ChatController extends Controller
                     'id' => (string) $userMessage->id,
                     'role' => 'user',
                     'content' => $userMessage->content,
+                    'media_url' => $userMessage->media_url,
+                    'media_type' => $userMessage->media_type,
                     'created_at' => $userMessage->created_at?->format('H:i') ?? '',
                 ],
                 'assistant_message' => [
                     'id' => (string) $assistantMessage->id,
                     'role' => 'assistant',
                     'content' => $assistantMessage->content,
+                    'media_url' => $assistantMessage->media_url,
+                    'media_type' => $assistantMessage->media_type,
                     'created_at' => $assistantMessage->created_at?->format('H:i') ?? '',
                 ],
             ]);
@@ -471,6 +512,8 @@ class ChatController extends Controller
                         'id' => (string) $userMessage->id,
                         'role' => 'user',
                         'content' => $userMessage->content,
+                        'media_url' => $userMessage->media_url,
+                        'media_type' => $userMessage->media_type,
                         'created_at' => $userMessage->created_at?->format('H:i') ?? '',
                     ],
                     'assistant_message' => null,
@@ -678,12 +721,16 @@ PROMPT;
                     'id' => (string) $userMessage->id,
                     'role' => 'user',
                     'content' => $userMessage->content,
+                    'media_url' => $userMessage->media_url,
+                    'media_type' => $userMessage->media_type,
                     'created_at' => $userMessage->created_at?->format('H:i') ?? '',
                 ],
                 'assistant_message' => [
                     'id' => (string) $assistantMessage->id,
                     'role' => 'assistant',
                     'content' => $assistantMessage->content,
+                    'media_url' => $assistantMessage->media_url,
+                    'media_type' => $assistantMessage->media_type,
                     'created_at' => $assistantMessage->created_at?->format('H:i') ?? '',
                 ],
                 'warning' => $llmResult->error,
@@ -706,12 +753,16 @@ PROMPT;
                 'id' => (string) $userMessage->id,
                 'role' => 'user',
                 'content' => $userMessage->content,
+                'media_url' => $userMessage->media_url,
+                'media_type' => $userMessage->media_type,
                 'created_at' => $userMessage->created_at?->format('H:i') ?? '',
             ],
             'assistant_message' => [
                 'id' => (string) $assistantMessage->id,
                 'role' => 'assistant',
                 'content' => $assistantMessage->content,
+                'media_url' => $assistantMessage->media_url,
+                'media_type' => $assistantMessage->media_type,
                 'created_at' => $assistantMessage->created_at?->format('H:i') ?? '',
             ],
         ]);

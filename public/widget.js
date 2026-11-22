@@ -187,6 +187,22 @@
 
     btn.addEventListener('click', toggleChat);
 
+    // Listen to theme & background customizations from within chat iframe
+    window.addEventListener('message', function (event) {
+        if (!event.data || typeof event.data !== 'object') return;
+        if (event.data.type === 'autochat-theme') {
+            if (event.data.bgColor) {
+                frameContainer.style.background = event.data.bgColor;
+            }
+            if (event.data.headerColor) {
+                btn.style.background = event.data.headerColor;
+            }
+            if (event.data.headerTextColor) {
+                btn.style.color = event.data.headerTextColor;
+            }
+        }
+    });
+
     document.body.appendChild(frameContainer);
     root.appendChild(btn);
     document.body.appendChild(root);

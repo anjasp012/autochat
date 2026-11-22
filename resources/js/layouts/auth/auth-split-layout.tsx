@@ -16,10 +16,14 @@ export default function AuthSplitLayout({
                 <div className="absolute inset-0 bg-zinc-900" />
                 <Link
                     href={home()}
-                    className="relative z-20 flex items-center gap-2 text-xl font-black tracking-tight text-white"
+                    className="relative z-20 flex items-center gap-2.5 text-xl font-black tracking-tight text-white"
                 >
-                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500 text-neutral-950 shadow-sm">
-                        <AppLogoIcon className="size-5 fill-current" />
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl overflow-hidden shadow-sm">
+                        <img
+                            src="/favicon.png"
+                            alt="AutoChat"
+                            className="size-9 object-contain"
+                        />
                     </div>
                     <span>Auto<span className="text-amber-500">Chat</span></span>
                 </Link>
@@ -30,8 +34,12 @@ export default function AuthSplitLayout({
                         href={home()}
                         className="relative z-20 flex flex-col items-center gap-2 justify-center lg:hidden"
                     >
-                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-500 text-neutral-950 shadow-md">
-                            <AppLogoIcon className="size-6 fill-current" />
+                        <div className="flex h-14 w-14 items-center justify-center rounded-2xl overflow-hidden shadow-md">
+                            <img
+                                src="/favicon.png"
+                                alt="AutoChat"
+                                className="size-14 object-contain"
+                            />
                         </div>
                         <span className="text-xl font-black tracking-tight text-foreground">
                             Auto<span className="text-amber-500">Chat</span>

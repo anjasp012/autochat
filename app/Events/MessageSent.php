@@ -72,6 +72,8 @@ class MessageSent implements ShouldBroadcastNow
             'id' => $this->message->id,
             'role' => $this->message->role,
             'content' => $this->message->content,
+            'media_url' => $this->message->media_url,
+            'media_type' => $this->message->media_type,
             'created_at' => $this->message->created_at?->format('H:i') ?? now()->format('H:i'),
             'conversation_uuid' => $this->message->conversation->uuid,
             'application_app_id' => $this->message->conversation->application?->app_id,

@@ -8,9 +8,11 @@ import {
     Clock,
     ExternalLink,
     FileText,
+    Film,
     HelpCircle,
     Home as HomeIcon,
     MessageSquare,
+    Paperclip,
     RotateCcw,
     Send,
     Shield,
@@ -34,6 +36,8 @@ interface ChatMessage {
     id: string;
     role: 'user' | 'assistant' | 'system';
     content: string;
+    media_url?: string | null;
+    media_type?: 'image' | 'video' | null;
     created_at?: string;
 }
 
@@ -188,6 +192,10 @@ export default function ChatShow({
     const [isWaitingAdmin, setIsWaitingAdmin] = useState(false);
     const isEmbed = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('embed') === '1';
     const [input, setInput] = useState('');
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
+    const [lightboxMedia, setLightboxMedia] = useState<{ url: string; type: 'image' | 'video' } | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [isSessionExpired, setIsSessionExpired] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -248,6 +256,21 @@ export default function ChatShow({
             document.head.appendChild(link);
         });
     }, [faviconUrl]);
+
+    // Sync theme with parent window when embedded in iframe
+    useEffect(() => {
+        if (typeof window !== 'undefined' && window.parent && window.parent !== window) {
+            window.parent.postMessage(
+                {
+                    type: 'autochat-theme',
+                    bgColor,
+                    headerColor,
+                    headerTextColor,
+                },
+                '*'
+            );
+        }
+    }, [bgColor, headerColor, headerTextColor]);
 
     // UUID Generator
     const generateUuid = (): string => {
@@ -398,6 +421,8 @@ export default function ChatShow({
                             id: String(event.id),
                             role: event.role,
                             content: event.content,
+                            media_url: event.media_url,
+                            media_type: event.media_type,
                             created_at: event.created_at,
                         },
                     ];
@@ -478,7 +503,7 @@ export default function ChatShow({
     const handleSendMessage = async (textToSend?: string, isFormInquiry: boolean = false) => {
         const text = (textToSend ?? input).trim();
 
-        if (!text || isLoading) return;
+        if ((!text && !selectedFile) || isLoading) return;
 
         if (isSessionExpired) {
             setErrorMessage('Sesi telah kedaluwarsa. Silakan klik Mulai Chat Baru.');
@@ -496,6 +521,12 @@ export default function ChatShow({
         });
 
         const tempUserMsgId = `temp-${Date.now()}`;
+        const tempMediaUrl = selectedFile ? URL.createObjectURL(selectedFile) : null;
+        const tempMediaType = selectedFile
+            ? selectedFile.type.startsWith('video/')
+                ? 'video'
+                : 'image'
+            : null;
 
         // Jika bukan formulir awal, render bubble chat user secara normal
         if (!isFormInquiry) {
@@ -503,9 +534,18 @@ export default function ChatShow({
                 id: tempUserMsgId,
                 role: 'user',
                 content: text,
+                media_url: tempMediaUrl,
+                media_type: tempMediaType,
                 created_at: nowFormatted,
             };
             setMessages((prev) => [...prev, tempUserMsg]);
+        }
+
+        const fileToSend = selectedFile;
+        setSelectedFile(null);
+        if (filePreviewUrl) {
+            URL.revokeObjectURL(filePreviewUrl);
+            setFilePreviewUrl(null);
         }
 
         setInput('');
@@ -516,21 +556,44 @@ export default function ChatShow({
         try {
             const token = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content;
 
-            const response = await fetch(`/chat/${application.app_id}/send`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Accept: 'application/json',
-                    'X-CSRF-TOKEN': token || '',
-                },
-                body: JSON.stringify({
-                    uuid: sessionUuid,
-                    message: text,
-                    is_initial_form: isFormInquiry,
-                    user_id: userId,
-                    topic: isFormInquiry ? questionTopic : null,
-                }),
-            });
+            let response: Response;
+
+            if (fileToSend) {
+                const formData = new FormData();
+                formData.append('uuid', sessionUuid);
+                if (text) formData.append('message', text);
+                formData.append('attachment', fileToSend);
+                if (isFormInquiry) {
+                    formData.append('is_initial_form', '1');
+                    if (userId) formData.append('user_id', userId);
+                    if (questionTopic) formData.append('topic', questionTopic);
+                }
+
+                response = await fetch(`/chat/${application.app_id}/send`, {
+                    method: 'POST',
+                    headers: {
+                        Accept: 'application/json',
+                        'X-CSRF-TOKEN': token || '',
+                    },
+                    body: formData,
+                });
+            } else {
+                response = await fetch(`/chat/${application.app_id}/send`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Accept: 'application/json',
+                        'X-CSRF-TOKEN': token || '',
+                    },
+                    body: JSON.stringify({
+                        uuid: sessionUuid,
+                        message: text,
+                        is_initial_form: isFormInquiry,
+                        user_id: userId,
+                        topic: isFormInquiry ? questionTopic : null,
+                    }),
+                });
+            }
 
             const data = await response.json();
 
@@ -560,7 +623,13 @@ export default function ChatShow({
                 setMessages((prev) =>
                     prev.map((m) =>
                         m.id === tempUserMsgId
-                            ? { ...m, id: String(data.user_message.id), created_at: data.user_message.created_at || m.created_at }
+                            ? {
+                                  ...m,
+                                  id: String(data.user_message.id),
+                                  media_url: data.user_message.media_url || m.media_url,
+                                  media_type: data.user_message.media_type || m.media_type,
+                                  created_at: data.user_message.created_at || m.created_at,
+                              }
                             : m
                     )
                 );
@@ -579,6 +648,8 @@ export default function ChatShow({
                             id: astId,
                             role: data.assistant_message.role,
                             content: data.assistant_message.content,
+                            media_url: data.assistant_message.media_url,
+                            media_type: data.assistant_message.media_type,
                             created_at: data.assistant_message.created_at,
                         },
                     ];
@@ -661,7 +732,10 @@ export default function ChatShow({
             {/* ============================================================== */}
             {/* RIGHT COLUMN: INTERACTIVE LIVE CHAT WIDGET (PERSIS 50% LAYAR KANAN) */}
             {/* ============================================================== */}
-            <div className={`flex flex-col w-full ${isEmbed ? 'h-full' : 'md:w-1/2 h-full'} bg-white border-l border-amber-200/80 shadow-2xl overflow-hidden`}>
+            <div
+                className={`flex flex-col w-full ${isEmbed ? 'h-full' : 'md:w-1/2 h-full'} border-l border-amber-200/80 shadow-2xl overflow-hidden`}
+                style={{ backgroundColor: bgColor }}
+            >
                 {/* TOP HEADER BAR */}
                 <div
                     className="px-5 py-4 shrink-0 shadow-sm border-b border-black/10 transition-colors"
@@ -790,7 +864,10 @@ export default function ChatShow({
                 {/* ============================================================== */}
                 {/* BODY VIEW SWITCHER: BERANDA / PRE-CHAT FORM / ACTIVE CHAT */}
                 {/* ============================================================== */}
-                <div className="flex-1 overflow-y-auto bg-slate-50/70 p-4 sm:p-6 space-y-4">
+                <div
+                    className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4"
+                    style={{ backgroundColor: bgColor }}
+                >
                     {/* TAB 1: BERANDA (HOME VIEW - Persis Screenshot 1) */}
                     {activeTab === 'beranda' && (
                         <div className="space-y-4">
@@ -1082,7 +1159,28 @@ export default function ChatShow({
                                                             />
                                                         )}
 
-                                                        {(!formType || cleanContent) && (
+                                                        {/* Media Attachment (Image or Video) */}
+                                                        {msg.media_url && (
+                                                            <div className="overflow-hidden rounded-2xl max-w-full shadow-2xs">
+                                                                {msg.media_type === 'video' ? (
+                                                                    <video
+                                                                        src={msg.media_url}
+                                                                        controls
+                                                                        playsInline
+                                                                        className="max-h-60 max-w-full rounded-2xl bg-black"
+                                                                    />
+                                                                ) : (
+                                                                    <img
+                                                                        src={msg.media_url}
+                                                                        alt="Lampiran"
+                                                                        onClick={() => setLightboxMedia({ url: msg.media_url!, type: 'image' })}
+                                                                        className="max-h-60 max-w-full rounded-2xl object-contain cursor-pointer hover:opacity-95 transition-opacity bg-black/5"
+                                                                    />
+                                                                )}
+                                                            </div>
+                                                        )}
+
+                                                        {(!formType || cleanContent) && cleanContent !== '[Gambar]' && cleanContent !== '[Video]' && (
                                                             <div
                                                                 className={`rounded-2xl px-3.5 py-2.5 text-xs shadow-2xs leading-relaxed ${isUser
                                                                     ? 'rounded-tr-xs bg-neutral-900 text-white'
@@ -1202,7 +1300,39 @@ export default function ChatShow({
                             </div>
                         </div>
                     ) : (
-                        <div className="border-t border-neutral-200 bg-white p-3 shrink-0">
+                        <div
+                            className="border-t border-neutral-200/70 p-3 shrink-0"
+                            style={{ backgroundColor: bgColor }}
+                        >
+                            {/* Attachment Preview Chip */}
+                            {selectedFile && (
+                                <div className="flex items-center gap-2 mb-2 p-1.5 px-2.5 rounded-xl bg-black/5 dark:bg-white/10 text-xs w-fit max-w-full">
+                                    {filePreviewUrl && selectedFile.type.startsWith('image/') ? (
+                                        <img
+                                            src={filePreviewUrl}
+                                            alt="Preview"
+                                            className="size-8 rounded-lg object-cover"
+                                        />
+                                    ) : (
+                                        <Film className="size-5 text-neutral-500 shrink-0" />
+                                    )}
+                                    <span className="truncate max-w-[180px] font-medium text-[11px] text-neutral-700 dark:text-neutral-200">
+                                        {selectedFile.name}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setSelectedFile(null);
+                                            if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl);
+                                            setFilePreviewUrl(null);
+                                        }}
+                                        className="p-1 rounded-full hover:bg-black/10 text-neutral-500 hover:text-neutral-800 cursor-pointer"
+                                    >
+                                        <X className="size-3.5" />
+                                    </button>
+                                </div>
+                            )}
+
                             <form
                                 onSubmit={(e) => {
                                     e.preventDefault();
@@ -1210,6 +1340,31 @@ export default function ChatShow({
                                 }}
                                 className="flex items-center gap-2"
                             >
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="image/png,image/jpeg,image/gif,image/webp,video/mp4,video/webm,video/quicktime,video/ogg"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                            setSelectedFile(file);
+                                            setFilePreviewUrl(URL.createObjectURL(file));
+                                        }
+                                        e.target.value = '';
+                                    }}
+                                />
+
+                                <button
+                                    type="button"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    disabled={!application.is_active || isLoading}
+                                    className="flex size-9 items-center justify-center rounded-full text-neutral-500 hover:text-neutral-800 hover:bg-black/5 transition-colors cursor-pointer shrink-0 disabled:opacity-40"
+                                    title="Kirim Foto atau Video"
+                                >
+                                    <Paperclip className="size-4" />
+                                </button>
+
                                 <input
                                     ref={textareaRef}
                                     value={input}
@@ -1224,14 +1379,16 @@ export default function ChatShow({
                                     placeholder={
                                         !application.is_active
                                             ? 'Chatbot sedang offline...'
-                                            : 'Tulis pesan...'
+                                            : selectedFile
+                                                ? 'Tambah keterangan (opsional)...'
+                                                : 'Tulis pesan...'
                                     }
                                     className="flex-1 h-9 px-3.5 text-xs rounded-full bg-slate-100 border-none text-neutral-900 focus:outline-none focus:ring-1 focus:ring-amber-400 placeholder:text-neutral-400"
                                 />
 
                                 <button
                                     type="submit"
-                                    disabled={!input.trim() || isLoading || !application.is_active}
+                                    disabled={(!input.trim() && !selectedFile) || isLoading || !application.is_active}
                                     className="flex size-9 items-center justify-center rounded-full font-bold disabled:opacity-40 transition-colors cursor-pointer shrink-0 shadow-2xs"
                                     style={{ backgroundColor: headerColor, color: headerTextColor }}
                                 >
@@ -1247,7 +1404,10 @@ export default function ChatShow({
                 {/* ============================================================== */}
                 {isSessionExpired ? (
                     /* JIKA SESI KEDALUWARSA: TAMPILKAN TOMBOL MULAI CHAT BARU DI PALING BAWAH */
-                    <div className="border-t border-neutral-200 bg-white p-3 sm:p-4 shrink-0">
+                    <div
+                        className="border-t border-neutral-200/70 p-3 sm:p-4 shrink-0"
+                        style={{ backgroundColor: bgColor }}
+                    >
                         <button
                             type="button"
                             onClick={handleStartNewChat}
@@ -1260,7 +1420,10 @@ export default function ChatShow({
                     </div>
                 ) : isFirstTimeLanding ? (
                     /* JIKA PERTAMA KALI (BERANDA AWAL): TOMBOL KIRIM PESAN DI PALING BAWAH MENGGANTIKAN 3 TAB (Persis Screenshot 1) */
-                    <div className="border-t border-neutral-200 bg-white p-3 sm:p-4 shrink-0">
+                    <div
+                        className="border-t border-neutral-200/70 p-3 sm:p-4 shrink-0"
+                        style={{ backgroundColor: bgColor }}
+                    >
                         <button
                             type="button"
                             onClick={() => {
@@ -1279,7 +1442,10 @@ export default function ChatShow({
                     </div>
                 ) : (
                     /* JIKA SUDAH MULAI CHAT: MUNCULKAN 3 TAB (Beranda, Pesan, Bantuan) */
-                    <div className="border-t border-neutral-200 bg-white px-6 py-2.5 shrink-0 flex flex-col items-center gap-1.5 select-none">
+                    <div
+                        className="border-t border-neutral-200/70 px-6 py-2.5 shrink-0 flex flex-col items-center gap-1.5 select-none"
+                        style={{ backgroundColor: bgColor }}
+                    >
                         <div className="w-full flex items-center justify-around">
                             <button
                                 type="button"
@@ -1364,6 +1530,42 @@ export default function ChatShow({
                                 Ya, Tutup Chat
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* LIGHTBOX MEDIA PREVIEW (IMAGE & VIDEO) */}
+            {lightboxMedia && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm animate-in fade-in duration-150"
+                    onClick={() => setLightboxMedia(null)}
+                >
+                    <button
+                        type="button"
+                        onClick={() => setLightboxMedia(null)}
+                        className="absolute top-4 right-4 flex size-10 items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30 cursor-pointer transition-colors"
+                        title="Tutup Preview"
+                    >
+                        <X className="size-6" />
+                    </button>
+                    <div
+                        className="relative max-w-4xl max-h-[90vh] overflow-hidden flex items-center justify-center"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {lightboxMedia.type === 'video' ? (
+                            <video
+                                src={lightboxMedia.url}
+                                controls
+                                autoPlay
+                                className="max-h-[85vh] max-w-full rounded-2xl shadow-2xl"
+                            />
+                        ) : (
+                            <img
+                                src={lightboxMedia.url}
+                                alt="Pratinjau Foto"
+                                className="max-h-[85vh] max-w-full object-contain rounded-2xl shadow-2xl"
+                            />
+                        )}
                     </div>
                 </div>
             )}

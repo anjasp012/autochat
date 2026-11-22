@@ -17,8 +17,12 @@ export default function AuthSimpleLayout({
                             href={home()}
                             className="flex flex-col items-center gap-2.5 font-medium group cursor-pointer"
                         >
-                            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500 text-neutral-950 shadow-md shadow-amber-500/25 transition-transform group-hover:scale-105">
-                                <AppLogoIcon className="size-7 fill-current" />
+                            <div className="flex h-16 w-16 items-center justify-center rounded-2xl overflow-hidden drop-shadow-md transition-transform group-hover:scale-105">
+                                <img
+                                    src="/favicon.png"
+                                    alt="AutoChat"
+                                    className="size-16 object-contain"
+                                />
                             </div>
                             <div className="flex items-center gap-0.5 text-2xl font-black tracking-tight text-foreground">
                                 <span>Auto</span>
