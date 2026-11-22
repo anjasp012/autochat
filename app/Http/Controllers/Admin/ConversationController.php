@@ -179,7 +179,7 @@ class ConversationController extends Controller
         $systemMessage = Message::create([
             'conversation_id' => $conversation->id,
             'role' => 'system',
-            'content' => 'Percakapan telah diambil alih oleh administrator.',
+            'content' => 'Percakapan telah terhubung langsung dengan Customer Service.',
         ]);
 
         MessageSent::safeDispatch($systemMessage);
@@ -202,7 +202,7 @@ class ConversationController extends Controller
         $systemMessage = Message::create([
             'conversation_id' => $conversation->id,
             'role' => 'system',
-            'content' => 'Percakapan telah dikembalikan ke asisten AI.',
+            'content' => 'Percakapan telah dialihkan kembali ke asisten otomatis.',
         ]);
 
         MessageSent::safeDispatch($systemMessage);

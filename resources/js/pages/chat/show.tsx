@@ -835,15 +835,6 @@ export default function ChatShow({
                             >
                                 {headerTitle}
                             </span>
-                            {isTakenOver && (
-                                <span
-                                    className="inline-flex items-center gap-1 rounded-full bg-black/10 dark:bg-white/15 px-2 py-0.5 text-[10px] font-bold border border-black/15 shrink-0"
-                                    style={{ color: headerTextColor }}
-                                >
-                                    <UserCheck className="size-3" />
-                                    Admin CS
-                                </span>
-                            )}
                         </div>
 
                         {/* KANAN ATAS: DI TAB CHAT UBAH JADI TOMBOL CLOSE, DI TAB BERANDA TETAP 3 PP ORANG */}
@@ -1173,6 +1164,9 @@ export default function ChatShow({
                                             }
 
                                             const isUser = msg.role === 'user';
+                                            const firstNonIndex = messages.findIndex((m) => m.role !== 'user' && m.role !== 'system');
+                                            const firstAdminIndex = messages.findIndex((m) => m.role === 'admin');
+                                            const isFirstGreeting = !isUser && (idx === firstNonIndex || (msg.role === 'admin' && idx === firstAdminIndex));
                                             const formMatch =
                                                 !isUser &&
                                                 msg.content.match(/\[FORM:(deposit_status|withdraw_status)\]/i);
@@ -1192,7 +1186,7 @@ export default function ChatShow({
                                                     {/* Avatar Icon */}
                                                     {isUser ? (
                                                         <div className="flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold shadow-2xs bg-neutral-900 text-white">
-                                                            <UserIcon className="size-3.5" />
+                                                             <UserIcon className="size-3.5" />
                                                         </div>
                                                     ) : (
                                                         <div className="relative size-8 shrink-0 rounded-full overflow-hidden border border-neutral-200 shadow-2xs bg-amber-100 flex items-center justify-center">
@@ -1213,11 +1207,7 @@ export default function ChatShow({
                                                             }`}
                                                     >
                                                         <span className="text-[11px] font-bold text-neutral-600 px-1">
-                                                            {isUser
-                                                                ? 'Anda'
-                                                                : isTakenOver
-                                                                    ? 'Admin CS'
-                                                                    : csAgentName}
+                                                            {isUser ? 'Anda' : csAgentName}
                                                         </span>
 
                                                         {formType && (
@@ -1294,6 +1284,37 @@ export default function ChatShow({
                                                                 ) : (
                                                                     <ChatMarkdown content={cleanContent} />
                                                                 )}
+                                                            </div>
+                                                        )}
+
+                                                        {/* Tombol Cepat (Pill Buttons) di awal chat seperti di Beranda */}
+                                                        {isFirstGreeting && quickButtons.length > 0 && (
+                                                            <div className="flex flex-wrap gap-2 pt-1 w-full">
+                                                                {quickButtons.map((btn, bIdx) => {
+                                                                    if (btn.type === 'link') {
+                                                                        return (
+                                                                            <a
+                                                                                key={bIdx}
+                                                                                href={btn.value || '#'}
+                                                                                target="_blank"
+                                                                                rel="noopener noreferrer"
+                                                                                className="rounded-full border border-neutral-300 bg-white hover:bg-neutral-50 px-3.5 py-1.5 text-xs font-medium text-neutral-800 shadow-2xs transition-all cursor-pointer inline-flex items-center gap-1.5 active:scale-95"
+                                                                            >
+                                                                                <span>{btn.title}</span>
+                                                                            </a>
+                                                                        );
+                                                                    }
+                                                                    return (
+                                                                        <button
+                                                                            key={bIdx}
+                                                                            type="button"
+                                                                            onClick={() => handleSendMessage(btn.value || btn.title)}
+                                                                            className="rounded-full border border-neutral-300 bg-white hover:bg-neutral-50 px-3.5 py-1.5 text-xs font-medium text-neutral-800 shadow-2xs transition-all cursor-pointer inline-flex items-center gap-1.5 active:scale-95"
+                                                                        >
+                                                                            <span>{btn.title}</span>
+                                                                        </button>
+                                                                    );
+                                                                })}
                                                             </div>
                                                         )}
 
