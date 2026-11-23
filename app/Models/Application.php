@@ -61,6 +61,18 @@ class Application extends Model
     }
 
     /**
+     * Get sanitized active AI model name.
+     */
+    protected function getModelAttribute(?string $value): string
+    {
+        if (empty($value) || str_contains($value, 'llama') || str_contains($value, 'GGUF')) {
+            return config('ai.model', 'openai/gpt-oss-120b');
+        }
+
+        return $value;
+    }
+
+    /**
      * Scope query to only include active applications.
      */
     #[Scope]

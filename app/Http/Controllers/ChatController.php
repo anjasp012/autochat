@@ -751,9 +751,40 @@ PROMPT;
             if (! empty($matchedAutomates)) {
                 $fallbackReply = $matchedAutomates[0]['content'];
             } else {
-                // 2. Jika tidak ada tag Automate, berikan balasan CS yang ramah dan alami (bukan pesan robotik error)
+                // 2. Jika tidak ada tag Automate, berikan balasan langsung yang solutif & cerdas sesuai topik pertanyaan
+                $userLower = strtolower($userText);
                 $csName = $application->chat_settings['cs_agent_name'] ?? 'Rahma';
-                $fallbackReply = "Halo Bosku, pesan Bosku sudah kami terima 🙏 {$csName} sedang mengecek informasi dan segera merespon ya. Jika ada detail tambahan yang ingin disampaikan, silakan infokan di sini ya Bosku.";
+
+                if (str_contains($userLower, 'prediksi') || str_contains($userLower, 'hongkong') || str_contains($userLower, 'hk') || str_contains($userLower, 'singapore') || str_contains($userLower, 'sgp') || str_contains($userLower, 'sydney') || str_contains($userLower, 'sdy') || str_contains($userLower, 'togel') || str_contains($userLower, 'pasaran')) {
+                    $market = 'Hongkong';
+                    if (str_contains($userLower, 'sydney') || str_contains($userLower, 'sdy')) {
+                        $market = 'Sydney';
+                    } elseif (str_contains($userLower, 'singapore') || str_contains($userLower, 'sgp')) {
+                        $market = 'Singapore';
+                    }
+
+                    $seed = abs((int) crc32(now()->format('Y-m-d').$market));
+                    $d1 = $seed % 10;
+                    $d2 = ($seed * 3 + 7) % 10;
+                    $d3 = ($seed * 7 + 3) % 10;
+                    $d4 = ($seed * 9 + 1) % 10;
+                    $d5 = ($seed * 2 + 5) % 10;
+                    $bbfs = "{$d1}{$d2}{$d3}{$d4}{$d5}";
+                    $p4d = "{$d1}{$d2}{$d3}{$d4}";
+                    $p2d = "{$d1}{$d2}, {$d3}{$d4}, {$d2}{$d5}, {$d4}{$d1}";
+
+                    $fallbackReply = "Halo Bosku! Untuk pasaran {$market} hari ini, berikut angka rekomendasi prediksi kami:\n• BBFS: {$bbfs}\n• 4D: {$p4d}\n• 2D: {$p2d}\n• Colok Bebas: {$d2} / {$d4}\n\nTetap utamakan prediksi sendiri (UPS) ya Bosku. Semoga tembus jackpot hari ini! 🍀";
+                } elseif (str_contains($userLower, 'slot') || str_contains($userLower, 'gacor') || str_contains($userLower, 'pola') || str_contains($userLower, 'rtp') || str_contains($userLower, 'maxwin')) {
+                    $fallbackReply = "Halo Bosku! Untuk bocoran slot gacor hari ini dengan winrate tertinggi:\n1. Gates of Olympus (Pragmatic) - RTP 98.4%\n2. Starlight Princess (Pragmatic) - RTP 97.9%\n3. Mahjong Ways 2 (PG Soft) - RTP 98.6%\n\nPola gacor: Spin Manual 10x, DC On, lalu Auto Spin 30x. Semoga maxwin ya Bosku! 🍀";
+                } elseif (str_contains($userLower, 'depo') || str_contains($userLower, 'rekening') || str_contains($userLower, 'rek') || str_contains($userLower, 'tujuan')) {
+                    $fallbackReply = 'Halo Bosku, untuk tujuan rekening deposit aktif silakan selalu cek di menu Deposit pada website resmi sebelum melakukan transfer ya Bosku. Jika butuh panduan lebih lanjut, silakan tanyakan kepada kami. Terima kasih 🙏';
+                } elseif (str_contains($userLower, 'bonus') || str_contains($userLower, 'promo') || str_contains($userLower, 'klaim')) {
+                    $fallbackReply = 'Halo Bosku! Tersedia berbagai promo menarik seperti Bonus New Member, Bonus Deposit Harian, dan Rollingan Mingguan. Untuk syarat dan klaim bonus, silakan cek menu Promosi di website resmi ya Bosku 🎁';
+                } elseif (str_contains($userLower, 'halo') || str_contains($userLower, 'pagi') || str_contains($userLower, 'siang') || str_contains($userLower, 'malam') || str_contains($userLower, 'tes') || str_contains($userLower, 'p')) {
+                    $fallbackReply = "Halo Bosku! Selamat datang di layanan live chat resmi kami. Ada yang bisa {$csName} bantu terkait akun, permainan, atau transaksi hari ini? Silakan infokan ya Bosku 🙏";
+                } else {
+                    $fallbackReply = "Halo Bosku! Terkait pertanyaan Bosku, ada yang bisa {$csName} bantu jelaskan lebih lanjut mengenai akun atau permainannya? Silakan infokan detailnya ya Bosku 🙏";
+                }
 
                 $conversation->update([
                     'last_activity_at' => now(),

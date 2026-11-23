@@ -81,10 +81,14 @@ class LLMService
             }
         }
 
-        // If passed model is empty or obsolete local GGUF string, fallback to defaultModel
-        $effectiveModel = (! empty($model) && ! str_contains($model, 'GGUF'))
+        // If passed model is empty, deprecated llama, or obsolete local GGUF string, fallback to defaultModel
+        $effectiveModel = (! empty($model) && ! str_contains($model, 'GGUF') && ! str_contains($model, 'llama'))
             ? $model
             : $this->defaultModel;
+
+        if (empty($effectiveModel) || str_contains($effectiveModel, 'llama')) {
+            $effectiveModel = 'openai/gpt-oss-120b';
+        }
 
         $payload = [
             'model' => $effectiveModel,
@@ -107,16 +111,20 @@ class LLMService
                 // If rate limited (429) or server temporarily overloaded (500, 502, 503, 504)
                 if (in_array($response->status(), [429, 500, 502, 503, 504], true)) {
                     $retryAfter = (int) $response->header('Retry-After');
-                    $sleepSeconds = $retryAfter > 0 ? min($retryAfter, 4) : ($attempt * 1.2 + (rand(100, 400) / 1000));
+                    $sleepSeconds = $retryAfter > 0 ? min($retryAfter, 3) : ($attempt * 0.8 + (rand(100, 300) / 1000));
 
                     Log::warning("LLMService hit HTTP {$response->status()} on model '{$payload['model']}' (percobaan {$attempt}/{$maxAttempts}). Menunggu {$sleepSeconds}s sebelum mencoba kembali.");
 
                     if ($attempt < $maxAttempts) {
-                        // Jika sudah percobaan ke-2 dan masih terkena rate limit, alihkan otomatis ke model cadangan yang sangat cepat
-                        if ($attempt === 2 && $payload['model'] !== 'llama-3.1-8b-instant') {
-                            Log::info("Mengalihkan model ke fallback cepat 'llama-3.1-8b-instant' untuk menghindari rate limit provider.");
-                            $payload['model'] = 'llama-3.1-8b-instant';
-                        }
+                        // Switch to fast fallback model
+                        $nextModel = match ($payload['model']) {
+                            'openai/gpt-oss-120b' => 'openai/gpt-oss-20b',
+                            'openai/gpt-oss-20b' => 'qwen/qwen3.8-27b',
+                            default => 'openai/gpt-oss-20b',
+                        };
+
+                        Log::info("Mengalihkan model ke fallback '{$nextModel}' untuk mengatasi rate limit / beban server.");
+                        $payload['model'] = $nextModel;
 
                         usleep((int) ($sleepSeconds * 1_000_000));
 
@@ -124,14 +132,19 @@ class LLMService
                     }
                 }
 
-                // If model is not available or rejected by provider, automatically retry with fallback model
+                // If model is not available or rejected by provider, automatically retry with confirmed active model
                 if (! $response->successful()
-                    && ($response->json('error.code') === 'model_not_found' || str_contains($response->body(), 'does not exist'))
-                    && $payload['model'] !== 'llama-3.3-70b-versatile'
+                    && ($response->json('error.code') === 'model_not_found' || str_contains($response->body(), 'does not exist') || str_contains($response->body(), 'not found'))
                 ) {
-                    Log::info("Model '{$payload['model']}' tidak ditemukan di provider. Auto-retrying dengan fallback model 'llama-3.3-70b-versatile'.");
-                    $payload['model'] = 'llama-3.3-70b-versatile';
-                    usleep(500_000);
+                    $nextModel = match ($payload['model']) {
+                        'openai/gpt-oss-120b' => 'openai/gpt-oss-20b',
+                        'openai/gpt-oss-20b' => 'qwen/qwen3.8-27b',
+                        default => 'openai/gpt-oss-120b',
+                    };
+
+                    Log::info("Model '{$payload['model']}' tidak ditemukan di provider. Auto-retrying dengan fallback model '{$nextModel}'.");
+                    $payload['model'] = $nextModel;
+                    usleep(300_000);
 
                     continue;
                 }
