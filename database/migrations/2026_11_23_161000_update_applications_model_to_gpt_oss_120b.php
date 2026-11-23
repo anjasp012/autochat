@@ -13,9 +13,10 @@ return new class extends Migration
         DB::table('applications')
             ->where('model', 'like', '%llama%')
             ->orWhere('model', 'like', '%GGUF%')
+            ->orWhere('model', 'like', '%gpt-oss%')
             ->orWhereNull('model')
             ->orWhere('model', '')
-            ->update(['model' => 'openai/gpt-oss-120b']);
+            ->update(['model' => 'qwen/qwen3.8-27b']);
     }
 
     /**

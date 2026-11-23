@@ -552,6 +552,15 @@ class ChatController extends Controller
 
         // Prepare system prompt with interactive form capabilities
         $systemPrompt = $userContextBlock.($application->system_prompt ? $application->system_prompt."\n\n" : '').<<<'PROMPT'
+PANDUAN PEMAHAMAN TOPIK & PREDIKSI (MUTLAK):
+1. PELAJARI MAKSUD & PERTANYAAN PENGGUNA DENGAN TELITI:
+   - Jika pengguna meminta prediksi atau bocoran angka untuk pasaran tertentu (contoh: Toto Macau, Macau, Hongkong, HK, Sydney, SDY, Singapore, SGP, Cambodia, Taiwan, dll), BERIKAN PREDIKSI SESUAI PASARAN YANG DIMINTA!
+   - DILARANG KERAS menukar pasaran (misalnya pengguna minta Toto Macau, jangan pernah membalas dengan pasaran Hongkong)!
+   - Format prediksi pasaran harus lengkap dan menarik: BBFS, 4D, 2D, Colok Bebas, serta selalu ingatkan prinsip UPS (Utamakan Prediksi Sendiri).
+2. IKUTI SELURUH PANDUAN SYSTEM PROMPT APLIKASI:
+   - Baca dan prioritaskan persona, aturan, dan pengetahuan yang telah diatur oleh admin di atas.
+   - Sampaikan jawaban dengan gaya Customer Service yang ramah, hangat, dan komunikatif (panggilan "Bosku").
+
 PANDUAN PEMAHAMAN KONTEKS & PENGALIHAN ADMIN (MUTLAK):
 1. BACA & PAHAMI RIWAYAT PERCAKAPAN SEBELUMNYA DENGAN CERMAT:
    - Ingat dan hubungkan apa yang baru saja dibicarakan oleh pengguna.
@@ -755,12 +764,20 @@ PROMPT;
                 $userLower = strtolower($userText);
                 $csName = $application->chat_settings['cs_agent_name'] ?? 'Rahma';
 
-                if (str_contains($userLower, 'prediksi') || str_contains($userLower, 'hongkong') || str_contains($userLower, 'hk') || str_contains($userLower, 'singapore') || str_contains($userLower, 'sgp') || str_contains($userLower, 'sydney') || str_contains($userLower, 'sdy') || str_contains($userLower, 'togel') || str_contains($userLower, 'pasaran')) {
-                    $market = 'Hongkong';
-                    if (str_contains($userLower, 'sydney') || str_contains($userLower, 'sdy')) {
+                if (str_contains($userLower, 'prediksi') || str_contains($userLower, 'hongkong') || str_contains($userLower, 'hk') || str_contains($userLower, 'singapore') || str_contains($userLower, 'sgp') || str_contains($userLower, 'sydney') || str_contains($userLower, 'sdy') || str_contains($userLower, 'macau') || str_contains($userLower, 'cambodia') || str_contains($userLower, 'taiwan') || str_contains($userLower, 'togel') || str_contains($userLower, 'pasaran')) {
+                    $market = 'Pasaran Pilihan';
+                    if (str_contains($userLower, 'macau')) {
+                        $market = 'Toto Macau';
+                    } elseif (str_contains($userLower, 'sydney') || str_contains($userLower, 'sdy')) {
                         $market = 'Sydney';
                     } elseif (str_contains($userLower, 'singapore') || str_contains($userLower, 'sgp')) {
                         $market = 'Singapore';
+                    } elseif (str_contains($userLower, 'hongkong') || str_contains($userLower, 'hk')) {
+                        $market = 'Hongkong';
+                    } elseif (str_contains($userLower, 'cambodia')) {
+                        $market = 'Cambodia';
+                    } elseif (str_contains($userLower, 'taiwan')) {
+                        $market = 'Taiwan';
                     }
 
                     $seed = abs((int) crc32(now()->format('Y-m-d').$market));

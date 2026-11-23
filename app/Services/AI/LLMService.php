@@ -42,7 +42,7 @@ class LLMService
 
         $this->apiKey = $apiKey ?? config('ai.api_key');
 
-        $this->defaultModel = $defaultModel ?? config('ai.model', 'openai/gpt-oss-120b');
+        $this->defaultModel = $defaultModel ?? config('ai.model', 'qwen/qwen3.8-27b');
 
         $this->timeout = $timeout ?? (int) config('ai.timeout', 60);
 
@@ -81,13 +81,13 @@ class LLMService
             }
         }
 
-        // If passed model is empty, deprecated llama, or obsolete local GGUF string, fallback to defaultModel
-        $effectiveModel = (! empty($model) && ! str_contains($model, 'GGUF') && ! str_contains($model, 'llama'))
+        // If passed model is empty, deprecated llama/gpt-oss, or obsolete local GGUF string, fallback to defaultModel
+        $effectiveModel = (! empty($model) && ! str_contains($model, 'GGUF') && ! str_contains($model, 'llama') && ! str_contains($model, 'gpt-oss'))
             ? $model
             : $this->defaultModel;
 
-        if (empty($effectiveModel) || str_contains($effectiveModel, 'llama')) {
-            $effectiveModel = 'openai/gpt-oss-120b';
+        if (empty($effectiveModel) || str_contains($effectiveModel, 'llama') || str_contains($effectiveModel, 'gpt-oss')) {
+            $effectiveModel = 'qwen/qwen3.8-27b';
         }
 
         $payload = [
@@ -118,9 +118,9 @@ class LLMService
                     if ($attempt < $maxAttempts) {
                         // Switch to fast fallback model
                         $nextModel = match ($payload['model']) {
+                            'qwen/qwen3.8-27b' => 'openai/gpt-oss-120b',
                             'openai/gpt-oss-120b' => 'openai/gpt-oss-20b',
-                            'openai/gpt-oss-20b' => 'qwen/qwen3.8-27b',
-                            default => 'openai/gpt-oss-20b',
+                            default => 'qwen/qwen3.8-27b',
                         };
 
                         Log::info("Mengalihkan model ke fallback '{$nextModel}' untuk mengatasi rate limit / beban server.");
@@ -137,9 +137,8 @@ class LLMService
                     && ($response->json('error.code') === 'model_not_found' || str_contains($response->body(), 'does not exist') || str_contains($response->body(), 'not found'))
                 ) {
                     $nextModel = match ($payload['model']) {
-                        'openai/gpt-oss-120b' => 'openai/gpt-oss-20b',
-                        'openai/gpt-oss-20b' => 'qwen/qwen3.8-27b',
-                        default => 'openai/gpt-oss-120b',
+                        'qwen/qwen3.8-27b' => 'openai/gpt-oss-120b',
+                        default => 'qwen/qwen3.8-27b',
                     };
 
                     Log::info("Model '{$payload['model']}' tidak ditemukan di provider. Auto-retrying dengan fallback model '{$nextModel}'.");

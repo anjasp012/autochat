@@ -65,8 +65,8 @@ class Application extends Model
      */
     protected function getModelAttribute(?string $value): string
     {
-        if (empty($value) || str_contains($value, 'llama') || str_contains($value, 'GGUF')) {
-            return config('ai.model', 'openai/gpt-oss-120b');
+        if (empty($value) || str_contains($value, 'llama') || str_contains($value, 'GGUF') || str_contains($value, 'gpt-oss')) {
+            return config('ai.model', 'qwen/qwen3.8-27b');
         }
 
         return $value;

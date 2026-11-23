@@ -33,7 +33,7 @@ return [
     |
     */
 
-    'model' => env('LLM_MODEL', 'openai/gpt-oss-120b'),
+    'model' => env('LLM_MODEL', 'qwen/qwen3.8-27b'),
 
     /*
     |--------------------------------------------------------------------------
