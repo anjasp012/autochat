@@ -259,3 +259,78 @@ test('lupa pas prioritizes reset automation over generic lupa', function () {
     // Pastikan prompt memprioritaskan #reset daripada #lupa
     expect($interceptedPrompt)->toContain('TAG / SHORTCUT TERPILIH: #reset');
 });
+
+test('casual question with deposit and saldo does not trigger form escalation', function () {
+    Http::fake([
+        '*chat/completions' => Http::response([
+            'choices' => [
+                ['message' => ['role' => 'assistant', 'content' => 'Minimal deposit adalah Rp 10.000 ya Bosku.']],
+            ],
+        ], 200),
+    ]);
+
+    $uuid = (string) Str::uuid();
+
+    $response = $this->postJson("/chat/{$this->chatbot->app_id}/send", [
+        'uuid' => $uuid,
+        'message' => 'bos minimal depo berapa dan cek saldo dimana?',
+    ]);
+
+    $response->assertOk();
+    $conv = Conversation::where('uuid', $uuid)->first();
+    expect($conv->is_waiting_admin)->toBeFalse();
+    expect($response->json('assistant_message.content'))->toContain('Minimal deposit');
+});
+
+test('conversation history sent to llm includes admin messages and user context', function () {
+    $interceptedMessages = [];
+    $interceptedSystem = '';
+    Http::fake([
+        '*chat/completions' => function ($request) use (&$interceptedMessages, &$interceptedSystem) {
+            $data = $request->data();
+            $msgs = $data['messages'] ?? [];
+            $systemMsg = collect($msgs)->firstWhere('role', 'system');
+            $interceptedSystem = $systemMsg['content'] ?? '';
+            $interceptedMessages = collect($msgs)->where('role', '!=', 'system')->values()->toArray();
+
+            return Http::response([
+                'choices' => [
+                    ['message' => ['role' => 'assistant', 'content' => 'Baik, ada yang bisa dibantu lagi?']],
+                ],
+            ], 200);
+        },
+    ]);
+
+    $uuid = (string) Str::uuid();
+    $conv = Conversation::create([
+        'uuid' => $uuid,
+        'application_id' => $this->chatbot->id,
+        'user_identifier' => 'membergacor123',
+        'last_activity_at' => now(),
+    ]);
+
+    Message::create([
+        'conversation_id' => $conv->id,
+        'role' => 'user',
+        'content' => 'Halo min',
+    ]);
+
+    Message::create([
+        'conversation_id' => $conv->id,
+        'role' => 'admin',
+        'content' => 'Halo Bosku, ini admin CS yang jawab langsung ya.',
+    ]);
+
+    $this->postJson("/chat/{$this->chatbot->app_id}/send", [
+        'uuid' => $uuid,
+        'message' => 'Oke makasih ya min',
+    ])->assertOk();
+
+    // Verify admin message was converted to assistant role in history
+    $adminInHistory = collect($interceptedMessages)->firstWhere('content', 'Halo Bosku, ini admin CS yang jawab langsung ya.');
+    expect($adminInHistory)->not->toBeNull();
+    expect($adminInHistory['role'])->toBe('assistant');
+
+    // Verify user context was injected into system prompt
+    expect($interceptedSystem)->toContain('membergacor123');
+});

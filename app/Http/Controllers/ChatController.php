@@ -177,14 +177,6 @@ class ChatController extends Controller
                 ], 422);
             }
 
-            if ($conversation->is_waiting_admin) {
-                return response()->json([
-                    'conversation_uuid' => $conversation->uuid,
-                    'is_waiting_admin' => true,
-                    'error' => 'Percakapan Anda sedang menunggu respon dari Admin CS. Mohon ditunggu sebentar ya Bosku 🙏',
-                ], 422);
-            }
-
             $clientIp = self::getClientIp($request);
             $conversation->update(['last_activity_at' => now()]);
 
@@ -236,9 +228,9 @@ class ChatController extends Controller
 
         MessageSent::safeDispatch($userMessage);
 
-        // Cek apakah pesan adalah formulir deposit/withdraw atau pengecekan mutasi/saldo depo & wd
-        $isDepoWdForm = (bool) preg_match('/Formulir\s+(Deposit|Withdraw)\s+Status/i', $userText)
-            || (preg_match('/(deposit|depo|withdraw|wd)/i', $userText) && preg_match('/(username|tanggal|mutasi|saldo)/i', $userText));
+        // Cek apakah pesan adalah formulir deposit/withdraw terstruktur resmi
+        $isDepoWdForm = (bool) preg_match('/(?:📋\s*\*{0,2})?Formulir\s+(Pengecekan\s+)?(Deposit|Withdraw)/i', $userText)
+            || (str_contains($userText, '• **Username:**') && str_contains($userText, '• **Tanggal:**'));
 
         if ($isDepoWdForm) {
             $isWithdraw = (bool) preg_match('/withdraw/i', $userText);
@@ -305,8 +297,8 @@ class ChatController extends Controller
             ]);
         }
 
-        // Cek jika pengguna eksplisit meminta dihubungkan ke admin/CS manusia
-        $isHumanCsRequest = (bool) preg_match('/(bicara|chat|hubungkan|alihkan|panggil|tanya|oper)\s+(ke\s+)?(admin|cs\s+manusia|operator|manusia)/i', $userText);
+        // Cek jika pengguna eksplisit meminta dihubungkan langsung ke admin/CS manusia
+        $isHumanCsRequest = (bool) preg_match('/\b(bicara\s+(dengan|sama)\s+admin|hubungkan\s+ke\s+admin|sambungkan\s+ke\s+admin|minta\s+admin\s+manusia|mau\s+cs\s+manusia|panggil\s+admin\s+manusia|ngomong\s+sama\s+admin|chat\s+dengan\s+manusia)\b/i', $userText);
         if ($isHumanCsRequest) {
             $conversation->update([
                 'is_waiting_admin' => true,
@@ -518,22 +510,55 @@ class ChatController extends Controller
             ]);
         }
 
-        // Load recent conversation history (last 10 messages in chronological order, user & assistant only)
+        // Load recent conversation history (last 20 messages in chronological order, including admin responses)
         $history = $conversation->messages()
-            ->whereIn('role', ['user', 'assistant'])
+            ->whereIn('role', ['user', 'assistant', 'admin'])
             ->latest('id')
-            ->take(10)
-            ->get(['role', 'content'])
+            ->take(20)
+            ->get(['role', 'content', 'media_type', 'media_url'])
             ->reverse()
             ->values()
-            ->map(fn (Message $m) => [
-                'role' => $m->role,
-                'content' => $m->content,
-            ])
+            ->map(function (Message $m) {
+                $content = $m->content ?? '';
+                if ($m->media_type === 'image' && (empty(trim($content)) || in_array($content, ['[Gambar]', '[Image]'], true))) {
+                    $content = '[Pengguna melampirkan foto / bukti gambar]';
+                } elseif ($m->media_type === 'video' && (empty(trim($content)) || in_array($content, ['[Video]'], true))) {
+                    $content = '[Pengguna melampirkan video]';
+                }
+
+                return [
+                    'role' => $m->role === 'admin' ? 'assistant' : $m->role,
+                    'content' => $content,
+                ];
+            })
             ->toArray();
 
+        $contextItems = [];
+        if (! empty($conversation->user_identifier) && $conversation->user_identifier !== $conversation->uuid) {
+            $contextItems[] = "- User ID / Username Pengguna: {$conversation->user_identifier}";
+        }
+        if (! empty($conversation->city)) {
+            $contextItems[] = "- Lokasi Pengguna: {$conversation->city}";
+        }
+
+        $userContextBlock = '';
+        if (! empty($contextItems)) {
+            $userContextBlock = "======================================================================\n".
+                "👤 KONTEKS PENGGUNA SAAT INI (SUDAH DIKETAHUI DARI PESAN SEBELUMNYA):\n".
+                implode("\n", $contextItems)."\n".
+                "ATURAN: Kamu SUDAH MENGETAHUI data di atas! DILARANG KERAS menanyakan ulang User ID atau data yang sudah tertera di atas. Gunakan informasi ini untuk langsung menjawab kebutuhan pengguna secara akurat!\n".
+                "======================================================================\n\n";
+        }
+
         // Prepare system prompt with interactive form capabilities
-        $systemPrompt = ($application->system_prompt ? $application->system_prompt."\n\n" : '').<<<'PROMPT'
+        $systemPrompt = $userContextBlock.($application->system_prompt ? $application->system_prompt."\n\n" : '').<<<'PROMPT'
+PANDUAN PEMAHAMAN KONTEKS & PENGALIHAN ADMIN (MUTLAK):
+1. BACA & PAHAMI RIWAYAT PERCAKAPAN SEBELUMNYA DENGAN CERMAT:
+   - Ingat dan hubungkan apa yang baru saja dibicarakan oleh pengguna.
+   - Jika pengguna membalas singkat (contoh: "iya", "lupa pas", "rekening mana?", "udah min", "yang tadi"), pahami bahwa itu adalah KELANJUTAN dari percakapan sebelumnya! JANGAN menganggapnya topik baru atau mengulang pertanyaan dari awal.
+   - Jika admin CS sebelumnya sudah memberikan informasi di dalam riwayat chat, lanjutkan konteks tersebut dengan selaras.
+2. JANGAN PERNAH menyuruh atau mengalihkan pengguna ke Admin CS jika pertanyaannya masih dapat kamu jawab, jelaskan, atau pandu (seperti: cara deposit, nomor rekening tujuan, klaim bonus, cara reset/ganti password, link login resmi, jadwal pasaran, bocoran game, dll). Jawablah secara mandiri, lengkap, ramah, dan solutif!
+
 PANDUAN FORMULIR INTERAKTIF:
 Kamu memiliki kemampuan untuk memunculkan formulir interaktif di layar livechat jika pengguna membutuhkan pengecekan deposit atau withdraw:
 1. Jika pengguna bertanya tentang status deposit, ingin cek deposit, komplain deposit belum masuk, atau butuh bantuan terkait depositnya:
@@ -730,9 +755,7 @@ PROMPT;
                 $csName = $application->chat_settings['cs_agent_name'] ?? 'Rahma';
                 $fallbackReply = "Halo Bosku, pesan Bosku sudah kami terima 🙏 {$csName} sedang mengecek informasi dan segera merespon ya. Jika ada detail tambahan yang ingin disampaikan, silakan infokan di sini ya Bosku.";
 
-                // Tandai percakapan butuh perhatian CS
                 $conversation->update([
-                    'is_waiting_admin' => true,
                     'last_activity_at' => now(),
                 ]);
             }
