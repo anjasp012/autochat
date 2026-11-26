@@ -215,19 +215,15 @@ test('real visitor ip is extracted from cf-connecting-ip header', function () {
     ]);
 });
 
-test('lupa pas prioritizes reset automation over generic lupa', function () {
+test('chat sends pure system prompt and conversation history to llm without automation injection', function () {
     $this->chatbot->update([
+        'system_prompt' => 'Kamu adalah CS ramah bernama Rosa.',
         'chat_settings' => [
             'canned_responses' => [
                 [
                     'id' => 'cr-lupa',
                     'shortcut' => 'lupa',
-                    'content' => 'Panduan Lupa User ID: Mohon kirim data rekening.',
-                ],
-                [
-                    'id' => 'cr-reset',
-                    'shortcut' => 'reset',
-                    'content' => 'Panduan Reset Password: Silakan klik menu Lupa Password di situs.',
+                    'content' => 'Panduan Lupa User ID',
                 ],
             ],
         ],
@@ -243,7 +239,7 @@ test('lupa pas prioritizes reset automation over generic lupa', function () {
 
             return Http::response([
                 'choices' => [
-                    ['message' => ['role' => 'assistant', 'content' => 'Silakan klik menu Lupa Password untuk reset kata sandi.']],
+                    ['message' => ['role' => 'assistant', 'content' => 'Halo Bosku, ada yang bisa Rosa bantu?']],
                 ],
             ], 200);
         },
@@ -253,11 +249,13 @@ test('lupa pas prioritizes reset automation over generic lupa', function () {
 
     $this->postJson("/chat/{$this->chatbot->app_id}/send", [
         'uuid' => $uuid,
-        'message' => 'bos saya lupa pas akun saya',
+        'message' => 'Halo Rosa',
     ])->assertOk();
 
-    // Pastikan prompt memprioritaskan #reset daripada #lupa
-    expect($interceptedPrompt)->toContain('TAG / SHORTCUT TERPILIH: #reset');
+    // Pastikan prompt adalah system prompt murni tanpa injeksi otomasi
+    expect($interceptedPrompt)->toContain('Kamu adalah CS ramah bernama Rosa.');
+    expect($interceptedPrompt)->not->toContain('Panduan Lupa User ID');
+    expect($interceptedPrompt)->not->toContain('TAG / SHORTCUT TERPILIH');
 });
 
 test('casual question with deposit and saldo does not trigger form escalation', function () {
