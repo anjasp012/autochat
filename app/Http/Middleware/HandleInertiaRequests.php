@@ -117,9 +117,14 @@ class HandleInertiaRequests extends Middleware
 
                 return null;
             },
+            'chatNotifications' => fn () => Conversation::countUnreadAttentionForUser($request->user()),
             'escalations' => fn () => $request->user() ? [
-                'unread_count' => BotEscalation::where('is_read', false)->count(),
+                'unread_count' => Conversation::countUnreadAttentionForUser($request->user())['unread_escalations'],
                 'recent' => BotEscalation::with('application:id,name,app_id')
+                    ->when(
+                        ! $request->user()->isSuperAdmin(),
+                        fn ($q) => $q->whereIn('application_id', $request->user()->assigned_application_ids ?? [])
+                    )
                     ->latest()
                     ->take(10)
                     ->get()

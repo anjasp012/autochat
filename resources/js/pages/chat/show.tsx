@@ -333,6 +333,19 @@ export default function ChatShow({
     // Tutup percakapan dan kembali ke Beranda (mulai baru)
     const handleConfirmClose = () => {
         setShowCloseConfirm(false);
+        if (sessionUuid && !isSessionExpired && (hasSubmittedForm || messages.length > 0)) {
+            const token = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content;
+            void fetch(`/chat/${application.app_id}/end`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-CSRF-TOKEN': token || '',
+                },
+                body: JSON.stringify({ uuid: sessionUuid }),
+                keepalive: true,
+            }).catch(() => {});
+        }
         handleStartNewChat();
         setActiveTab('beranda');
     };
@@ -461,6 +474,10 @@ export default function ChatShow({
                 const res = await fetch(`/chat/${application.app_id}/session/${sessionUuid}`);
                 if (res.ok) {
                     const data = await res.json();
+                    if (data.expired) {
+                        setIsSessionExpired(true);
+                        return;
+                    }
                     if (data.is_taken_over !== undefined) {
                         setIsTakenOver(Boolean(data.is_taken_over));
                     }
@@ -761,7 +778,7 @@ export default function ChatShow({
 
     return (
         <div
-            className="flex h-screen w-full overflow-hidden transition-colors"
+            className="flex h-dvh min-h-0 w-full overflow-hidden transition-colors"
             style={{ backgroundColor: bgColor }}
         >
             <Head>
@@ -814,7 +831,7 @@ export default function ChatShow({
             {/* ============================================================== */}
             {/* RIGHT COLUMN: INTERACTIVE LIVE CHAT WIDGET (PERSIS 50% LAYAR KANAN) */}
             {/* ============================================================== */}
-            <div className={`flex flex-col w-full ${isEmbed ? 'h-full' : 'md:w-1/2 h-full'} bg-white border-l border-amber-200/80 shadow-2xl overflow-hidden`}>
+            <div className={`flex flex-col w-full ${isEmbed ? 'h-full min-h-0' : 'md:w-1/2 h-full min-h-0'} bg-white border-l border-amber-200/80 shadow-2xl overflow-hidden`}>
                 {/* TOP HEADER BAR */}
                 <div
                     className="px-5 py-4 shrink-0 shadow-sm border-b border-black/10 transition-colors"
@@ -1426,7 +1443,7 @@ export default function ChatShow({
                 {/* ============================================================== */}
                 {!isSessionExpired && activeTab === 'pesan' && (hasSubmittedForm || messages.length > 0) && (
                     isWaitingAdmin ? (
-                        <div className="border-t border-neutral-200 bg-amber-50/60 p-3 shrink-0">
+                        <div className="border-t border-neutral-200 bg-amber-50/60 p-3 pb-[calc(1rem+env(safe-area-inset-bottom))] md:pb-3 shrink-0">
                             <div className="flex items-center gap-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 p-3 text-amber-950 shadow-2xs">
                                 <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-amber-700">
                                     <Clock className="size-4 animate-spin-slow" />
@@ -1440,7 +1457,7 @@ export default function ChatShow({
                             </div>
                         </div>
                     ) : (
-                        <div className="border-t border-neutral-200 bg-white p-3 shrink-0">
+                        <div className="border-t border-neutral-200 bg-white p-3 pb-[calc(1rem+env(safe-area-inset-bottom))] md:pb-3 shrink-0">
                             {/* Attachment Preview Chip */}
                             {selectedFile && (
                                 <div className="flex items-center gap-2 mb-2 p-1.5 px-2.5 rounded-xl bg-black/5 dark:bg-white/10 text-xs w-fit max-w-full">
@@ -1553,7 +1570,7 @@ export default function ChatShow({
                 {/* ============================================================== */}
                 {isSessionExpired ? (
                     /* JIKA SESI KEDALUWARSA: TAMPILKAN TOMBOL MULAI CHAT BARU DI PALING BAWAH */
-                    <div className="border-t border-neutral-200 bg-white p-3 sm:p-4 shrink-0">
+                    <div className="border-t border-neutral-200 bg-white px-3 pt-3 pb-[calc(1.35rem+env(safe-area-inset-bottom))] md:p-4 shrink-0">
                         <button
                             type="button"
                             onClick={handleStartNewChat}
@@ -1566,7 +1583,7 @@ export default function ChatShow({
                     </div>
                 ) : isFirstTimeLanding ? (
                     /* JIKA PERTAMA KALI (BERANDA AWAL): TOMBOL KIRIM PESAN DI PALING BAWAH MENGGANTIKAN 3 TAB (Persis Screenshot 1) */
-                    <div className="border-t border-neutral-200 bg-white p-3 sm:p-4 shrink-0">
+                    <div className="border-t border-neutral-200 bg-white px-3 pt-3 pb-[calc(1.35rem+env(safe-area-inset-bottom))] md:p-4 shrink-0">
                         <button
                             type="button"
                             onClick={() => {
@@ -1585,7 +1602,7 @@ export default function ChatShow({
                     </div>
                 ) : (
                     /* JIKA SUDAH MULAI CHAT: MUNCULKAN 3 TAB (Beranda, Pesan, Bantuan) */
-                    <div className="border-t border-neutral-200 bg-white px-6 py-2.5 shrink-0 flex flex-col items-center gap-1.5 select-none">
+                    <div className="border-t border-neutral-200 bg-white px-6 pt-2.5 pb-[calc(0.9rem+env(safe-area-inset-bottom))] md:py-2.5 shrink-0 flex flex-col items-center gap-1.5 select-none">
                         <div className="w-full flex items-center justify-around">
                             <button
                                 type="button"

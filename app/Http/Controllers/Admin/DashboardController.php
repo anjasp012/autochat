@@ -40,16 +40,20 @@ class DashboardController extends Controller
             }
         }
 
+        Conversation::syncExpiredConversations($currentApp?->id);
+
         $appQuery = Conversation::query()
             ->when($currentApp, fn ($q, $app) => $q->where('application_id', $app->id), fn ($q) => $q->whereRaw('1 = 0'));
 
         // Realtime overview metrics (matching screenshot top cards)
         $customersOnline = (clone $appQuery)
+            ->whereNull('ended_reason')
             ->where('last_activity_at', '>=', now()->subMinutes(15))
             ->count();
 
         $ongoingChats = (clone $appQuery)
             ->where('is_archived', false)
+            ->whereNull('ended_reason')
             ->where('last_activity_at', '>=', now()->subHours(24))
             ->count();
 
@@ -181,6 +185,8 @@ class DashboardController extends Controller
                 'user_identifier' => $c->user_identifier,
                 'is_waiting_admin' => (bool) $c->is_waiting_admin,
                 'is_taken_over' => (bool) $c->is_taken_over,
+                'ended_reason' => $c->ended_reason,
+                'ended_at' => $c->ended_at?->toIso8601String(),
                 'taken_over_by_name' => $c->takenOverBy?->name,
                 'latest_message' => $c->messages->first()?->content ?? '(Sesi baru)',
                 'last_activity_at' => $c->last_activity_at?->diffForHumans() ?? 'Baru saja',

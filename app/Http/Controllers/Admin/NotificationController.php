@@ -4,17 +4,23 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\BotEscalation;
+use App\Models\Conversation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class NotificationController extends Controller
 {
     /**
-     * Get recent bot escalation notifications.
+     * Get recent bot escalation notifications and total chat attention counts.
      */
     public function index(Request $request): JsonResponse
     {
+        $user = $request->user();
         $notifications = BotEscalation::query()
+            ->when(
+                $user && ! $user->isSuperAdmin(),
+                fn ($q) => $q->whereIn('application_id', $user->assigned_application_ids ?? [])
+            )
             ->with(['application:id,app_id,name', 'conversation:id,uuid'])
             ->latest('id')
             ->limit(20)
@@ -33,37 +39,49 @@ class NotificationController extends Controller
                 'created_at_time' => $item->created_at?->format('H:i') ?? '',
             ]);
 
-        $unreadCount = BotEscalation::where('is_read', false)->count();
+        $counts = Conversation::countUnreadAttentionForUser($user);
 
         return response()->json([
             'notifications' => $notifications,
-            'unread_count' => $unreadCount,
+            'unread_count' => $counts['unread_escalations'],
+            'chat_notifications' => $counts,
         ]);
     }
 
     /**
      * Mark a single escalation notification as read.
      */
-    public function markAsRead(BotEscalation $escalation): JsonResponse
+    public function markAsRead(Request $request, BotEscalation $escalation): JsonResponse
     {
         $escalation->update(['is_read' => true]);
+        $counts = Conversation::countUnreadAttentionForUser($request->user());
 
         return response()->json([
             'success' => true,
-            'unread_count' => BotEscalation::where('is_read', false)->count(),
+            'unread_count' => $counts['unread_escalations'],
+            'chat_notifications' => $counts,
         ]);
     }
 
     /**
      * Mark all escalation notifications as read.
      */
-    public function markAllAsRead(): JsonResponse
+    public function markAllAsRead(Request $request): JsonResponse
     {
-        BotEscalation::where('is_read', false)->update(['is_read' => true]);
+        $user = $request->user();
+        BotEscalation::where('is_read', false)
+            ->when(
+                $user && ! $user->isSuperAdmin(),
+                fn ($q) => $q->whereIn('application_id', $user->assigned_application_ids ?? [])
+            )
+            ->update(['is_read' => true]);
+
+        $counts = Conversation::countUnreadAttentionForUser($user);
 
         return response()->json([
             'success' => true,
-            'unread_count' => 0,
+            'unread_count' => $counts['unread_escalations'],
+            'chat_notifications' => $counts,
         ]);
     }
 }

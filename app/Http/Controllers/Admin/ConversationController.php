@@ -67,14 +67,17 @@ class ConversationController extends Controller
             }
         }
 
+        Conversation::syncExpiredConversations($currentApp?->id);
+
         $baseQuery = Conversation::query()
             ->when($currentApp, fn ($query, $app) => $query->where('application_id', $app->id), fn ($query) => $query->whereRaw('1 = 0'));
 
         $counts = [
             'all' => (clone $baseQuery)->where('is_archived', false)->count(),
-            'waiting' => (clone $baseQuery)->where('is_archived', false)->where('is_waiting_admin', true)->count(),
+            'waiting' => (clone $baseQuery)->where('is_archived', false)->whereNull('ended_reason')->where('is_waiting_admin', true)->count(),
             'mine' => (clone $baseQuery)->where('is_archived', false)->where('is_taken_over', true)->where('taken_over_by', $request->user()?->id)->count(),
-            'bot' => (clone $baseQuery)->where('is_archived', false)->where('is_taken_over', false)->count(),
+            'bot' => (clone $baseQuery)->where('is_archived', false)->whereNull('ended_reason')->where('is_taken_over', false)->count(),
+            'ended' => (clone $baseQuery)->where('is_archived', false)->whereNotNull('ended_reason')->count(),
             'archived' => (clone $baseQuery)->where('is_archived', true)->count(),
         ];
 
@@ -93,12 +96,13 @@ class ConversationController extends Controller
                         ->orWhereHas('messages', fn ($mq) => $mq->where('content', 'like', "%{$search}%"));
                 });
             })
-            ->when($status === 'waiting', fn ($q) => $q->where('is_archived', false)->where('is_waiting_admin', true))
+            ->when($status === 'waiting', fn ($q) => $q->where('is_archived', false)->whereNull('ended_reason')->where('is_waiting_admin', true))
             ->when($status === 'mine', fn ($q) => $q->where('is_archived', false)->where('is_taken_over', true)->where('taken_over_by', $request->user()?->id))
-            ->when($status === 'bot' || $status === 'ai', fn ($q) => $q->where('is_archived', false)->where('is_taken_over', false))
+            ->when($status === 'bot' || $status === 'ai', fn ($q) => $q->where('is_archived', false)->whereNull('ended_reason')->where('is_taken_over', false))
+            ->when($status === 'ended', fn ($q) => $q->where('is_archived', false)->whereNotNull('ended_reason'))
             ->when($status === 'archived', fn ($q) => $q->where('is_archived', true))
             ->when($status === 'taken_over', fn ($q) => $q->where('is_archived', false)->where('is_taken_over', true))
-            ->when(! in_array($status, ['archived', 'mine', 'bot', 'ai', 'taken_over']), fn ($q) => $q->where('is_archived', false))
+            ->when(! in_array($status, ['archived', 'mine', 'bot', 'ai', 'taken_over', 'ended']), fn ($q) => $q->where('is_archived', false))
             ->orderBy('last_activity_at', 'desc')
             ->get()
             ->map(function ($c) {
@@ -270,6 +274,7 @@ class ConversationController extends Controller
     public function messages(Request $request, Conversation $conversation): JsonResponse
     {
         $this->authorizeConversationAccess($request, $conversation);
+        $conversation->syncTimeoutStatus();
 
         $messages = $conversation->messages()
             ->orderBy('created_at', 'asc')
@@ -288,6 +293,8 @@ class ConversationController extends Controller
             'uuid' => $conversation->uuid,
             'is_taken_over' => (bool) $conversation->is_taken_over,
             'is_waiting_admin' => (bool) $conversation->is_waiting_admin,
+            'ended_reason' => $conversation->ended_reason,
+            'ended_at' => $conversation->ended_at?->toIso8601String(),
             'taken_over_by' => $conversation->takenOverBy ? [
                 'id' => $conversation->takenOverBy->id,
                 'name' => $conversation->takenOverBy->name,
@@ -297,11 +304,49 @@ class ConversationController extends Controller
     }
 
     /**
+     * Expand standalone #shortcut automation tag against application settings as a backend safeguard.
+     */
+    protected function expandAutomationShortcut(Application $application, string $content): string
+    {
+        if (! preg_match('/^#([a-z0-9_-]+)$/i', trim($content), $matches)) {
+            return $content;
+        }
+
+        $tag = strtolower($matches[1]);
+        $canned = $application->chat_settings['canned_responses'] ?? [];
+
+        if (! is_array($canned)) {
+            return $content;
+        }
+
+        foreach ($canned as $item) {
+            $shortcut = strtolower(ltrim(trim((string) ($item['shortcut'] ?? '')), '#'));
+            $itemContent = trim((string) ($item['content'] ?? ''));
+
+            if ($shortcut === $tag && $itemContent !== '') {
+                return $itemContent;
+            }
+        }
+
+        return $content;
+    }
+
+    /**
      * Admin replies directly to the visitor.
      */
     public function reply(Request $request, Conversation $conversation): RedirectResponse|JsonResponse
     {
         $this->authorizeConversationAccess($request, $conversation);
+        $conversation->syncTimeoutStatus();
+
+        if ($conversation->ended_reason !== null) {
+            $endedMsg = 'Sesi percakapan ini telah berakhir.';
+            if ($request->wantsJson()) {
+                return response()->json(['error' => $endedMsg], 422);
+            }
+
+            return back()->with('error', $endedMsg);
+        }
 
         $user = $request->user();
         if ($conversation->is_taken_over && $conversation->taken_over_by && (int) $conversation->taken_over_by !== (int) $user?->id) {
@@ -324,6 +369,9 @@ class ConversationController extends Controller
         ]);
 
         $content = trim($validated['message'] ?? '');
+        if ($content !== '' && $conversation->application) {
+            $content = $this->expandAutomationShortcut($conversation->application, $content);
+        }
         $mediaUrl = null;
         $mediaType = null;
 

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import {
     LayoutGrid,
@@ -21,7 +22,25 @@ import type { ApplicationSummary } from '@/types/application';
 import type { NavItem } from '@/types';
 
 export function AppSidebar() {
-    const { currentAppId, allApplications, applications, auth } = usePage().props as Record<string, any>;
+    const { currentAppId, allApplications, applications, auth, chatNotifications, escalations } = usePage().props as Record<string, any>;
+    const initialBadgeCount = chatNotifications?.total_notifications ?? escalations?.unread_count ?? 0;
+    const [chatBadgeCount, setChatBadgeCount] = useState<number>(initialBadgeCount);
+
+    useEffect(() => {
+        setChatBadgeCount(chatNotifications?.total_notifications ?? escalations?.unread_count ?? 0);
+    }, [chatNotifications?.total_notifications, escalations?.unread_count]);
+
+    useEffect(() => {
+        const handleNotifUpdate = (event: Event) => {
+            const detail = (event as CustomEvent)?.detail;
+            if (detail && typeof detail.total_notifications === 'number') {
+                setChatBadgeCount(detail.total_notifications);
+            }
+        };
+        window.addEventListener('autochat:notifications-updated', handleNotifUpdate);
+        return () => window.removeEventListener('autochat:notifications-updated', handleNotifUpdate);
+    }, []);
+
     const user = auth?.user;
     const isSuperAdmin =
         user?.role === 'admin' ||
@@ -50,6 +69,7 @@ export function AppSidebar() {
             title: 'Conversations',
             href: '/conversations',
             icon: MessageSquare,
+            badge: chatBadgeCount,
         },
         ...(isSuperAdmin
             ? [

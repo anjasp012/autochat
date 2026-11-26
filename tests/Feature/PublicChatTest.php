@@ -332,3 +332,69 @@ test('conversation history sent to llm includes admin messages and user context'
     // Verify user context was injected into system prompt
     expect($interceptedSystem)->toContain('membergacor123');
 });
+
+test('visitor ending session marks conversation ended by user and adds system notice', function () {
+    $uuid = (string) Str::uuid();
+    $conversation = Conversation::factory()->create([
+        'application_id' => $this->chatbot->id,
+        'uuid' => $uuid,
+        'last_activity_at' => now(),
+    ]);
+
+    $response = $this->postJson("/chat/{$this->chatbot->app_id}/end", [
+        'uuid' => $uuid,
+    ]);
+
+    $response->assertOk()
+        ->assertJson([
+            'ended' => true,
+            'ended_reason' => 'user',
+        ]);
+
+    $this->assertDatabaseHas('conversations', [
+        'id' => $conversation->id,
+        'ended_reason' => 'user',
+    ]);
+
+    $this->assertDatabaseHas('messages', [
+        'conversation_id' => $conversation->id,
+        'role' => 'system',
+        'content' => 'Pengguna telah mengakhiri sesi percakapan.',
+    ]);
+
+    $this->postJson("/chat/{$this->chatbot->app_id}/send", [
+        'uuid' => $uuid,
+        'message' => 'Pesan setelah end chat',
+    ])->assertStatus(422)
+        ->assertJson([
+            'expired' => true,
+            'ended_reason' => 'user',
+        ]);
+});
+
+test('expired conversation marks ended reason as timeout on session check', function () {
+    $uuid = (string) Str::uuid();
+    $conversation = Conversation::factory()->create([
+        'application_id' => $this->chatbot->id,
+        'uuid' => $uuid,
+        'last_activity_at' => now()->subMinutes(15),
+    ]);
+
+    $this->getJson("/chat/{$this->chatbot->app_id}/session/{$uuid}")
+        ->assertOk()
+        ->assertJson([
+            'exists' => true,
+            'expired' => true,
+            'ended_reason' => 'timeout',
+        ]);
+
+    $this->assertDatabaseHas('conversations', [
+        'id' => $conversation->id,
+        'ended_reason' => 'timeout',
+    ]);
+
+    $this->assertDatabaseHas('messages', [
+        'conversation_id' => $conversation->id,
+        'role' => 'system',
+    ]);
+});

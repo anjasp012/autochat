@@ -43,6 +43,13 @@ export function BotEscalationNotifications() {
     const [hasNewAlert, setHasNewAlert] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
+    useEffect(() => {
+        if (initialEscalations) {
+            setNotifications(initialEscalations.recent || []);
+            setUnreadCount(initialEscalations.unread_count || 0);
+        }
+    }, [initialEscalations?.unread_count, initialEscalations?.recent]);
+
     // Play subtle chime sound when escalation arrives
     const playNotificationSound = () => {
         try {
@@ -119,7 +126,7 @@ export function BotEscalationNotifications() {
 
         try {
             const token = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content;
-            await fetch(`/admin/notifications/${notif.id}/read`, {
+            const res = await fetch(`/admin/notifications/${notif.id}/read`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -132,6 +139,12 @@ export function BotEscalationNotifications() {
                 prev.map((n) => (n.id === notif.id ? { ...n, is_read: true } : n))
             );
             setUnreadCount((prev) => Math.max(0, prev - 1));
+            if (res.ok) {
+                const payload = await res.json();
+                if (payload?.chat_notifications) {
+                    window.dispatchEvent(new CustomEvent('autochat:notifications-updated', { detail: payload.chat_notifications }));
+                }
+            }
         } catch (e) {
             console.error('Failed to mark notification as read', e);
         }
@@ -140,7 +153,7 @@ export function BotEscalationNotifications() {
     const handleMarkAllRead = async () => {
         try {
             const token = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content;
-            await fetch('/admin/notifications/mark-all-read', {
+            const res = await fetch('/admin/notifications/mark-all-read', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -151,6 +164,12 @@ export function BotEscalationNotifications() {
 
             setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
             setUnreadCount(0);
+            if (res.ok) {
+                const payload = await res.json();
+                if (payload?.chat_notifications) {
+                    window.dispatchEvent(new CustomEvent('autochat:notifications-updated', { detail: payload.chat_notifications }));
+                }
+            }
         } catch (e) {
             console.error('Failed to mark all as read', e);
         }

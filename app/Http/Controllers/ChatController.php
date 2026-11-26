@@ -87,9 +87,21 @@ class ChatController extends Controller
         $isExpired = Carbon::parse($conversation->last_activity_at)->addMinutes($timeoutMinutes)->isPast();
 
         if ($isExpired) {
+            $conversation->syncTimeoutStatus($timeoutMinutes);
+
             return response()->json([
                 'exists' => true,
                 'expired' => true,
+                'ended_reason' => $conversation->ended_reason ?? 'timeout',
+                'messages' => [],
+            ]);
+        }
+
+        if ($conversation->ended_reason !== null) {
+            return response()->json([
+                'exists' => true,
+                'expired' => true,
+                'ended_reason' => $conversation->ended_reason,
                 'messages' => [],
             ]);
         }
@@ -112,6 +124,35 @@ class ChatController extends Controller
             'is_taken_over' => (bool) $conversation->is_taken_over,
             'is_waiting_admin' => (bool) $conversation->is_waiting_admin,
             'messages' => $messages,
+        ]);
+    }
+
+    /**
+     * End active visitor chat session explicitly when visitor closes/ends chat.
+     */
+    public function endSession(Request $request, Application $application): JsonResponse
+    {
+        $validated = $request->validate([
+            'uuid' => ['required', 'string', 'uuid'],
+        ]);
+
+        $conversation = Conversation::where('application_id', $application->id)
+            ->where('uuid', $validated['uuid'])
+            ->first();
+
+        if (! $conversation) {
+            return response()->json(['ended' => false, 'exists' => false]);
+        }
+
+        $timeoutMinutes = (int) config('ai.session_timeout', 10);
+        if (! $conversation->syncTimeoutStatus($timeoutMinutes)) {
+            $conversation->markAsEnded('user', now(), $timeoutMinutes);
+        }
+
+        return response()->json([
+            'ended' => true,
+            'ended_reason' => $conversation->ended_reason,
+            'ended_at' => $conversation->ended_at?->toIso8601String(),
         ]);
     }
 
@@ -171,9 +212,20 @@ class ChatController extends Controller
             $isExpired = Carbon::parse($conversation->last_activity_at)->addMinutes($timeoutMinutes)->isPast();
 
             if ($isExpired) {
+                $conversation->syncTimeoutStatus($timeoutMinutes);
+
                 return response()->json([
                     'expired' => true,
-                    'error' => 'Sesi percakapan telah kedaluwarsa setelah 10 menit tanpa aktivitas. Silakan klik Chat Baru untuk memulai sesi baru.',
+                    'ended_reason' => $conversation->ended_reason ?? 'timeout',
+                    'error' => "Sesi percakapan telah kedaluwarsa setelah {$timeoutMinutes} menit tanpa aktivitas. Silakan klik Chat Baru untuk memulai sesi baru.",
+                ], 422);
+            }
+
+            if ($conversation->ended_reason !== null) {
+                return response()->json([
+                    'expired' => true,
+                    'ended_reason' => $conversation->ended_reason,
+                    'error' => 'Sesi percakapan telah diakhiri. Silakan klik Mulai Chat Baru untuk memulai sesi baru.',
                 ], 422);
             }
 

@@ -43,6 +43,7 @@ Route::get('chat', function () {
 Route::get('chat/{application:app_id}', [ChatController::class, 'show'])->name('chat.show');
 Route::get('chat/{application:app_id}/config', [ChatController::class, 'getWidgetConfig'])->name('chat.config');
 Route::post('chat/{application:app_id}/send', [ChatController::class, 'sendMessage'])->name('chat.send');
+Route::post('chat/{application:app_id}/end', [ChatController::class, 'endSession'])->name('chat.end');
 Route::get('chat/{application:app_id}/session/{uuid}', [ChatController::class, 'getSessionMessages'])->name('chat.session');
 
 // Authenticated Panel Routes (Direct Menu URLs without /admin)

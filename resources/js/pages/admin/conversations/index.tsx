@@ -7,16 +7,19 @@ import {
     ArrowLeft,
     Bot,
     CheckCheck,
+    CheckCircle2,
     Clock,
     Film,
     HandMetal,
     Inbox,
     Loader2,
+    LogOut,
     MessageSquare,
     Paperclip,
     RotateCcw,
     Search,
     Send,
+    TimerOff,
     Trash2,
     User,
     UserCheck,
@@ -24,6 +27,7 @@ import {
     Zap,
 } from 'lucide-react';
 import ChatMarkdown from '@/components/chat-markdown';
+import { CannedResponse, DEFAULT_CANNED_RESPONSES } from '@/types/canned-response';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -63,6 +67,8 @@ interface ConversationItem {
     is_taken_over: boolean;
     is_waiting_admin?: boolean;
     is_archived: boolean;
+    ended_reason?: 'user' | 'timeout' | null;
+    ended_at?: string | null;
     taken_over_at: string | null;
     messages_count: number;
     latest_message?: {
@@ -97,6 +103,7 @@ interface Counts {
     waiting?: number;
     mine: number;
     bot: number;
+    ended?: number;
     archived: number;
 }
 
@@ -113,6 +120,7 @@ interface Props {
         app_id: string;
         name: string;
         is_active: boolean;
+        canned_responses?: CannedResponse[];
     } | null;
 }
 
@@ -159,11 +167,45 @@ export default function ConversationsIndex({
         auth?.user?.role === 'super_admin' ||
         (auth?.user?.is_admin && !auth?.user?.role);
 
+    const [activeEndedReason, setActiveEndedReason] = useState<'user' | 'timeout' | null>(
+        activeConversation?.ended_reason ?? null
+    );
+    const [activeEndedAt, setActiveEndedAt] = useState<string | null>(
+        activeConversation?.ended_at ?? null
+    );
+
+    useEffect(() => {
+        setActiveEndedReason(activeConversation?.ended_reason ?? null);
+        setActiveEndedAt(activeConversation?.ended_at ?? null);
+    }, [
+        activeConversation?.id,
+        activeConversation?.uuid,
+        activeConversation?.ended_reason,
+        activeConversation?.ended_at,
+    ]);
+
+    const isEnded = Boolean(activeEndedReason);
     const isTakenOver = Boolean(activeConversation?.is_taken_over);
     const takenOverUserId = activeConversation?.taken_over_by?.id;
     const isTakenOverByMe = isTakenOver && takenOverUserId === currentUserId;
     const isTakenOverByOther = isTakenOver && Boolean(takenOverUserId) && takenOverUserId !== currentUserId;
-    const canReply = isTakenOver ? (!takenOverUserId || isTakenOverByMe) : false;
+    const canReply = !isEnded && (isTakenOver ? (!takenOverUserId || isTakenOverByMe) : false);
+
+    const cannedResponses: CannedResponse[] =
+        Array.isArray(selectedApp?.canned_responses) && selectedApp.canned_responses.length > 0
+            ? selectedApp.canned_responses
+            : DEFAULT_CANNED_RESPONSES;
+
+    const [automateQuery, setAutomateQuery] = useState<string | null>(null);
+    const [automateSelectedIndex, setAutomateSelectedIndex] = useState(0);
+
+    const filteredAutomates = automateQuery !== null
+        ? cannedResponses.filter((cr) => {
+              const q = automateQuery.toLowerCase();
+              const sc = (cr.shortcut || '').replace(/^#\s*/, '').toLowerCase();
+              return q === '' || sc.includes(q) || (cr.content || '').toLowerCase().includes(q);
+          })
+        : [];
 
     const [search, setSearch] = useState(filters?.search || '');
     const [currentStatus, setCurrentStatus] = useState(filters?.status || 'all');
@@ -181,7 +223,7 @@ export default function ConversationsIndex({
 
     const messagesContainerRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const inputRef = useRef<HTMLInputElement>(null);
+    const inputRef = useRef<HTMLTextAreaElement>(null);
     const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
     const [lightboxMedia, setLightboxMedia] = useState<{ url: string; type: 'image' | 'video' } | null>(null);
 
@@ -222,6 +264,14 @@ export default function ConversationsIndex({
         scrollToBottom(true);
     }, [localMessages.length]);
 
+    // Auto-resize reply textarea for multi-line automations
+    useEffect(() => {
+        const el = inputRef.current;
+        if (!el) return;
+        el.style.height = 'auto';
+        el.style.height = `${Math.min(Math.max(el.scrollHeight, 36), 140)}px`;
+    }, [data.message]);
+
     // WebSocket realtime listener via Laravel Reverb Echo (Application Level & Global)
     useEffect(() => {
         const handleUpdate = () => {
@@ -261,6 +311,10 @@ export default function ConversationsIndex({
         const roomChannel = echo.channel(`conversation.${activeConversation.uuid}`);
         const handleRoomUpdate = (event: any) => {
             console.log('[Echo Admin] Received conversation room update:', event);
+            if (event.ended_reason !== undefined) {
+                setActiveEndedReason(event.ended_reason ?? null);
+                setActiveEndedAt(event.ended_at ?? null);
+            }
             // Instant local state append / deduplication
             setLocalMessages((prev) => {
                 const idStr = String(event.id);
@@ -332,6 +386,10 @@ export default function ConversationsIndex({
                 });
                 if (res.ok) {
                     const data = await res.json();
+                    if (data.ended_reason !== undefined) {
+                        setActiveEndedReason(data.ended_reason ?? null);
+                        setActiveEndedAt(data.ended_at ?? null);
+                    }
                     if (data.messages && Array.isArray(data.messages)) {
                         setLocalMessages((prev) => {
                             let hasNew = false;
@@ -419,6 +477,7 @@ export default function ConversationsIndex({
     };
 
     const handleToggleTakeover = (conv: ConversationItem) => {
+        if (conv.ended_reason) return;
         if (conv.is_taken_over) {
             if (conv.taken_over_by?.id && conv.taken_over_by.id !== currentUserId && !isSuperAdmin) {
                 return;
@@ -444,9 +503,132 @@ export default function ConversationsIndex({
         }
     };
 
+    const findExactShortcut = (tag: string): CannedResponse | undefined => {
+        const cleanTag = tag.toLowerCase();
+        return cannedResponses.find(
+            (cr) => (cr.shortcut || '').replace(/^#\s*/, '').toLowerCase() === cleanTag
+        );
+    };
+
+    const replaceTokenAtCursor = (
+        value: string,
+        cursorPos: number,
+        replacement: string,
+        includeTrailingSpace: boolean
+    ): { nextValue: string; nextCursor: number } => {
+        const before = value.slice(0, cursorPos);
+        const after = value.slice(cursorPos);
+        const regex = includeTrailingSpace ? /(^|\s)(#[a-zA-Z0-9_-]*)\s$/ : /(^|\s)(#[a-zA-Z0-9_-]*)$/;
+        const match = before.match(regex);
+        if (!match) {
+            return { nextValue: value, nextCursor: cursorPos };
+        }
+        const prefix = before.slice(0, before.length - match[0].length) + match[1];
+        const nextValue = `${prefix}${replacement}${after}`;
+        const nextCursor = prefix.length + replacement.length;
+        return { nextValue, nextCursor };
+    };
+
+    const insertAutomation = (cr: CannedResponse) => {
+        const el = inputRef.current;
+        const cursorPos = el?.selectionStart ?? data.message.length;
+        const before = data.message.slice(0, cursorPos);
+        let nextValue = data.message;
+        let nextCursor = cursorPos;
+
+        if (/(^|\s)(#[a-zA-Z0-9_-]*)$/.test(before)) {
+            const replaced = replaceTokenAtCursor(data.message, cursorPos, cr.content, false);
+            nextValue = replaced.nextValue;
+            nextCursor = replaced.nextCursor;
+        } else {
+            const prefix = before.length > 0 && !before.endsWith(' ') && !before.endsWith('\n') ? `${before} ` : before;
+            const after = data.message.slice(cursorPos);
+            nextValue = `${prefix}${cr.content}${after}`;
+            nextCursor = prefix.length + cr.content.length;
+        }
+
+        setData('message', nextValue);
+        setAutomateQuery(null);
+        setAutomateSelectedIndex(0);
+        requestAnimationFrame(() => {
+            if (inputRef.current) {
+                inputRef.current.focus();
+                inputRef.current.setSelectionRange(nextCursor, nextCursor);
+            }
+        });
+    };
+
+    const handleMessageInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        const rawValue = e.target.value;
+        const cursorPos = e.target.selectionStart ?? rawValue.length;
+        const beforeCursor = rawValue.slice(0, cursorPos);
+
+        // 1. Jika admin mengetik spasi tepat setelah #shortcut, langsung ganti isi automation
+        const spaceMatch = beforeCursor.match(/(^|\s)#([a-zA-Z0-9_-]+)\s$/);
+        if (spaceMatch) {
+            const exact = findExactShortcut(spaceMatch[2]);
+            if (exact) {
+                const { nextValue, nextCursor } = replaceTokenAtCursor(rawValue, cursorPos, exact.content, true);
+                setData('message', nextValue);
+                setAutomateQuery(null);
+                setAutomateSelectedIndex(0);
+                requestAnimationFrame(() => {
+                    inputRef.current?.setSelectionRange(nextCursor, nextCursor);
+                });
+                return;
+            }
+        }
+
+        // 2. Jika admin mengetik tepat #shortcut (contoh: #bosku) dan tidak ada tag lebih panjang berawalan sama, langsung ganti otomatis!
+        const exactTokenMatch = beforeCursor.match(/(^|\s)#([a-zA-Z0-9_-]+)$/);
+        if (exactTokenMatch) {
+            const typedTag = exactTokenMatch[2].toLowerCase();
+            const exact = findExactShortcut(typedTag);
+            const hasLongerPrefix = cannedResponses.some((cr) => {
+                const s = (cr.shortcut || '').replace(/^#\s*/, '').toLowerCase();
+                return s !== typedTag && s.startsWith(typedTag);
+            });
+
+            if (exact && !hasLongerPrefix) {
+                const { nextValue, nextCursor } = replaceTokenAtCursor(rawValue, cursorPos, exact.content, false);
+                setData('message', nextValue);
+                setAutomateQuery(null);
+                setAutomateSelectedIndex(0);
+                requestAnimationFrame(() => {
+                    inputRef.current?.setSelectionRange(nextCursor, nextCursor);
+                });
+                return;
+            }
+        }
+
+        // 3. Tampilkan daftar saran Automate jika sedang mengetik diawali #
+        const queryMatch = beforeCursor.match(/(^|\s)#([a-zA-Z0-9_-]*)$/);
+        if (queryMatch) {
+            setAutomateQuery(queryMatch[2].toLowerCase());
+            setAutomateSelectedIndex(0);
+        } else if (automateQuery !== null) {
+            setAutomateQuery(null);
+        }
+
+        setData('message', rawValue);
+    };
+
     const handleSendReply = (e?: React.FormEvent) => {
         if (e) e.preventDefault();
-        if (!activeConversation || isTakenOverByOther || !canReply || (!data.message.trim() && !data.attachment) || processing) return;
+        if (!activeConversation || isEnded || isTakenOverByOther || !canReply || (!data.message.trim() && !data.attachment) || processing) return;
+
+        setAutomateQuery(null);
+
+        // Pastikan jika tersisa exact standalone #shortcut (misal ada prefix collision), langsung ekspansi sebelum kirim
+        let preparedMessage = data.message.trim();
+        const standaloneTag = preparedMessage.match(/^#([a-zA-Z0-9_-]+)$/);
+        if (standaloneTag) {
+            const exact = findExactShortcut(standaloneTag[1]);
+            if (exact) {
+                preparedMessage = exact.content;
+                setData('message', exact.content);
+            }
+        }
 
         const tempId = `temp-admin-${Date.now()}`;
         const tempMediaUrl = data.attachment ? URL.createObjectURL(data.attachment) : null;
@@ -455,7 +637,7 @@ export default function ConversationsIndex({
                 ? 'video'
                 : 'image'
             : null;
-        const sentContent = data.message.trim() || (tempMediaType === 'video' ? '[Video]' : '[Gambar]');
+        const sentContent = preparedMessage || (tempMediaType === 'video' ? '[Video]' : '[Gambar]');
         const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
         // Optimistic append immediately to localMessages
@@ -505,6 +687,32 @@ export default function ConversationsIndex({
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        if (automateQuery !== null && filteredAutomates.length > 0) {
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                setAutomateSelectedIndex((prev) => (prev + 1) % filteredAutomates.length);
+                return;
+            }
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                setAutomateSelectedIndex((prev) => (prev - 1 + filteredAutomates.length) % filteredAutomates.length);
+                return;
+            }
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                setAutomateQuery(null);
+                return;
+            }
+            if (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey)) {
+                e.preventDefault();
+                const chosen = filteredAutomates[automateSelectedIndex] || filteredAutomates[0];
+                if (chosen) {
+                    insertAutomation(chosen);
+                }
+                return;
+            }
+        }
+
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             handleSendReply();
@@ -542,6 +750,12 @@ export default function ConversationsIndex({
             label: 'Ditangani Bot',
             icon: Bot,
             count: counts.bot ?? 0,
+        },
+        {
+            key: 'ended',
+            label: 'Selesai',
+            icon: CheckCircle2,
+            count: counts.ended ?? 0,
         },
         {
             key: 'archived',
@@ -724,10 +938,10 @@ export default function ConversationsIndex({
 
                                 const latestMsg = latestMessageObj ? latestMessageObj.content : '';
 
-                                // Belum dijawab (Unanswered): HANYA jika pesan paling akhir adalah dari user/pengunjung!
-                                // Begitu dibalas oleh bot atau admin, isLatestFromUser bernilai false sehingga TIDAK MERAH.
+                                // Belum dijawab (Unanswered): HANYA jika pesan paling akhir adalah dari user/pengunjung dan sesi masih aktif!
+                                // Begitu dibalas oleh bot/admin atau diakhiri, tidak menampilkan status Pesan Baru.
                                 const isLatestFromUser = latestMessageObj?.role === 'user';
-                                const hasUnreadAdminMessage = isLatestFromUser;
+                                const hasUnreadAdminMessage = !conv.ended_reason && isLatestFromUser;
 
                                 let displayName = conv.user_identifier;
                                 if (!displayName || displayName === conv.uuid) {
@@ -788,6 +1002,16 @@ export default function ConversationsIndex({
                                                     <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.2 text-[10px] font-semibold text-muted-foreground">
                                                         <Archive className="size-2.5" />
                                                         Arsip
+                                                    </span>
+                                                ) : conv.ended_reason === 'user' ? (
+                                                    <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/15 border border-rose-500/30 px-2 py-0.2 text-[10px] font-bold text-rose-700 dark:text-rose-300">
+                                                        <LogOut className="size-2.5" />
+                                                        Diakhiri User
+                                                    </span>
+                                                ) : conv.ended_reason === 'timeout' ? (
+                                                    <span className="inline-flex items-center gap-1 rounded-full bg-orange-500/15 border border-orange-500/30 px-2 py-0.2 text-[10px] font-bold text-orange-700 dark:text-orange-300">
+                                                        <TimerOff className="size-2.5" />
+                                                        Waktu Habis
                                                     </span>
                                                 ) : hasUnreadAdminMessage ? (
                                                     <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/15 border border-rose-500/30 px-2 py-0.2 text-[10px] font-bold text-rose-600 dark:text-rose-400">
@@ -852,6 +1076,16 @@ export default function ConversationsIndex({
                                                     <Archive className="size-2.5" />
                                                     Diarsipkan
                                                 </Badge>
+                                            ) : activeEndedReason === 'user' ? (
+                                                <Badge variant="secondary" className="text-[10px] bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30 gap-1 px-1.5 py-0 h-4.5">
+                                                    <LogOut className="size-2.5" />
+                                                    Diakhiri User
+                                                </Badge>
+                                            ) : activeEndedReason === 'timeout' ? (
+                                                <Badge variant="secondary" className="text-[10px] bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-500/30 gap-1 px-1.5 py-0 h-4.5">
+                                                    <TimerOff className="size-2.5" />
+                                                    Waktu Habis (Timeout)
+                                                </Badge>
                                             ) : activeConversation.is_taken_over ? (
                                                 <Badge variant="secondary" className="text-[10px] bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30 gap-1 px-1.5 py-0 h-4.5">
                                                     <UserCheck className="size-2.5" />
@@ -870,13 +1104,18 @@ export default function ConversationsIndex({
                                             )}
                                             <span>KOTA : {activeConversation.city || '-'}</span>
                                             <span>Aktif: {formatWibDateTime(activeConversation.last_activity_at)}</span>
+                                            {activeEndedAt && (
+                                                <span className={activeEndedReason === 'user' ? 'text-rose-600 dark:text-rose-400 font-semibold' : 'text-orange-600 dark:text-orange-400 font-semibold'}>
+                                                    Berakhir: {formatWibDateTime(activeEndedAt)}
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
 
                                 <div className="flex items-center gap-2 shrink-0">
-                                    {/* Tombol Ambil Alih / Lepas */}
-                                    {isTakenOverByOther && !isSuperAdmin ? (
+                                    {/* Tombol Ambil Alih / Lepas (disembunyikan jika sesi sudah berakhir) */}
+                                    {!isEnded && (isTakenOverByOther && !isSuperAdmin ? (
                                         <Badge
                                             variant="secondary"
                                             className="h-8 px-3 text-xs font-semibold bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30 gap-1.5 shadow-2xs"
@@ -906,7 +1145,7 @@ export default function ConversationsIndex({
                                                 </>
                                             )}
                                         </Button>
-                                    )}
+                                    ))}
 
                                     {/* Tombol Arsipkan / Buka Arsip */}
                                     <Button
@@ -956,10 +1195,22 @@ export default function ConversationsIndex({
                                 ) : (
                                     localMessages.map((msg) => {
                                         if (msg.role === 'system') {
+                                            const isUserEndedMsg = msg.content.includes('mengakhiri sesi');
+                                            const isTimeoutEndedMsg = msg.content.includes('batas waktu');
                                             return (
                                                 <div key={msg.id} className="flex justify-center my-3">
-                                                    <span className="rounded-full bg-muted/80 border border-border px-3 py-1 text-[11px] font-medium text-muted-foreground">
-                                                        {msg.content}
+                                                    <span
+                                                        className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1 text-[11px] font-semibold ${
+                                                            isUserEndedMsg
+                                                                ? 'bg-rose-500/15 border-rose-500/30 text-rose-700 dark:text-rose-300'
+                                                                : isTimeoutEndedMsg
+                                                                    ? 'bg-orange-500/15 border-orange-500/30 text-orange-700 dark:text-orange-300'
+                                                                    : 'bg-muted/80 border-border text-muted-foreground font-medium'
+                                                        }`}
+                                                    >
+                                                        {isUserEndedMsg && <LogOut className="size-3 shrink-0" />}
+                                                        {isTimeoutEndedMsg && <TimerOff className="size-3 shrink-0" />}
+                                                        <span>{msg.content}</span>
                                                     </span>
                                                 </div>
                                             );
@@ -1111,8 +1362,34 @@ export default function ConversationsIndex({
                             </div>
 
                             {/* Reply Input Box & Takeover Controls */}
-                            <div className="border-t border-border bg-sidebar/20 p-2.5 sm:p-3 shrink-0 space-y-2">
-                                {isTakenOverByOther ? (
+                            <div className="relative border-t border-border bg-sidebar/20 p-2.5 sm:p-3 shrink-0 space-y-2">
+                                {isEnded ? (
+                                    <div
+                                        className={`flex items-center justify-between gap-2.5 rounded-xl border px-3 py-2 text-xs shadow-2xs ${
+                                            activeEndedReason === 'user'
+                                                ? 'bg-rose-500/10 border-rose-500/30 text-rose-800 dark:text-rose-200'
+                                                : 'bg-orange-500/10 border-orange-500/30 text-orange-800 dark:text-orange-200'
+                                        }`}
+                                    >
+                                        <div className="flex items-center gap-2 min-w-0 font-semibold">
+                                            {activeEndedReason === 'user' ? (
+                                                <LogOut className="size-4 text-rose-600 dark:text-rose-400 shrink-0" />
+                                            ) : (
+                                                <TimerOff className="size-4 text-orange-600 dark:text-orange-400 shrink-0" />
+                                            )}
+                                            <span className="text-[11px] leading-snug">
+                                                {activeEndedReason === 'user'
+                                                    ? 'Sesi percakapan telah diakhiri oleh pengunjung (End Chat).'
+                                                    : 'Sesi percakapan berakhir otomatis karena waktu habis (Timeout).'}
+                                                {activeEndedAt && (
+                                                    <span className="ml-1.5 font-mono opacity-80">
+                                                        ({formatWibDateTime(activeEndedAt)})
+                                                    </span>
+                                                )}
+                                            </span>
+                                        </div>
+                                    </div>
+                                ) : isTakenOverByOther ? (
                                     <div className="flex items-center justify-between rounded-xl bg-amber-500/10 border border-amber-500/25 px-3 py-1.5 text-xs shadow-2xs">
                                         <div className="flex items-center gap-2 font-bold text-amber-800 dark:text-amber-300 min-w-0">
                                             <UserCheck className="size-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
@@ -1216,7 +1493,49 @@ export default function ConversationsIndex({
                                     </div>
                                 )}
 
-                                <form onSubmit={handleSendReply} className="flex gap-2 items-center">
+                                {/* Automate (#shortcut) Floating Suggestion Popup */}
+                                {automateQuery !== null && filteredAutomates.length > 0 && canReply && (
+                                    <div className="rounded-xl border border-border bg-popover text-popover-foreground shadow-lg overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-100">
+                                        <div className="flex items-center justify-between px-3 py-1.5 bg-muted/50 border-b border-border text-[10px] font-semibold text-muted-foreground">
+                                            <span className="flex items-center gap-1">
+                                                <Zap className="size-3 text-amber-500" />
+                                                <span>Pilih Automate (#{automateQuery || '...'})</span>
+                                            </span>
+                                            <span>Tab / Enter / Klik untuk pakai • Esc tutup</span>
+                                        </div>
+                                        <div className="max-h-48 overflow-y-auto divide-y divide-border/40">
+                                            {filteredAutomates.map((cr, idx) => {
+                                                const cleanTag = (cr.shortcut || '').replace(/^#\s*/, '');
+                                                const isActive = idx === automateSelectedIndex;
+                                                return (
+                                                    <button
+                                                        key={cr.id || cleanTag}
+                                                        type="button"
+                                                        onMouseDown={(e) => {
+                                                            e.preventDefault();
+                                                            insertAutomation(cr);
+                                                        }}
+                                                        onMouseEnter={() => setAutomateSelectedIndex(idx)}
+                                                        className={`w-full text-left px-3 py-2 flex items-start gap-2.5 transition-colors cursor-pointer ${
+                                                            isActive
+                                                                ? 'bg-emerald-500/15 text-foreground'
+                                                                : 'hover:bg-muted/50'
+                                                        }`}
+                                                    >
+                                                        <span className="inline-flex items-center rounded-md bg-emerald-600/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 px-1.5 py-0.5 font-mono text-[11px] font-bold shrink-0">
+                                                            #{cleanTag}
+                                                        </span>
+                                                        <span className="text-xs text-muted-foreground line-clamp-2 whitespace-pre-line">
+                                                            {cr.content}
+                                                        </span>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <form onSubmit={handleSendReply} className="flex gap-2 items-end">
                                     <input
                                         ref={fileInputRef}
                                         type="file"
@@ -1246,34 +1565,71 @@ export default function ConversationsIndex({
                                         disabled={!canReply || processing}
                                         className="size-9 rounded-xl shrink-0 cursor-pointer text-muted-foreground hover:text-foreground"
                                         title={
-                                            isTakenOverByOther
-                                                ? `Sedang ditangani oleh ${activeConversation.taken_over_by?.name || 'Admin Lain'}`
-                                                : canReply
-                                                    ? 'Kirim Foto atau Video'
-                                                    : 'Klik Ambil Alih Chat terlebih dahulu'
+                                            isEnded
+                                                ? 'Sesi percakapan sudah berakhir'
+                                                : isTakenOverByOther
+                                                    ? `Sedang ditangani oleh ${activeConversation.taken_over_by?.name || 'Admin Lain'}`
+                                                    : canReply
+                                                        ? 'Kirim Foto atau Video'
+                                                        : 'Klik Ambil Alih Chat terlebih dahulu'
                                         }
                                     >
                                         <Paperclip className="size-4" />
                                     </Button>
 
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="icon"
+                                        onClick={() => {
+                                            if (!canReply) return;
+                                            if (automateQuery !== null) {
+                                                setAutomateQuery(null);
+                                            } else {
+                                                const cur = data.message;
+                                                if (!cur.endsWith('#')) {
+                                                    const sep = cur.length > 0 && !cur.endsWith(' ') && !cur.endsWith('\n') ? ' #' : '#';
+                                                    setData('message', cur + sep);
+                                                }
+                                                setAutomateQuery('');
+                                                setAutomateSelectedIndex(0);
+                                            }
+                                            focusReplyInput();
+                                        }}
+                                        disabled={!canReply || processing}
+                                        className={`size-9 rounded-xl shrink-0 cursor-pointer ${
+                                            automateQuery !== null
+                                                ? 'border-amber-500/50 bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                                                : 'text-muted-foreground hover:text-foreground'
+                                        }`}
+                                        title="Sisipkan balasan Automate (#shortcut)"
+                                    >
+                                        <Zap className="size-4" />
+                                    </Button>
+
                                     <div className="relative flex-1">
-                                        <Input
+                                        <Textarea
                                             ref={inputRef}
+                                            rows={1}
                                             value={data.message}
-                                            onChange={(e) => setData('message', e.target.value)}
+                                            onChange={handleMessageInputChange}
                                             onKeyDown={handleKeyDown}
                                             placeholder={
-                                                isTakenOverByOther
-                                                    ? `Sedang ditangani oleh ${activeConversation.taken_over_by?.name || 'Admin Lain'} (Mode Pantau / Hanya Baca)`
-                                                    : canReply
-                                                        ? data.attachment
-                                                            ? 'Tambah keterangan lampiran (opsional)... (Tekan Enter untuk kirim)'
-                                                            : 'Ketik balasan Anda langsung ke pengunjung... (Tekan Enter untuk kirim)'
-                                                        : 'Klik "Ambil Alih Chat" di atas untuk membalas...'
+                                                activeEndedReason === 'user'
+                                                    ? 'Sesi percakapan telah diakhiri oleh pengunjung.'
+                                                    : activeEndedReason === 'timeout'
+                                                        ? 'Sesi percakapan telah berakhir karena waktu habis (Timeout).'
+                                                        : isTakenOverByOther
+                                                            ? `Sedang ditangani oleh ${activeConversation.taken_over_by?.name || 'Admin Lain'} (Mode Pantau / Hanya Baca)`
+                                                            : canReply
+                                                                ? data.attachment
+                                                                    ? 'Tambah keterangan lampiran (opsional)... (Tekan Enter untuk kirim)'
+                                                                    : 'Ketik balasan atau #shortcut (misal #bosku)... (Enter kirim)'
+                                                                : 'Klik "Ambil Alih Chat" di atas untuk membalas...'
                                             }
                                             disabled={!canReply}
                                             readOnly={processing}
-                                            className={`h-9 text-xs rounded-xl bg-background transition-all px-3 ${canReply
+                                            className={`min-h-9 max-h-36 py-2 text-xs rounded-xl bg-background transition-all px-3 resize-none overflow-y-auto leading-relaxed ${canReply
                                                 ? 'border-emerald-500/40 focus:ring-1 focus:ring-emerald-500/30'
                                                 : 'opacity-60 bg-muted/30 cursor-not-allowed'
                                                 }`}

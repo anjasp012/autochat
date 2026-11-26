@@ -43,6 +43,8 @@ interface Conversation {
     user_agent: string | null;
     last_activity_at: string;
     is_taken_over: boolean;
+    ended_reason?: 'user' | 'timeout' | null;
+    ended_at?: string | null;
     taken_over_at: string | null;
     created_at: string;
     application?: {
@@ -151,7 +153,16 @@ export default function ConversationsShow({ conversation }: Props) {
                                 <h1 className="font-mono text-sm sm:text-base font-bold tracking-tight text-foreground truncate">
                                     {conversation.uuid}
                                 </h1>
-                                {conversation.is_taken_over ? (
+                                {conversation.ended_reason === 'user' ? (
+                                    <Badge variant="secondary" className="gap-1.5 px-2.5 py-0.5 text-xs font-semibold rounded-lg bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30">
+                                        <span>Diakhiri User</span>
+                                    </Badge>
+                                ) : conversation.ended_reason === 'timeout' ? (
+                                    <Badge variant="secondary" className="gap-1.5 px-2.5 py-0.5 text-xs font-semibold rounded-lg bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-500/30">
+                                        <Clock className="size-3.5" />
+                                        <span>Waktu Habis (Timeout)</span>
+                                    </Badge>
+                                ) : conversation.is_taken_over ? (
                                     <Badge variant="secondary" className="gap-1.5 px-2.5 py-0.5 text-xs font-semibold rounded-lg bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30">
                                         <UserCheck className="size-3.5" />
                                         <span>Diambil Alih ({conversation.taken_over_by?.name || 'Admin'})</span>
@@ -286,7 +297,13 @@ export default function ConversationsShow({ conversation }: Props) {
 
                     {/* Bottom Admin Control / Reply Box */}
                     <div className="border-t border-border bg-sidebar/30 p-3 sm:p-4 shrink-0">
-                        {conversation.is_taken_over ? (
+                        {conversation.ended_reason ? (
+                            <div className="rounded-xl bg-muted/60 border border-border px-3 py-2.5 text-xs font-semibold text-muted-foreground text-center">
+                                {conversation.ended_reason === 'user'
+                                    ? 'Sesi percakapan telah diakhiri oleh pengunjung.'
+                                    : 'Sesi percakapan berakhir otomatis karena batas waktu (Timeout).'}
+                            </div>
+                        ) : conversation.is_taken_over ? (
                             <form onSubmit={handleSendReply} className="flex flex-col gap-2.5">
                                 <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
                                     <span className="font-medium text-amber-600 dark:text-amber-400 flex items-center gap-1">

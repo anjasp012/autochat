@@ -81,6 +81,8 @@ class MessageSent implements ShouldBroadcastNow
             'is_waiting_admin' => (bool) $this->message->conversation->is_waiting_admin,
             'taken_over_by' => $this->message->conversation->taken_over_by,
             'is_archived' => (bool) $this->message->conversation->is_archived,
+            'ended_reason' => $this->message->conversation->ended_reason,
+            'ended_at' => $this->message->conversation->ended_at?->toIso8601String(),
         ];
     }
 }
