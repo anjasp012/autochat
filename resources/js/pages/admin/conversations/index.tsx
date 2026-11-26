@@ -202,8 +202,20 @@ export default function ConversationsIndex({
         }
     };
 
+    const focusReplyInput = () => {
+        requestAnimationFrame(() => {
+            inputRef.current?.focus();
+        });
+        setTimeout(() => {
+            inputRef.current?.focus();
+        }, 50);
+    };
+
     useEffect(() => {
         scrollToBottom(false);
+        if (canReply) {
+            focusReplyInput();
+        }
     }, [activeConversation?.uuid]);
 
     useEffect(() => {
@@ -401,6 +413,7 @@ export default function ConversationsIndex({
                 preserveState: true,
                 preserveScroll: true,
                 only: ['conversations', 'activeConversation'],
+                onSuccess: () => focusReplyInput(),
             }
         );
     };
@@ -412,7 +425,14 @@ export default function ConversationsIndex({
             }
             router.post(`/conversations/${conv.uuid}/release-takeover`, {}, { preserveScroll: true });
         } else {
-            router.post(`/conversations/${conv.uuid}/takeover`, {}, { preserveScroll: true });
+            router.post(
+                `/conversations/${conv.uuid}/takeover`,
+                {},
+                {
+                    preserveScroll: true,
+                    onSuccess: () => focusReplyInput(),
+                }
+            );
         }
     };
 
@@ -477,7 +497,11 @@ export default function ConversationsIndex({
                     )
                 );
             },
+            onFinish: () => {
+                focusReplyInput();
+            },
         });
+        focusReplyInput();
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -1247,7 +1271,8 @@ export default function ConversationsIndex({
                                                             : 'Ketik balasan Anda langsung ke pengunjung... (Tekan Enter untuk kirim)'
                                                         : 'Klik "Ambil Alih Chat" di atas untuk membalas...'
                                             }
-                                            disabled={!canReply || processing}
+                                            disabled={!canReply}
+                                            readOnly={processing}
                                             className={`h-9 text-xs rounded-xl bg-background transition-all px-3 ${canReply
                                                 ? 'border-emerald-500/40 focus:ring-1 focus:ring-emerald-500/30'
                                                 : 'opacity-60 bg-muted/30 cursor-not-allowed'

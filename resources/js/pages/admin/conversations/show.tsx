@@ -66,10 +66,20 @@ interface Props {
 export default function ConversationsShow({ conversation }: Props) {
     const [isDeleting, setIsDeleting] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     const { data, setData, post, processing, reset } = useForm({
         message: '',
     });
+
+    const focusReplyTextarea = () => {
+        requestAnimationFrame(() => {
+            textareaRef.current?.focus();
+        });
+        setTimeout(() => {
+            textareaRef.current?.focus();
+        }, 50);
+    };
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -104,6 +114,9 @@ export default function ConversationsShow({ conversation }: Props) {
             preserveScroll: true,
             onSuccess: () => {
                 reset();
+            },
+            onFinish: () => {
+                focusReplyTextarea();
             },
         });
     };
@@ -287,11 +300,13 @@ export default function ConversationsShow({ conversation }: Props) {
 
                                 <div className="flex gap-2">
                                     <Textarea
+                                        ref={textareaRef}
                                         value={data.message}
                                         onChange={(e) => setData('message', e.target.value)}
                                         onKeyDown={handleKeyDown}
                                         placeholder="Ketik balasan Anda langsung ke pengunjung... (Tekan Enter untuk mengirim)"
                                         rows={2}
+                                        readOnly={processing}
                                         className="resize-none rounded-xl"
                                         autoFocus
                                     />
