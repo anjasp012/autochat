@@ -73,7 +73,7 @@ interface Props {
         user_identifier: string | null;
         is_waiting_admin: boolean;
         is_taken_over: boolean;
-        ended_reason?: 'user' | 'timeout' | null;
+        ended_reason?: 'user' | 'timeout' | 'admin' | null;
         ended_at?: string | null;
         taken_over_by_name: string | null;
         latest_message: string;
@@ -434,14 +434,9 @@ export default function Dashboard({
                                                 <span className="text-xs font-bold text-foreground truncate">
                                                     {conv.user_identifier || `Pengunjung #${conv.id}`}
                                                 </span>
-                                                {conv.ended_reason === 'user' && (
-                                                    <span className="text-[9px] font-bold text-rose-600 bg-rose-500/15 px-1.5 py-0.2 rounded">
-                                                        Diakhiri User
-                                                    </span>
-                                                )}
-                                                {conv.ended_reason === 'timeout' && (
-                                                    <span className="text-[9px] font-bold text-orange-600 bg-orange-500/15 px-1.5 py-0.2 rounded">
-                                                        Waktu Habis
+                                                {conv.ended_reason && (
+                                                    <span className="text-[9px] font-bold text-sky-700 dark:text-sky-300 bg-sky-500/15 px-1.5 py-0.2 rounded">
+                                                        Chat Selesai
                                                     </span>
                                                 )}
                                                 {!conv.ended_reason && conv.is_waiting_admin && (

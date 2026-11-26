@@ -123,7 +123,7 @@ class Conversation extends Model
     }
 
     /**
-     * Mark conversation as ended by visitor ('user') or inactivity ('timeout').
+     * Mark conversation as ended by visitor ('user'), inactivity ('timeout'), or admin ('admin').
      */
     public function markAsEnded(string $reason, ?CarbonInterface $endedAt = null, ?int $timeoutMinutes = null): bool
     {
@@ -131,7 +131,7 @@ class Conversation extends Model
             return false;
         }
 
-        $resolvedReason = $reason === 'user' ? 'user' : 'timeout';
+        $resolvedReason = in_array($reason, ['user', 'timeout', 'admin'], true) ? $reason : 'timeout';
         $resolvedEndedAt = $endedAt ?? now();
         $minutes = $timeoutMinutes ?? (int) config('ai.session_timeout', 10);
 
@@ -141,9 +141,16 @@ class Conversation extends Model
             'is_waiting_admin' => false,
         ]);
 
-        $content = $resolvedReason === 'user'
-            ? 'Pengguna telah mengakhiri sesi percakapan.'
-            : "Sesi percakapan berakhir otomatis karena batas waktu ({$minutes} menit tanpa aktivitas).";
+        BotEscalation::where('conversation_id', $this->id)->update([
+            'is_read' => true,
+            'is_resolved' => true,
+        ]);
+
+        $content = match ($resolvedReason) {
+            'user' => 'Pengguna telah mengakhiri sesi percakapan.',
+            'admin' => 'Percakapan telah ditandai selesai oleh Admin CS.',
+            default => "Sesi percakapan berakhir otomatis karena batas waktu ({$minutes} menit tanpa aktivitas).",
+        };
 
         $systemMessage = Message::create([
             'conversation_id' => $this->id,
@@ -224,7 +231,6 @@ class Conversation extends Model
             ->all();
 
         $unreadChatConvIds = static::query()
-            ->where('is_archived', false)
             ->whereNull('ended_reason')
             ->when(! $isSuperAdmin, fn ($q) => $q->whereIn('application_id', $assignedIds))
             ->whereHas('latestMessage', fn ($q) => $q->where('role', 'user'))

@@ -239,3 +239,26 @@ test('notifications endpoint returns combined unread escalations and unanswered 
         ->assertJsonPath('chat_notifications.unread_chats', 1)
         ->assertJsonPath('chat_notifications.total_notifications', 1);
 });
+
+test('admin can mark conversation as completed via complete endpoint', function () {
+    $conversation = Conversation::factory()->create([
+        'application_id' => $this->appOne->id,
+        'is_taken_over' => true,
+        'taken_over_by' => $this->admin->id,
+    ]);
+
+    $this->actingAs($this->admin)
+        ->post("/conversations/{$conversation->uuid}/complete")
+        ->assertRedirect();
+
+    $this->assertDatabaseHas('conversations', [
+        'id' => $conversation->id,
+        'ended_reason' => 'admin',
+    ]);
+
+    $this->assertDatabaseHas('messages', [
+        'conversation_id' => $conversation->id,
+        'role' => 'system',
+        'content' => 'Percakapan telah ditandai selesai oleh Admin CS.',
+    ]);
+});

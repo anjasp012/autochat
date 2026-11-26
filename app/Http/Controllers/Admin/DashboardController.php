@@ -52,7 +52,6 @@ class DashboardController extends Controller
             ->count();
 
         $ongoingChats = (clone $appQuery)
-            ->where('is_archived', false)
             ->whereNull('ended_reason')
             ->where('last_activity_at', '>=', now()->subHours(24))
             ->count();
@@ -61,8 +60,8 @@ class DashboardController extends Controller
         $activeAgentsCount = max(1, min($totalAgents, User::where('updated_at', '>=', now()->subHours(8))->count() ?: 1));
 
         $queuedVisitors = (clone $appQuery)
+            ->whereNull('ended_reason')
             ->where('is_waiting_admin', true)
-            ->where('is_archived', false)
             ->count();
 
         // 7-day Analytics (matching screenshot "Last 7 days")

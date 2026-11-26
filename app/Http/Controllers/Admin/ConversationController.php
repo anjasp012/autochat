@@ -73,12 +73,11 @@ class ConversationController extends Controller
             ->when($currentApp, fn ($query, $app) => $query->where('application_id', $app->id), fn ($query) => $query->whereRaw('1 = 0'));
 
         $counts = [
-            'all' => (clone $baseQuery)->where('is_archived', false)->count(),
-            'waiting' => (clone $baseQuery)->where('is_archived', false)->whereNull('ended_reason')->where('is_waiting_admin', true)->count(),
-            'mine' => (clone $baseQuery)->where('is_archived', false)->where('is_taken_over', true)->where('taken_over_by', $request->user()?->id)->count(),
-            'bot' => (clone $baseQuery)->where('is_archived', false)->whereNull('ended_reason')->where('is_taken_over', false)->count(),
-            'ended' => (clone $baseQuery)->where('is_archived', false)->whereNotNull('ended_reason')->count(),
-            'archived' => (clone $baseQuery)->where('is_archived', true)->count(),
+            'all' => (clone $baseQuery)->count(),
+            'waiting' => (clone $baseQuery)->whereNull('ended_reason')->where('is_waiting_admin', true)->count(),
+            'mine' => (clone $baseQuery)->where('is_taken_over', true)->where('taken_over_by', $request->user()?->id)->count(),
+            'bot' => (clone $baseQuery)->whereNull('ended_reason')->where('is_taken_over', false)->count(),
+            'ended' => (clone $baseQuery)->whereNotNull('ended_reason')->count(),
         ];
 
         $conversations = (clone $baseQuery)
@@ -96,13 +95,11 @@ class ConversationController extends Controller
                         ->orWhereHas('messages', fn ($mq) => $mq->where('content', 'like', "%{$search}%"));
                 });
             })
-            ->when($status === 'waiting', fn ($q) => $q->where('is_archived', false)->whereNull('ended_reason')->where('is_waiting_admin', true))
-            ->when($status === 'mine', fn ($q) => $q->where('is_archived', false)->where('is_taken_over', true)->where('taken_over_by', $request->user()?->id))
-            ->when($status === 'bot' || $status === 'ai', fn ($q) => $q->where('is_archived', false)->whereNull('ended_reason')->where('is_taken_over', false))
-            ->when($status === 'ended', fn ($q) => $q->where('is_archived', false)->whereNotNull('ended_reason'))
-            ->when($status === 'archived', fn ($q) => $q->where('is_archived', true))
-            ->when($status === 'taken_over', fn ($q) => $q->where('is_archived', false)->where('is_taken_over', true))
-            ->when(! in_array($status, ['archived', 'mine', 'bot', 'ai', 'taken_over', 'ended']), fn ($q) => $q->where('is_archived', false))
+            ->when($status === 'waiting', fn ($q) => $q->whereNull('ended_reason')->where('is_waiting_admin', true))
+            ->when($status === 'mine', fn ($q) => $q->where('is_taken_over', true)->where('taken_over_by', $request->user()?->id))
+            ->when($status === 'bot' || $status === 'ai', fn ($q) => $q->whereNull('ended_reason')->where('is_taken_over', false))
+            ->when($status === 'ended', fn ($q) => $q->whereNotNull('ended_reason'))
+            ->when($status === 'taken_over', fn ($q) => $q->where('is_taken_over', true))
             ->orderBy('last_activity_at', 'desc')
             ->get()
             ->map(function ($c) {
@@ -449,27 +446,15 @@ class ConversationController extends Controller
     }
 
     /**
-     * Archive conversation.
+     * Mark conversation as completed by admin.
      */
-    public function archive(Request $request, Conversation $conversation): RedirectResponse
+    public function complete(Request $request, Conversation $conversation): RedirectResponse
     {
         $this->authorizeConversationAccess($request, $conversation);
 
-        $conversation->update(['is_archived' => true]);
+        $conversation->markAsEnded('admin', now());
 
-        return back()->with('success', 'Percakapan berhasil diarsipkan.');
-    }
-
-    /**
-     * Unarchive conversation.
-     */
-    public function unarchive(Request $request, Conversation $conversation): RedirectResponse
-    {
-        $this->authorizeConversationAccess($request, $conversation);
-
-        $conversation->update(['is_archived' => false]);
-
-        return back()->with('success', 'Percakapan dikembalikan dari arsip.');
+        return back()->with('success', 'Percakapan telah ditandai selesai.');
     }
 
     /**

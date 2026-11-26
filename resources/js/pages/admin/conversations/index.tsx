@@ -2,8 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
 import {
     AlertCircle,
-    Archive,
-    ArchiveRestore,
     ArrowLeft,
     Bot,
     CheckCheck,
@@ -66,8 +64,7 @@ interface ConversationItem {
     last_activity_at: string;
     is_taken_over: boolean;
     is_waiting_admin?: boolean;
-    is_archived: boolean;
-    ended_reason?: 'user' | 'timeout' | null;
+    ended_reason?: 'user' | 'timeout' | 'admin' | null;
     ended_at?: string | null;
     taken_over_at: string | null;
     messages_count: number;
@@ -104,7 +101,6 @@ interface Counts {
     mine: number;
     bot: number;
     ended?: number;
-    archived: number;
 }
 
 interface Props {
@@ -149,7 +145,7 @@ const formatWibDateTime = (dateStr?: string | null) => {
 export default function ConversationsIndex({
     conversations = [],
     activeConversation,
-    counts = { all: 0, waiting: 0, mine: 0, bot: 0, archived: 0 },
+    counts = { all: 0, waiting: 0, mine: 0, bot: 0, ended: 0 },
     filters = {},
     selectedApp,
 }: Props) {
@@ -167,7 +163,7 @@ export default function ConversationsIndex({
         auth?.user?.role === 'super_admin' ||
         (auth?.user?.is_admin && !auth?.user?.role);
 
-    const [activeEndedReason, setActiveEndedReason] = useState<'user' | 'timeout' | null>(
+    const [activeEndedReason, setActiveEndedReason] = useState<'user' | 'timeout' | 'admin' | null>(
         activeConversation?.ended_reason ?? null
     );
     const [activeEndedAt, setActiveEndedAt] = useState<string | null>(
@@ -495,12 +491,9 @@ export default function ConversationsIndex({
         }
     };
 
-    const handleToggleArchive = (conv: ConversationItem) => {
-        if (conv.is_archived) {
-            router.post(`/conversations/${conv.uuid}/unarchive`, {}, { preserveScroll: true });
-        } else {
-            router.post(`/conversations/${conv.uuid}/archive`, {}, { preserveScroll: true });
-        }
+    const handleCompleteConversation = (conv: ConversationItem) => {
+        if (conv.ended_reason) return;
+        router.post(`/conversations/${conv.uuid}/complete`, {}, { preserveScroll: true });
     };
 
     const findExactShortcut = (tag: string): CannedResponse | undefined => {
@@ -753,15 +746,9 @@ export default function ConversationsIndex({
         },
         {
             key: 'ended',
-            label: 'Selesai',
+            label: 'Chat Selesai',
             icon: CheckCircle2,
             count: counts.ended ?? 0,
-        },
-        {
-            key: 'archived',
-            label: 'Arsip',
-            icon: Archive,
-            count: counts.archived ?? 0,
         },
     ];
 
@@ -920,8 +907,8 @@ export default function ConversationsIndex({
                                 <MessageSquare className="size-8 opacity-30 mb-2" />
                                 <p className="text-xs font-medium">Tidak ada percakapan</p>
                                 <p className="text-[11px] text-muted-foreground mt-0.5">
-                                    {currentStatus === 'archived'
-                                        ? 'Belum ada percakapan yang diarsipkan'
+                                    {currentStatus === 'ended'
+                                        ? 'Belum ada percakapan yang selesai'
                                         : 'Belum ada percakapan pada kategori ini'}
                                 </p>
                             </div>
@@ -998,20 +985,10 @@ export default function ConversationsIndex({
                                             </p>
 
                                             <div className="flex items-center justify-between gap-1">
-                                                {conv.is_archived ? (
-                                                    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.2 text-[10px] font-semibold text-muted-foreground">
-                                                        <Archive className="size-2.5" />
-                                                        Arsip
-                                                    </span>
-                                                ) : conv.ended_reason === 'user' ? (
-                                                    <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/15 border border-rose-500/30 px-2 py-0.2 text-[10px] font-bold text-rose-700 dark:text-rose-300">
-                                                        <LogOut className="size-2.5" />
-                                                        Diakhiri User
-                                                    </span>
-                                                ) : conv.ended_reason === 'timeout' ? (
-                                                    <span className="inline-flex items-center gap-1 rounded-full bg-orange-500/15 border border-orange-500/30 px-2 py-0.2 text-[10px] font-bold text-orange-700 dark:text-orange-300">
-                                                        <TimerOff className="size-2.5" />
-                                                        Waktu Habis
+                                                {conv.ended_reason ? (
+                                                    <span className="inline-flex items-center gap-1 rounded-full bg-sky-500/15 border border-sky-500/30 px-2 py-0.2 text-[10px] font-bold text-sky-700 dark:text-sky-300">
+                                                        <CheckCircle2 className="size-2.5" />
+                                                        Chat Selesai
                                                     </span>
                                                 ) : hasUnreadAdminMessage ? (
                                                     <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/15 border border-rose-500/30 px-2 py-0.2 text-[10px] font-bold text-rose-600 dark:text-rose-400">
@@ -1071,20 +1048,10 @@ export default function ConversationsIndex({
                                                 <span>{activeDisplayName}</span>
                                                 <span className="text-xs font-mono font-normal text-muted-foreground">({activeConversation.uuid.substring(0, 8)}...)</span>
                                             </span>
-                                            {activeConversation.is_archived ? (
-                                                <Badge variant="outline" className="text-[10px] gap-1 px-1.5 py-0 h-4.5">
-                                                    <Archive className="size-2.5" />
-                                                    Diarsipkan
-                                                </Badge>
-                                            ) : activeEndedReason === 'user' ? (
-                                                <Badge variant="secondary" className="text-[10px] bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30 gap-1 px-1.5 py-0 h-4.5">
-                                                    <LogOut className="size-2.5" />
-                                                    Diakhiri User
-                                                </Badge>
-                                            ) : activeEndedReason === 'timeout' ? (
-                                                <Badge variant="secondary" className="text-[10px] bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-500/30 gap-1 px-1.5 py-0 h-4.5">
-                                                    <TimerOff className="size-2.5" />
-                                                    Waktu Habis (Timeout)
+                                            {activeEndedReason ? (
+                                                <Badge variant="secondary" className="text-[10px] bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30 gap-1 px-1.5 py-0 h-4.5">
+                                                    <CheckCircle2 className="size-2.5" />
+                                                    Chat Selesai
                                                 </Badge>
                                             ) : activeConversation.is_taken_over ? (
                                                 <Badge variant="secondary" className="text-[10px] bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30 gap-1 px-1.5 py-0 h-4.5">
@@ -1105,8 +1072,8 @@ export default function ConversationsIndex({
                                             <span>KOTA : {activeConversation.city || '-'}</span>
                                             <span>Aktif: {formatWibDateTime(activeConversation.last_activity_at)}</span>
                                             {activeEndedAt && (
-                                                <span className={activeEndedReason === 'user' ? 'text-rose-600 dark:text-rose-400 font-semibold' : 'text-orange-600 dark:text-orange-400 font-semibold'}>
-                                                    Berakhir: {formatWibDateTime(activeEndedAt)}
+                                                <span className="text-sky-600 dark:text-sky-400 font-semibold">
+                                                    Selesai: {formatWibDateTime(activeEndedAt)}
                                                 </span>
                                             )}
                                         </div>
@@ -1147,26 +1114,19 @@ export default function ConversationsIndex({
                                         </Button>
                                     ))}
 
-                                    {/* Tombol Arsipkan / Buka Arsip */}
-                                    <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => handleToggleArchive(activeConversation)}
-                                        className="h-8 gap-1.5 text-xs font-medium rounded-xl cursor-pointer shadow-xs"
-                                        title={activeConversation.is_archived ? 'Kembalikan dari Arsip' : 'Arsipkan Percakapan'}
-                                    >
-                                        {activeConversation.is_archived ? (
-                                            <>
-                                                <ArchiveRestore className="size-3.5" />
-                                                <span>Buka Arsip</span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Archive className="size-3.5" />
-                                                <span>Arsipkan</span>
-                                            </>
-                                        )}
-                                    </Button>
+                                    {/* Tombol Selesai */}
+                                    {!isEnded && (
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => handleCompleteConversation(activeConversation)}
+                                            className="h-8 gap-1.5 text-xs font-semibold rounded-xl cursor-pointer shadow-xs border-sky-500/40 text-sky-700 dark:text-sky-300 hover:bg-sky-500/10"
+                                            title="Tandai percakapan sebagai Chat Selesai"
+                                        >
+                                            <CheckCircle2 className="size-3.5" />
+                                            <span>Selesai</span>
+                                        </Button>
+                                    )}
 
                                     {isSuperAdmin && (
                                         <Button
@@ -1197,19 +1157,20 @@ export default function ConversationsIndex({
                                         if (msg.role === 'system') {
                                             const isUserEndedMsg = msg.content.includes('mengakhiri sesi');
                                             const isTimeoutEndedMsg = msg.content.includes('batas waktu');
+                                            const isAdminEndedMsg = msg.content.includes('ditandai selesai');
+                                            const isCompletedMsg = isUserEndedMsg || isTimeoutEndedMsg || isAdminEndedMsg;
                                             return (
                                                 <div key={msg.id} className="flex justify-center my-3">
                                                     <span
                                                         className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1 text-[11px] font-semibold ${
-                                                            isUserEndedMsg
-                                                                ? 'bg-rose-500/15 border-rose-500/30 text-rose-700 dark:text-rose-300'
-                                                                : isTimeoutEndedMsg
-                                                                    ? 'bg-orange-500/15 border-orange-500/30 text-orange-700 dark:text-orange-300'
-                                                                    : 'bg-muted/80 border-border text-muted-foreground font-medium'
+                                                            isCompletedMsg
+                                                                ? 'bg-sky-500/15 border-sky-500/30 text-sky-700 dark:text-sky-300'
+                                                                : 'bg-muted/80 border-border text-muted-foreground font-medium'
                                                         }`}
                                                     >
                                                         {isUserEndedMsg && <LogOut className="size-3 shrink-0" />}
                                                         {isTimeoutEndedMsg && <TimerOff className="size-3 shrink-0" />}
+                                                        {isAdminEndedMsg && <CheckCircle2 className="size-3 shrink-0" />}
                                                         <span>{msg.content}</span>
                                                     </span>
                                                 </div>
@@ -1364,23 +1325,15 @@ export default function ConversationsIndex({
                             {/* Reply Input Box & Takeover Controls */}
                             <div className="relative border-t border-border bg-sidebar/20 p-2.5 sm:p-3 shrink-0 space-y-2">
                                 {isEnded ? (
-                                    <div
-                                        className={`flex items-center justify-between gap-2.5 rounded-xl border px-3 py-2 text-xs shadow-2xs ${
-                                            activeEndedReason === 'user'
-                                                ? 'bg-rose-500/10 border-rose-500/30 text-rose-800 dark:text-rose-200'
-                                                : 'bg-orange-500/10 border-orange-500/30 text-orange-800 dark:text-orange-200'
-                                        }`}
-                                    >
+                                    <div className="flex items-center justify-between gap-2.5 rounded-xl border px-3 py-2 text-xs shadow-2xs bg-sky-500/10 border-sky-500/30 text-sky-800 dark:text-sky-200">
                                         <div className="flex items-center gap-2 min-w-0 font-semibold">
-                                            {activeEndedReason === 'user' ? (
-                                                <LogOut className="size-4 text-rose-600 dark:text-rose-400 shrink-0" />
-                                            ) : (
-                                                <TimerOff className="size-4 text-orange-600 dark:text-orange-400 shrink-0" />
-                                            )}
+                                            <CheckCircle2 className="size-4 text-sky-600 dark:text-sky-400 shrink-0" />
                                             <span className="text-[11px] leading-snug">
                                                 {activeEndedReason === 'user'
-                                                    ? 'Sesi percakapan telah diakhiri oleh pengunjung (End Chat).'
-                                                    : 'Sesi percakapan berakhir otomatis karena waktu habis (Timeout).'}
+                                                    ? 'Chat Selesai — Diakhiri oleh pengunjung.'
+                                                    : activeEndedReason === 'admin'
+                                                        ? 'Chat Selesai — Ditandai selesai oleh Admin.'
+                                                        : 'Chat Selesai — Berakhir otomatis karena batas waktu.'}
                                                 {activeEndedAt && (
                                                     <span className="ml-1.5 font-mono opacity-80">
                                                         ({formatWibDateTime(activeEndedAt)})
@@ -1615,11 +1568,9 @@ export default function ConversationsIndex({
                                             onChange={handleMessageInputChange}
                                             onKeyDown={handleKeyDown}
                                             placeholder={
-                                                activeEndedReason === 'user'
-                                                    ? 'Sesi percakapan telah diakhiri oleh pengunjung.'
-                                                    : activeEndedReason === 'timeout'
-                                                        ? 'Sesi percakapan telah berakhir karena waktu habis (Timeout).'
-                                                        : isTakenOverByOther
+                                                isEnded
+                                                    ? 'Sesi percakapan sudah selesai.'
+                                                    : isTakenOverByOther
                                                             ? `Sedang ditangani oleh ${activeConversation.taken_over_by?.name || 'Admin Lain'} (Mode Pantau / Hanya Baca)`
                                                             : canReply
                                                                 ? data.attachment

@@ -428,6 +428,9 @@ export default function ChatShow({
             if (event.is_waiting_admin !== undefined) {
                 setIsWaitingAdmin(Boolean(event.is_waiting_admin));
             }
+            if (event.ended_reason) {
+                setIsSessionExpired(true);
+            }
 
             if (event.role !== 'user') {
                 setHasSubmittedForm(true);
