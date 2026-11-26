@@ -203,6 +203,32 @@ export default function ConversationsIndex({
           })
         : [];
 
+    const automateListRef = useRef<HTMLDivElement>(null);
+    const lastKeyboardNavAtRef = useRef<number>(0);
+
+    useEffect(() => {
+        if (automateQuery === null || filteredAutomates.length === 0) return;
+
+        if (automateSelectedIndex >= filteredAutomates.length) {
+            setAutomateSelectedIndex(0);
+            return;
+        }
+
+        const listEl = automateListRef.current;
+        const activeEl = listEl?.querySelector<HTMLElement>(
+            `[data-automate-index="${automateSelectedIndex}"]`
+        );
+        if (listEl && activeEl) {
+            const itemRect = activeEl.getBoundingClientRect();
+            const listRect = listEl.getBoundingClientRect();
+            if (itemRect.top < listRect.top) {
+                listEl.scrollTop -= listRect.top - itemRect.top;
+            } else if (itemRect.bottom > listRect.bottom) {
+                listEl.scrollTop += itemRect.bottom - listRect.bottom;
+            }
+        }
+    }, [automateQuery, automateSelectedIndex, filteredAutomates.length]);
+
     const [search, setSearch] = useState(filters?.search || '');
     const [currentStatus, setCurrentStatus] = useState(filters?.status || 'all');
     const [convToDelete, setConvToDelete] = useState<ConversationItem | null>(null);
@@ -683,11 +709,13 @@ export default function ConversationsIndex({
         if (automateQuery !== null && filteredAutomates.length > 0) {
             if (e.key === 'ArrowDown') {
                 e.preventDefault();
+                lastKeyboardNavAtRef.current = Date.now();
                 setAutomateSelectedIndex((prev) => (prev + 1) % filteredAutomates.length);
                 return;
             }
             if (e.key === 'ArrowUp') {
                 e.preventDefault();
+                lastKeyboardNavAtRef.current = Date.now();
                 setAutomateSelectedIndex((prev) => (prev - 1 + filteredAutomates.length) % filteredAutomates.length);
                 return;
             }
@@ -696,7 +724,7 @@ export default function ConversationsIndex({
                 setAutomateQuery(null);
                 return;
             }
-            if (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey)) {
+            if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 const chosen = filteredAutomates[automateSelectedIndex] || filteredAutomates[0];
                 if (chosen) {
@@ -1454,21 +1482,29 @@ export default function ConversationsIndex({
                                                 <Zap className="size-3 text-amber-500" />
                                                 <span>Pilih Automate (#{automateQuery || '...'})</span>
                                             </span>
-                                            <span>Tab / Enter / Klik untuk pakai • Esc tutup</span>
+                                            <span>↑↓ Pilih • Enter / Klik untuk pakai • Esc tutup</span>
                                         </div>
-                                        <div className="max-h-48 overflow-y-auto divide-y divide-border/40">
+                                        <div
+                                            ref={automateListRef}
+                                            className="max-h-48 overflow-y-auto divide-y divide-border/40"
+                                        >
                                             {filteredAutomates.map((cr, idx) => {
                                                 const cleanTag = (cr.shortcut || '').replace(/^#\s*/, '');
                                                 const isActive = idx === automateSelectedIndex;
                                                 return (
                                                     <button
                                                         key={cr.id || cleanTag}
+                                                        data-automate-index={idx}
                                                         type="button"
                                                         onMouseDown={(e) => {
                                                             e.preventDefault();
                                                             insertAutomation(cr);
                                                         }}
-                                                        onMouseEnter={() => setAutomateSelectedIndex(idx)}
+                                                        onMouseEnter={() => {
+                                                            if (Date.now() - lastKeyboardNavAtRef.current > 200) {
+                                                                setAutomateSelectedIndex(idx);
+                                                            }
+                                                        }}
                                                         className={`w-full text-left px-3 py-2 flex items-start gap-2.5 transition-colors cursor-pointer ${
                                                             isActive
                                                                 ? 'bg-emerald-500/15 text-foreground'

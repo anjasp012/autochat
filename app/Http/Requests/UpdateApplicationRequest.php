@@ -15,7 +15,15 @@ class UpdateApplicationRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return $this->user() !== null;
+        $user = $this->user();
+        /** @var Application|null $application */
+        $application = $this->route('application');
+
+        if (! $user || ! $application) {
+            return false;
+        }
+
+        return $user->canAccessApplication($application->id);
     }
 
     /**
@@ -25,6 +33,19 @@ class UpdateApplicationRequest extends FormRequest
      */
     public function rules(): array
     {
+        if (! $this->user()?->isSuperAdmin()) {
+            return [
+                'chat_settings' => ['required', 'array'],
+                'chat_settings.canned_responses' => ['present', 'array'],
+                'chat_settings.canned_responses.*.id' => ['nullable', 'string', 'max:100'],
+                'chat_settings.canned_responses.*.shortcut' => ['required', 'string', 'max:100'],
+                'chat_settings.canned_responses.*.content' => ['required', 'string', 'max:10000'],
+                'chat_settings.canned_responses.*.scope' => ['nullable', 'in:shared,private'],
+                'chat_settings.canned_responses.*.created_by' => ['nullable', 'string', 'max:100'],
+                'chat_settings.canned_responses.*.updated_at' => ['nullable', 'string', 'max:100'],
+            ];
+        }
+
         /** @var Application $application */
         $application = $this->route('application');
 
@@ -53,6 +74,10 @@ class UpdateApplicationRequest extends FormRequest
      */
     protected function prepareForValidation(): void
     {
+        if (! $this->user()?->isSuperAdmin()) {
+            return;
+        }
+
         /** @var Application|null $application */
         $application = $this->route('application');
 

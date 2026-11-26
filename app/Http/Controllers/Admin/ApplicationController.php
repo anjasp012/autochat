@@ -27,12 +27,12 @@ class ApplicationController extends Controller
      */
     public function settings(Request $request): Response
     {
-        abort_if(! $request->user()?->isSuperAdmin(), 403, 'Hanya Admin Utama yang berhak mengakses pengaturan bot.');
-
         $sessionAppId = $request->session()->get('current_app_id');
         $application = null;
 
         $user = $request->user();
+        abort_if(! $user, 403);
+
         if ($sessionAppId) {
             $application = Application::where('app_id', $sessionAppId)->first();
             if ($application && ! $user->canAccessApplication($application->id)) {
@@ -49,7 +49,13 @@ class ApplicationController extends Controller
             }
         }
 
-        abort_if(! $application, 404, 'Belum ada aplikasi yang dibuat.');
+        if (! $application) {
+            if (! $user->isSuperAdmin()) {
+                abort(403, 'Belum ada aplikasi yang ditetapkan untuk akun Anda.');
+            }
+
+            abort(404, 'Belum ada aplikasi yang dibuat.');
+        }
 
         $application->loadCount(['conversations', 'knowledgeSources', 'knowledgeChunks']);
 
@@ -113,7 +119,32 @@ class ApplicationController extends Controller
      */
     public function update(UpdateApplicationRequest $request, Application $application): RedirectResponse
     {
-        abort_if(! $request->user()?->isSuperAdmin(), 403, 'Hanya Admin Utama yang berhak memperbarui pengaturan bot.');
+        $user = $request->user();
+        abort_if(! $user || ! $user->canAccessApplication($application->id), 403, 'Anda tidak memiliki akses untuk memperbarui pengaturan bot.');
+
+        if (! $user->isSuperAdmin()) {
+            $cannedResponses = collect(data_get($request->validated(), 'chat_settings.canned_responses', []))
+                ->map(fn (array $item): array => [
+                    'id' => (string) ($item['id'] ?? 'cr-'.uniqid()),
+                    'shortcut' => strtolower(ltrim(trim((string) $item['shortcut']), '# ')),
+                    'content' => trim((string) $item['content']),
+                    'scope' => ($item['scope'] ?? 'shared') === 'private' ? 'private' : 'shared',
+                    'created_by' => (string) ($item['created_by'] ?? $user->name),
+                    'updated_at' => (string) ($item['updated_at'] ?? now()->translatedFormat('d F Y')),
+                ])
+                ->values()
+                ->all();
+
+            $chatSettings = is_array($application->chat_settings) ? $application->chat_settings : [];
+            $chatSettings['canned_responses'] = $cannedResponses;
+
+            $application->update([
+                'chat_settings' => $chatSettings,
+            ]);
+
+            return back()
+                ->with('success', "Daftar automate untuk '{$application->name}' berhasil diperbarui.");
+        }
 
         $application->update($request->validated());
 

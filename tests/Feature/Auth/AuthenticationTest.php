@@ -54,3 +54,48 @@ test('users are rate limited', function () {
 
     $response->assertTooManyRequests();
 });
+
+test('operator cs redirects directly to dashboard on login even when intended url targets user management', function () {
+    $operator = User::factory()->create([
+        'role' => 'operator',
+        'is_admin' => false,
+    ]);
+
+    $response = $this->withSession(['url.intended' => '/settings/users'])
+        ->post(route('login.store'), [
+            'email' => $operator->email,
+            'password' => 'password',
+        ]);
+
+    $this->assertAuthenticatedAs($operator);
+    $response->assertRedirect(route('dashboard', absolute: false));
+    $response->assertSessionMissing('url.intended');
+});
+
+test('only super admin can access user management page', function () {
+    $operator = User::factory()->create([
+        'role' => 'operator',
+        'is_admin' => false,
+    ]);
+    $superAdmin = User::factory()->create([
+        'role' => 'admin',
+        'is_admin' => true,
+    ]);
+
+    $this->actingAs($operator)
+        ->get('/settings/users')
+        ->assertForbidden();
+
+    $this->actingAs($operator)
+        ->post('/settings/users', [
+            'name' => 'Unauthorized',
+            'email' => 'unauth@example.com',
+            'password' => 'password123',
+            'role' => 'operator',
+        ])
+        ->assertForbidden();
+
+    $this->actingAs($superAdmin)
+        ->get('/settings/users')
+        ->assertOk();
+});

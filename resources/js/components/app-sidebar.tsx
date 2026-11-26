@@ -18,11 +18,10 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import type { ApplicationSummary } from '@/types/application';
 import type { NavItem } from '@/types';
 
 export function AppSidebar() {
-    const { currentAppId, allApplications, applications, auth, chatNotifications, escalations } = usePage().props as Record<string, any>;
+    const { chatNotifications, escalations } = usePage().props as Record<string, any>;
     const initialBadgeCount = chatNotifications?.total_notifications ?? escalations?.unread_count ?? 0;
     const [chatBadgeCount, setChatBadgeCount] = useState<number>(initialBadgeCount);
 
@@ -41,24 +40,6 @@ export function AppSidebar() {
         return () => window.removeEventListener('autochat:notifications-updated', handleNotifUpdate);
     }, []);
 
-    const user = auth?.user;
-    const isSuperAdmin =
-        user?.role === 'admin' ||
-        user?.role === 'super_admin' ||
-        (user?.is_admin && !user?.role);
-
-    const appList: ApplicationSummary[] = Array.isArray(allApplications)
-        ? allApplications
-        : Array.isArray(applications)
-          ? applications
-          : Array.isArray(applications?.data)
-            ? applications.data
-            : [];
-
-    const currentApp = appList.find(
-        (app: ApplicationSummary) => app.app_id === currentAppId
-    ) || appList[0];
-
     const mainNavItems: NavItem[] = [
         {
             title: 'Dashboard',
@@ -71,15 +52,11 @@ export function AppSidebar() {
             icon: MessageSquare,
             badge: chatBadgeCount,
         },
-        ...(isSuperAdmin
-            ? [
-                  {
-                      title: 'Pengaturan Bot',
-                      href: '/setting',
-                      icon: Settings2,
-                  },
-              ]
-            : []),
+        {
+            title: 'Pengaturan Bot',
+            href: '/setting',
+            icon: Settings2,
+        },
     ];
 
     return (

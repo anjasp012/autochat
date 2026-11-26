@@ -137,3 +137,134 @@ test('admin can delete an application', function () {
     $response->assertRedirect('/dashboard');
     $this->assertDatabaseMissing('applications', ['id' => $app->id]);
 });
+
+test('operator can view bot setting page for assigned application', function () {
+    $app = Application::factory()->create([
+        'app_id' => 'cs-assigned-bot',
+        'is_active' => true,
+    ]);
+    $operator = User::factory()->create([
+        'role' => 'operator',
+        'is_admin' => false,
+        'assigned_application_ids' => [$app->id],
+    ]);
+
+    $response = $this->actingAs($operator)->get('/setting');
+
+    $response->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('admin/settings/index')
+            ->where('application.app_id', 'cs-assigned-bot')
+        );
+});
+
+test('operator without assigned applications receives forbidden on bot setting page', function () {
+    Application::factory()->create(['app_id' => 'unassigned-bot']);
+    $operator = User::factory()->create([
+        'role' => 'operator',
+        'is_admin' => false,
+        'assigned_application_ids' => [],
+    ]);
+
+    $this->actingAs($operator)
+        ->get('/setting')
+        ->assertForbidden();
+});
+
+test('operator can only update automate canned responses and cannot alter other bot settings', function () {
+    $app = Application::factory()->create([
+        'name' => 'Original Bot',
+        'app_id' => 'original-bot',
+        'system_prompt' => 'Prompt asli tetap aman.',
+        'model' => 'openai/gpt-oss-120b',
+        'is_active' => true,
+        'chat_settings' => [
+            'bg_color' => '#112233',
+            'welcome_opening' => 'Selamat datang original',
+            'canned_responses' => [
+                [
+                    'id' => 'cr-old',
+                    'shortcut' => 'lama',
+                    'content' => 'Pesan lama',
+                    'scope' => 'shared',
+                ],
+            ],
+        ],
+    ]);
+
+    $operator = User::factory()->create([
+        'role' => 'operator',
+        'is_admin' => false,
+        'assigned_application_ids' => [$app->id],
+    ]);
+
+    $response = $this->actingAs($operator)
+        ->from('/setting')
+        ->put("/applications/{$app->id}", [
+            'name' => 'Hacked Name',
+            'app_id' => 'hacked-slug',
+            'system_prompt' => 'Prompt diubah operator',
+            'is_active' => false,
+            'chat_settings' => [
+                'bg_color' => '#ff0000',
+                'canned_responses' => [
+                    [
+                        'id' => 'cr-new',
+                        'shortcut' => '#PromoBaru',
+                        'content' => 'Info promo terbaru hari ini.',
+                        'scope' => 'shared',
+                    ],
+                ],
+            ],
+        ]);
+
+    $response->assertRedirect('/setting');
+
+    $fresh = $app->fresh();
+    expect($fresh->name)->toBe('Original Bot');
+    expect($fresh->app_id)->toBe('original-bot');
+    expect($fresh->system_prompt)->toBe('Prompt asli tetap aman.');
+    expect($fresh->is_active)->toBeTrue();
+    expect($fresh->chat_settings['bg_color'])->toBe('#112233');
+    expect($fresh->chat_settings['welcome_opening'])->toBe('Selamat datang original');
+    expect($fresh->chat_settings['canned_responses'])->toHaveCount(1);
+    expect($fresh->chat_settings['canned_responses'][0]['shortcut'])->toBe('promobaru');
+    expect($fresh->chat_settings['canned_responses'][0]['content'])->toBe('Info promo terbaru hari ini.');
+});
+
+test('operator cannot update unassigned application or create delete or toggle applications', function () {
+    $assignedApp = Application::factory()->create(['app_id' => 'assigned-app']);
+    $otherApp = Application::factory()->create(['app_id' => 'other-app', 'is_active' => true]);
+    $operator = User::factory()->create([
+        'role' => 'operator',
+        'is_admin' => false,
+        'assigned_application_ids' => [$assignedApp->id],
+    ]);
+
+    $this->actingAs($operator)
+        ->put("/applications/{$otherApp->id}", [
+            'chat_settings' => [
+                'canned_responses' => [],
+            ],
+        ])
+        ->assertForbidden();
+
+    $this->actingAs($operator)
+        ->post('/admin/applications', [
+            'name' => 'New App',
+            'app_id' => 'new-app',
+            'system_prompt' => 'Prompt',
+        ])
+        ->assertForbidden();
+
+    $this->actingAs($operator)
+        ->post("/admin/applications/{$assignedApp->id}/toggle-status")
+        ->assertForbidden();
+
+    $this->actingAs($operator)
+        ->delete("/admin/applications/{$assignedApp->id}")
+        ->assertForbidden();
+
+    expect($otherApp->fresh()->is_active)->toBeTrue();
+    $this->assertDatabaseHas('applications', ['id' => $assignedApp->id]);
+});
