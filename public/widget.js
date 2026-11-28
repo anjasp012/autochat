@@ -37,17 +37,19 @@
             position: fixed;
             bottom: 24px;
             right: 24px;
-            z-index: 2147483645;
+            z-index: 2147483647;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
         #autochat-widget-btn {
-            width: 58px;
-            height: 58px;
+            width: 60px;
+            height: 60px;
             border-radius: 50%;
-            background: #FFF9E6;
+            padding: 0;
+            overflow: hidden;
+            background: #ffffff;
             color: #111827;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18), 0 1px 3px rgba(0,0,0,0.1);
-            border: 1px solid rgba(0, 0, 0, 0.08);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2), 0 1px 4px rgba(0, 0, 0, 0.12);
+            border: none;
             cursor: pointer;
             display: flex;
             align-items: center;
@@ -64,10 +66,11 @@
             transform: scale(0.95);
         }
         #autochat-widget-btn img {
-            width: 34px;
-            height: 34px;
-            object-fit: contain;
-            border-radius: 6px;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+            display: block;
             pointer-events: none;
             transition: transform 0.2s ease;
         }
@@ -109,13 +112,15 @@
         }
         @media (max-width: 480px) {
             #autochat-widget-frame-container {
-                bottom: 0 !important;
-                right: 0 !important;
-                width: 100vw !important;
-                height: 100vh !important;
-                max-width: 100vw !important;
-                max-height: 100vh !important;
-                border-radius: 0 !important;
+                bottom: 84px !important;
+                right: 12px !important;
+                width: calc(100vw - 24px) !important;
+                height: min(560px, calc(100vh - 104px)) !important;
+                height: min(560px, calc(100dvh - 104px)) !important;
+                max-width: calc(100vw - 24px) !important;
+                max-height: calc(100vh - 104px) !important;
+                max-height: calc(100dvh - 104px) !important;
+                border-radius: 18px !important;
             }
             #autochat-widget-root {
                 bottom: 16px;
@@ -138,13 +143,13 @@
     // Toggle button
     var btn = document.createElement('button');
     btn.id = 'autochat-widget-btn';
-    btn.setAttribute('aria-label', 'Buka Chat Customer Support');
-    btn.title = 'Livechat Customer Support';
+    btn.setAttribute('aria-label', 'Buka Chat AutoChat');
+    btn.title = 'Livechat AutoChat';
 
-    // Icons: Logo Favicon PNG & Close
-    var iconUrl = (currentScript && currentScript.getAttribute('data-icon')) || (baseUrl + '/favicon.png');
+    // Icons: AutoChat Mascot Logo & Close
+    var iconUrl = baseUrl + '/images/autochat-widget-logo.png?v=20261128';
     var chatIcon = `
-        <img src="${iconUrl}" alt="Livechat" onerror="this.onerror=null;this.src='${baseUrl}/apple-touch-icon.png';" />
+        <img src="${iconUrl}" alt="AutoChat" onerror="this.onerror=null;this.src='${baseUrl}/favicon.png';" />
     `;
 
     var closeIcon = `
@@ -157,66 +162,86 @@
     btn.innerHTML = chatIcon;
 
     var isOpen = false;
+    var hasUserInteracted = false;
+
+    function openChat() {
+        if (isOpen) {
+            return;
+        }
+
+        isOpen = true;
+
+        if (!iframe) {
+            iframe = document.createElement('iframe');
+            iframe.id = 'autochat-widget-iframe';
+            iframe.src = chatUrl;
+            iframe.allow = 'clipboard-write';
+            frameContainer.appendChild(iframe);
+        }
+
+        frameContainer.style.display = 'block';
+        setTimeout(function () {
+            if (isOpen) {
+                frameContainer.classList.add('autochat-open');
+            }
+        }, 10);
+        btn.innerHTML = closeIcon;
+        btn.setAttribute('aria-label', 'Tutup Chat AutoChat');
+    }
+
+    function closeChat() {
+        if (!isOpen) {
+            return;
+        }
+
+        isOpen = false;
+        frameContainer.classList.remove('autochat-open');
+        btn.innerHTML = chatIcon;
+        btn.setAttribute('aria-label', 'Buka Chat AutoChat');
+        setTimeout(function () {
+            if (!isOpen) {
+                frameContainer.style.display = 'none';
+            }
+        }, 250);
+    }
 
     function toggleChat() {
-        isOpen = !isOpen;
-
+        hasUserInteracted = true;
         if (isOpen) {
-            if (!iframe) {
-                iframe = document.createElement('iframe');
-                iframe.id = 'autochat-widget-iframe';
-                iframe.src = chatUrl;
-                iframe.allow = 'clipboard-write';
-                frameContainer.appendChild(iframe);
-            }
-            frameContainer.style.display = 'block';
-            setTimeout(function () {
-                frameContainer.classList.add('autochat-open');
-            }, 10);
-            btn.innerHTML = closeIcon;
+            closeChat();
         } else {
-            frameContainer.classList.remove('autochat-open');
-            btn.innerHTML = chatIcon;
-            setTimeout(function () {
-                if (!isOpen) {
-                    frameContainer.style.display = 'none';
-                }
-            }, 250);
+            openChat();
         }
     }
 
     btn.addEventListener('click', toggleChat);
 
-    // Fetch app theme config to set floating button background to match chat app bg_color
-    var customBg = (currentScript && currentScript.getAttribute('data-bg-color')) || null;
-    if (customBg) {
-        btn.style.background = customBg;
-    } else {
-        fetch(baseUrl + '/chat/' + encodeURIComponent(appId) + '/config')
-            .then(function (res) { return res.json(); })
-            .then(function (data) {
-                if (data && data.bg_color) {
-                    btn.style.background = data.bg_color;
+    function mountWidget() {
+        if (document.getElementById('autochat-widget-root')) {
+            return;
+        }
+
+        document.body.appendChild(frameContainer);
+        root.appendChild(btn);
+        document.body.appendChild(root);
+
+        var autoOpenAttr = currentScript && currentScript.getAttribute('data-auto-open');
+        var delayAttr = currentScript && currentScript.getAttribute('data-auto-open-delay');
+        var parsedDelay = delayAttr !== null ? parseInt(delayAttr, 10) : 600;
+        var autoOpenDelay = isNaN(parsedDelay) || parsedDelay < 0 ? 600 : parsedDelay;
+
+        if (autoOpenAttr !== 'false') {
+            setTimeout(function () {
+                if (!hasUserInteracted && !isOpen) {
+                    openChat();
                 }
-                if (data && data.icon_url && !currentScript.getAttribute('data-icon')) {
-                    var img = btn.querySelector('img');
-                    if (img) img.src = data.icon_url;
-                }
-            })
-            .catch(function () {});
+            }, autoOpenDelay);
+        }
     }
 
-    // Listen to theme customizations from within chat iframe
-    window.addEventListener('message', function (event) {
-        if (!event.data || typeof event.data !== 'object') return;
-        if (event.data.type === 'autochat-theme') {
-            if (event.data.bgColor) {
-                btn.style.background = event.data.bgColor;
-            }
-        }
-    });
-
-    document.body.appendChild(frameContainer);
-    root.appendChild(btn);
-    document.body.appendChild(root);
+    if (document.body) {
+        mountWidget();
+    } else {
+        document.addEventListener('DOMContentLoaded', mountWidget, { once: true });
+    }
 })();
