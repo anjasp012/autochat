@@ -1,9 +1,8 @@
-import { Link, router, usePage } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import {
     Bot,
     Check,
     ChevronsUpDown,
-    Plus,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -12,7 +11,6 @@ import {
     DropdownMenuGroup,
     DropdownMenuItem,
     DropdownMenuLabel,
-    DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -25,14 +23,9 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import type { ApplicationSummary } from '@/types/application';
 
 export function AppSwitcher() {
-    const { allApplications, applications, currentAppId, auth } = usePage().props as Record<string, any>;
+    const { allApplications, applications, currentAppId } = usePage().props as Record<string, any>;
     const { state } = useSidebar();
     const isMobile = useIsMobile();
-
-    const isSuperAdmin =
-        auth?.user?.role === 'admin' ||
-        auth?.user?.role === 'super_admin' ||
-        (auth?.user?.is_admin && !auth?.user?.role);
 
     const appList: ApplicationSummary[] = Array.isArray(allApplications)
         ? allApplications
@@ -169,20 +162,6 @@ export function AppSwitcher() {
                                 })
                             )}
                         </DropdownMenuGroup>
-
-                        {isSuperAdmin && (
-                            <>
-                                <DropdownMenuSeparator className="my-1" />
-                                <DropdownMenuItem asChild className="cursor-pointer rounded-lg px-2 py-1.5 text-xs">
-                                    <Link href="/applications/create" className="flex items-center gap-2 text-foreground font-medium">
-                                        <div className="flex size-5 items-center justify-center rounded-md bg-primary/10 text-primary">
-                                            <Plus className="size-3.5" />
-                                        </div>
-                                        <span>Tambah Aplikasi Baru</span>
-                                    </Link>
-                                </DropdownMenuItem>
-                            </>
-                        )}
                     </DropdownMenuContent>
                 </DropdownMenu>
             </SidebarMenuItem>

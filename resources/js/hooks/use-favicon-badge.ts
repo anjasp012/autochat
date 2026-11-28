@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 
-const BASE_FAVICON_URL = '/favicon.png';
+const BASE_FAVICON_URL = '/favicon.png?v=20261128b';
 
 function drawRoundedPill(
     ctx: CanvasRenderingContext2D,

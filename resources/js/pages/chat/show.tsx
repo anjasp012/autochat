@@ -254,7 +254,7 @@ export default function ChatShow({
 
     // Dynamically update browser tab favicon for this specific application
     useEffect(() => {
-        const activeFavicon = faviconUrl || '/favicon.png';
+        const activeFavicon = faviconUrl || '/favicon.png?v=20261128b';
         const oldLinks = document.querySelectorAll("link[rel*='icon'], link[rel='apple-touch-icon']");
         oldLinks.forEach((el) => el.parentNode?.removeChild(el));
 

@@ -20,9 +20,9 @@ export default function AuthSplitLayout({
                 >
                     <div className="flex h-9 w-9 items-center justify-center rounded-xl overflow-hidden shadow-sm">
                         <img
-                            src="/favicon.png"
+                            src="/favicon.png?v=20261128b"
                             alt="AutoChat"
-                            className="size-9 object-contain"
+                            className="size-9 object-cover"
                         />
                     </div>
                     <span>Auto<span className="text-amber-500">Chat</span></span>
@@ -36,9 +36,9 @@ export default function AuthSplitLayout({
                     >
                         <div className="flex h-14 w-14 items-center justify-center rounded-2xl overflow-hidden shadow-md">
                             <img
-                                src="/favicon.png"
+                                src="/favicon.png?v=20261128b"
                                 alt="AutoChat"
-                                className="size-14 object-contain"
+                                className="size-14 object-cover"
                             />
                         </div>
                         <span className="text-xl font-black tracking-tight text-foreground">

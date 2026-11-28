@@ -28,9 +28,9 @@ export default function AuthCardLayout({
                 >
                     <div className="flex h-16 w-16 items-center justify-center rounded-2xl overflow-hidden drop-shadow-md transition-transform group-hover:scale-105">
                         <img
-                            src="/favicon.png"
+                            src="/favicon.png?v=20261128b"
                             alt="AutoChat"
-                            className="size-16 object-contain"
+                            className="size-16 object-cover"
                         />
                     </div>
                     <div className="flex items-center gap-0.5 text-2xl font-black tracking-tight text-foreground">
